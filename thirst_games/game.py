@@ -32,13 +32,16 @@ class Game:
             PLAYERS: players,
         }
         for p1 in players:
-            for p2 in players:
-                if p1 == p2 or p1.busy or p2.busy or not p1.is_alive or not p2.is_alive:
-                    continue
-                if p1.current_area == p2.current_area:
-                    p1.interact(p2, context)
-            if not p1.busy:
-                p1.act_alone(context)
+            p1.think(context)
+            # for p2 in players:
+            #     if p1 == p2 or p1.busy or p2.busy or not p1.is_alive or not p2.is_alive:
+            #         continue
+            #     if p1.current_area == p2.current_area:
+            #         p1.interact(p2, context)
+            # if not p1.busy:
+            #     p1.act_alone(context)
+        for p in players:
+            p.act(context)
         for p in players:
             p.busy = False
         self.alive_players = [p for p in self.players if p.is_alive]

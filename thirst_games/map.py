@@ -17,7 +17,12 @@ class Map:
         self.areas[START_AREA].append(player)
 
     def move_player(self, player, new_area):
+        if player.current_area == new_area:
+            return
         self.areas[player.current_area].remove(player)
         self.areas[new_area].append(player)
         player.current_area = new_area
         print(f'{player.first_name} moves to {new_area}')
+
+    def neighbors_count(self, player):
+        return len(self.areas[player.current_area])
