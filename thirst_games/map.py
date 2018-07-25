@@ -8,7 +8,8 @@ class Map:
         possible_parts = [
             'the green forest', 'the red forest', 'the white forest', 'the rocks', 'the jungle', 'the river', 'the hill'
         ]
-        self.areas = {area_name: [] for area_name in possible_parts.sort(key=lambda x: random())[0:size-1]}
+        possible_parts.sort(key=lambda x: random())
+        self.areas = {area_name: [] for area_name in possible_parts[0:size-1]}
         self.areas[START_AREA] = []
 
     def add_player(self, player):
@@ -19,4 +20,4 @@ class Map:
         self.areas[player.current_area].remove(player)
         self.areas[new_area].append(player)
         player.current_area = new_area
-        print(f'{player.name} moves to {new_area}')
+        print(f'{player.first_name} moves to {new_area}')
