@@ -1,6 +1,7 @@
 MAP = 'map'
 PLAYERS = 'players'
 DEATH = 'death'
+DEADS = 'deads'
 
 TIME = 'time'
 MORNING = 'morning'
