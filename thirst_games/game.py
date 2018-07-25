@@ -20,7 +20,7 @@ class Game:
     def run(self):
         day = 1
         while len(self.alive_players) > 1 and day < 10:
-            print(f'== DAY {day} morning ==')
+            print(f'\n== DAY {day} morning ==')
             self.morning()
             print(f'-- DAY {day} afternoon --')
             self.afternoon()
@@ -28,8 +28,8 @@ class Game:
 
     def play(self, context):
         players = context[PLAYERS]
-        for p1 in players:
-            p1.think(context)
+        for p in players:
+            p.think(context)
         for p in players:
             p.act(context)
         for p in players:

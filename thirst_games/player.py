@@ -65,6 +65,7 @@ class Player:
             map_.move_player(self, area)
             self.reveal()
             self.energy -= 0.2
+            self.busy = True
 
     def hide(self, context):
         print(f'{self.first_name} hides and rests')
@@ -127,7 +128,7 @@ class Player:
             if self.be_damaged(random(), context):
                 print(f'{other_player.first_name} kills {self.first_name} at {self.current_area} in self-defense')
             else:
-                print(f'{other_player.first_name} attacks {self.first_name} at {self.current_area}')
+                print(f'{self.first_name} attacks {other_player.first_name} at {self.current_area}')
 
     def be_damaged(self, damage, context):
         if self.health < 0:
