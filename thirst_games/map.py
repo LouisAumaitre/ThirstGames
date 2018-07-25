@@ -16,6 +16,9 @@ class Map:
         player.current_area = START_AREA
         self.areas[START_AREA].append(player)
 
+    def remove_player(self, player):
+        self.areas[player.current_area].remove(player)
+
     def move_player(self, player, new_area):
         if player.current_area == new_area:
             return
