@@ -8,15 +8,24 @@ class Player:
         self.district = district
         self.relationships: Dict[Player, Relationship] = {}
         self.busy = False
+        self.health = 100
+        self.status = []
 
     @property
     def name(self):
         return self.first_name
 
+    @property
+    def is_alive(self):
+        return self.health > 0
+
     def relationship(self, other_player):
         if other_player not in self.relationships:
             self.relationships[other_player] = Relationship()
         return self.relationships[other_player]
+
+    def act_alone(self):
+        pass
 
     def interact(self, other_player):
         if self.relationship(other_player).allied:
@@ -24,7 +33,7 @@ class Player:
             if random() > self.relationship(other_player).friendship:
                 print(f'{self.first_name} betrays {other_player.first_name}')
                 return self.fight(other_player)
-        if random() < self.relationship(other_player).friendship:
+        elif random() < self.relationship(other_player).friendship:
             if random() < other_player.relationship(self).friendship:
                 print(f'{self.first_name} makes an alliance with {other_player.first_name}')
                 self.relationship(other_player).friendship += random() / 10
@@ -53,8 +62,19 @@ class Player:
             self.relationship(other_player).allied = False
             other_player.relationship(self).allied = False
 
+            other_player.be_damaged(random() * 100, f'{self.first_name} kills {other_player.first_name}')
+            if other_player.health > 0:
+                self.be_damaged(random() * 100, f'{other_player.first_name} kills {self.first_name}')
+
+    def be_damaged(self, damage, death_text):
+        if self.health < 0:
+            print(f'{self.first_name} is already dead')
+        self.health -= damage
+        if self.health < 0:
+            print(death_text)
+
 
 class Relationship:
     def __init__(self):
         self.friendship = 0
-        self.allied = True
+        self.allied = False

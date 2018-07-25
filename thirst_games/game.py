@@ -18,7 +18,7 @@ class Game:
 
     def run(self):
         day = 1
-        while len(self.alive_players) > 1 and day < 10:
+        while len(self.alive_players) > 1 and day < 100:
             print(f'== DAY {day} ==')
             self.day()
             day += 1
@@ -28,9 +28,12 @@ class Game:
         players.sort(key=lambda x: random())
         for p1 in players:
             for p2 in players:
-                if p1 == p2 or p1.busy or p2.busy:
+                if p1 == p2 or p1.busy or p2.busy or not p1.is_alive or not p2.is_alive:
                     continue
                 if p1.current_area == p2.current_area:
                     p1.interact(p2)
+            if not p1.busy:
+                p1.act_alone()
         for p in players:
             p.busy = False
+        self.alive_players = [p for p in self.players if p.is_alive]
