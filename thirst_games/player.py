@@ -11,6 +11,7 @@ class Player:
         self.relationships: Dict[Player, Relationship] = {}
         self.busy = False
         self.health = 100
+        self.energy = 100
         self.stealth = 0
         self.status = []
 
@@ -29,14 +30,29 @@ class Player:
 
     def act_alone(self, context: Dict):
         if self.health < 50:
-            min_player_per_area = min([len(area) for area in context[MAP].areas.values()])
-            best_area = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area][0]
-            self.go_to(context[MAP], best_area)
+            if self.energy > 20:
+                min_player_per_area = min([len(area) for area in context[MAP].areas.values()])
+                best_area = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area][0]
+                self.go_to(context[MAP], best_area)
+            else:
+                self.hide(context)
 
     def go_to(self, map_, area):
-        map_.move_player(self, area)
+        if self.energy >= 20:
+            map_.move_player(self, area)
+            self.reveal()
+            self.energy -= 20
+
+    def hide(self, context):
+        print(f'{self.first_name} hides')
+        self.stealth += random() * (1 - self.stealth)
+
+    def reveal(self):
+        self.stealth = 0
 
     def interact(self, other_player, context: Dict):
+        if random() < other_player.stealth:
+            return
         if self.relationship(other_player).allied:
             self.relationship(other_player).friendship += random() / 10 - 0.025
             if random() > self.relationship(other_player).friendship or len(context[PLAYERS]) < 3:
@@ -64,6 +80,8 @@ class Player:
             self.relationship(other_player).friendship += random() / 10 - 0.05
 
     def fight(self, other_player):
+            self.reveal()
+            other_player.reveal()
             self.relationship(other_player).friendship -= random() / 10
             other_player.relationship(self).friendship -= random() / 10
             self.busy = True
