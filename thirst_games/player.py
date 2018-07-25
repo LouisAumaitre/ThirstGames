@@ -1,6 +1,8 @@
 from random import random
 from typing import Dict
 
+from thirst_games.constants import MAP, PLAYERS
+
 
 class Player:
     def __init__(self, first_name: str, district: int):
@@ -9,6 +11,7 @@ class Player:
         self.relationships: Dict[Player, Relationship] = {}
         self.busy = False
         self.health = 100
+        self.stealth = 0
         self.status = []
 
     @property
@@ -24,16 +27,22 @@ class Player:
             self.relationships[other_player] = Relationship()
         return self.relationships[other_player]
 
-    def act_alone(self):
-        pass
+    def act_alone(self, context: Dict):
+        if self.health < 50:
+            min_player_per_area = min([len(area) for area in context[MAP].areas.values()])
+            best_area = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area][0]
+            self.go_to(context[MAP], best_area)
 
-    def interact(self, other_player):
+    def go_to(self, map_, area):
+        map_.move_player(self, area)
+
+    def interact(self, other_player, context: Dict):
         if self.relationship(other_player).allied:
             self.relationship(other_player).friendship += random() / 10 - 0.025
-            if random() > self.relationship(other_player).friendship:
+            if random() > self.relationship(other_player).friendship or len(context[PLAYERS]) < 3:
                 print(f'{self.first_name} betrays {other_player.first_name}')
                 return self.fight(other_player)
-        elif random() < self.relationship(other_player).friendship:
+        elif random() < self.relationship(other_player).friendship and len(context[PLAYERS]) > 3:
             if random() < other_player.relationship(self).friendship:
                 print(f'{self.first_name} makes an alliance with {other_player.first_name}')
                 self.relationship(other_player).friendship += random() / 10

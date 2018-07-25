@@ -1,0 +1,2 @@
+MAP = 'map'
+PLAYERS = 'players'

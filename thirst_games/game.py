@@ -2,6 +2,7 @@
 from copy import copy
 from random import random
 
+from thirst_games.constants import MAP, PLAYERS
 from thirst_games.map import Map
 
 
@@ -18,7 +19,7 @@ class Game:
 
     def run(self):
         day = 1
-        while len(self.alive_players) > 1 and day < 100:
+        while len(self.alive_players) > 1 and day < 10:
             print(f'== DAY {day} ==')
             self.day()
             day += 1
@@ -26,14 +27,18 @@ class Game:
     def day(self):
         players = copy(self.alive_players)
         players.sort(key=lambda x: random())
+        context = {
+            MAP: self.map,
+            PLAYERS: players,
+        }
         for p1 in players:
             for p2 in players:
                 if p1 == p2 or p1.busy or p2.busy or not p1.is_alive or not p2.is_alive:
                     continue
                 if p1.current_area == p2.current_area:
-                    p1.interact(p2)
+                    p1.interact(p2, context)
             if not p1.busy:
-                p1.act_alone()
+                p1.act_alone(context)
         for p in players:
             p.busy = False
         self.alive_players = [p for p in self.players if p.is_alive]
