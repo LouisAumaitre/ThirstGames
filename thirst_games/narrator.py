@@ -29,6 +29,7 @@ class Narrator:
                 sentence[0] = 'and'
             else:
                 self.active_subject = sentence[0]
+                self.comma()
 
             # avoid repetition of tool
             tool = [e for e in sentence if e.startswith('with')]

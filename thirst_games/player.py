@@ -100,8 +100,6 @@ class Player:
         if weapon is None or weapon.damage_mult <= self.weapon.damage_mult:
             context[NARRATOR].add([
                 self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
-            if weapon is None:
-                context[NARRATOR].new(str(context[MAP].weapons))
             return
         if weapon.name == self.weapon.name:
             self.weapon.long_name.replace('\'s', '\'s old')
@@ -184,39 +182,32 @@ class Player:
         other_weapon = f'with {other_player.his} {other_player.weapon.name}'
         t_weapon = other_player.weapon
         area = f'at {self.current_area}'
-        kill = False
-        other_kill = False
         if other_player.be_damaged(self.damage(**context), **context):
             context[NARRATOR].add([
                 self.first_name, 'kills', other_player.first_name, 'by surprise', area, weapon])
-            kill = True
         else:
             while True:
                 if random() > other_player.courage:
                     context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon])
-                    context[NARRATOR].comma()
                     other_player.flee(True, **context)
                     break
                 if self.be_damaged(other_player.damage(**context), **context):
                     context[NARRATOR].add([
                         other_player.first_name, 'kills', self.first_name, area, 'in self-defense', other_weapon])
-                    other_kill = True
                     break
                 verb = 'fights'
                 if random() > self.courage:
                     context[NARRATOR].add([self.first_name, 'attacks', other_player.first_name, area, weapon])
-                    context[NARRATOR].comma()
                     context[NARRATOR].add([
                         other_player.first_name, 'fights back', other_weapon, 'and'])
                     self.flee(True, **context)
                     break
                 if other_player.be_damaged(self.damage(**context), **context):
                     context[NARRATOR].add([self.first_name, f'{verb} and kills', other_player.first_name, area, weapon])
-                    kill = True
                     break
-        if kill:
+        if other_player.weapon == HANDS and t_weapon != HANDS:
             self.pillage(t_weapon, **context)
-        elif other_kill:
+        elif self.weapon == HANDS and y_weapon != HANDS:
             other_player.pillage(y_weapon, **context)
 
     def pillage(self, weapon, **context):
