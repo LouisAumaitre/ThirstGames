@@ -1,3 +1,4 @@
+from random import choice
 from typing import List
 
 
@@ -13,11 +14,31 @@ class Narrator:
             'at the forest': 'in the forest',
             'at the hill': 'on the hill',
         }
+        self.kill_word = {
+            'axe': ['decapitates'],
+            'sword': ['decapitates'],
+            'knife': ['stabs'],
+            'trident': ['stabs'],
+            'spear': ['stabs'],
+            'bare hands': ['strangle'],
+            'club': ['knocks'],
+        }
+        for key, value in self.kill_word.items():
+            value.append('kills')
 
-    def switch(self, sentence: str) -> str:
-        if sentence in self._switch:
-            return self._switch[sentence]
-        return sentence
+    def switch(self, phrase: str) -> str:
+        if phrase in self._switch:
+            return self._switch[phrase]
+        return phrase
+
+    def kill_switch(self, phrase: str, full_sentence: List[str]):
+        if phrase == 'kills':
+            tools = [word.split(' ')[-1] for word in full_sentence if word.startswith('with ')]
+            if len(tools):
+                tool = tools[0]
+                if tool in self.kill_word:
+                    return choice(self.kill_word[tool])
+        return phrase
 
     def tell(self):
         self.cut()
@@ -29,6 +50,7 @@ class Narrator:
             for e in line:
                 if e == ',':
                     line_str = line_str[:-1]
+                e = self.kill_switch(e, line)
                 line_str += self.switch(e) + ' '
             if line_str[-2] not in ['=', '-', '.']:
                 line_str = line_str[:-1] + '.'

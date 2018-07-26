@@ -295,7 +295,8 @@ class Player:
                     self.flee(True, **context)
                     break
                 if self.hit(other_player, **context):
-                    context[NARRATOR].add([self.first_name, f'{verb} and kills', other_player.first_name, area, weapon])
+                    context[NARRATOR].add([
+                        self.first_name, verb, 'and', 'kills', other_player.first_name, area, weapon])
                     break
         if other_player.weapon == HANDS and t_weapon != HANDS:
             self.pillage(t_weapon, **context)
