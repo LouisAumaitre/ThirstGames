@@ -65,7 +65,9 @@ class Player:
 
     def flee(self, **context):
         min_player_per_area = min([len(area) for key, area in context[MAP].areas.items()])
-        best_area = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area][0]
+        best_areas = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area]
+        best_areas.sort(key=lambda x: -len(context[MAP].weapons[x]))
+        best_area = best_areas[0]
         out = self.go_to(best_area, **context)
         if out is None:
             context[NARRATOR].replace('hides and rests', 'hides')
@@ -74,7 +76,9 @@ class Player:
 
     def pursue(self, **context):
         max_player_per_area = max([len(area) for area in context[MAP].areas.values()])
-        best_area = [key for key, value in context[MAP].areas.items() if len(value) == max_player_per_area][0]
+        best_areas = [key for key, value in context[MAP].areas.items() if len(value) == max_player_per_area]
+        best_areas.sort(key=lambda x: -len(context[MAP].weapons[x]))
+        best_area = best_areas[0]
         out = self.go_to(best_area, **context)
         if out is None:
             context[NARRATOR].replace('hides and rests', 'rests')
@@ -99,14 +103,15 @@ class Player:
     def loot(self, **context):
         weapon = context[MAP].pick_weapon(self.current_area)
         if weapon is None:
-            context[NARRATOR].add([self.first_name, 'tries to loot but can\'t find anything'])
+            context[NARRATOR].add([
+                self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything'])
             return
         if weapon.damage_mult > self.weapon.damage_mult:
             if weapon.name == self.weapon.name:
                 context[NARRATOR].add([self.first_name, 'picks up', f'a new {weapon.name}'])
             else:
-                context[NARRATOR].add([self.first_name, 'picks up', f'a {weapon.name}'])
-            self.weapon = weapon
+                context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name])
+            self.get_weapon(weapon, **context)
 
     def craft(self, **context):
         name = choice(['spear', 'club'])
@@ -116,7 +121,14 @@ class Player:
                 context[NARRATOR].add([self.first_name, 'crafts', f'a new {weapon.name}'])
             else:
                 context[NARRATOR].add([self.first_name, 'crafts', f'a {weapon.name}'])
-            self.weapon = weapon
+            self.get_weapon(weapon, **context)
+        else:
+            context[NARRATOR].add([
+                self.first_name, 'tries to craft a better weapon'])
+
+    def get_weapon(self, weapon, **context):
+        self.weapon = weapon
+        self.weapon.long_name = f'{self.first_name}\'s {weapon.name}'
 
     def attack_at_random(self, **context):
         preys = [p for p in context[MAP].areas[self.current_area] if random() > p.stealth and p != self]
@@ -208,8 +220,10 @@ class Player:
 
     def pillage(self, dead, **context):
         if dead.weapon.damage_mult > self.weapon.damage_mult:
-            self.weapon = dead.weapon
-            context[NARRATOR].add([self.first_name, 'loots', f'{dead.first_name}\'s {self.weapon.name}'])
+            context[NARRATOR].add([self.first_name, 'loots', dead.weapon.long_name])
+            self.get_weapon(dead.weapon, **context)
+            if self.weapon in context[MAP].weapons[self.current_area]:
+                context[MAP].weapons[self.current_area].remove(self.weapon)
 
     def damage(self, **context):
         return self.weapon.damage_mult * random() / 2
@@ -220,6 +234,8 @@ class Player:
             return False
         self.health -= damage
         if self.health < 0:
+            if self.weapon.damage_mult != 1:
+                context[MAP].weapons[self.current_area].append(self.weapon)
             context[DEATH](self, **context)
             return True
         return False
@@ -256,8 +272,7 @@ fight_strat = Strategy(
     lambda x, **c: x.attack_at_random(**c))
 loot_strat = Strategy(
     'loot',
-    lambda x, **c: (2 if x.weapon.damage_mult == 1 else 0.1) * (
-        c[MAP].has_weapons(x.current_area)) * (len(c[MAP].weapons) > 0),
+    lambda x, **c: (2 if x.weapon.damage_mult == 1 else 0.2) * c[MAP].has_weapons(x.current_area),
     lambda x, **c: x.loot(**c))
 craft_strat_1 = Strategy(
     'craft',

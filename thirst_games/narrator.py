@@ -15,6 +15,8 @@ class Narrator:
                 continue
             line_str = ''
             for e in line:
+                if e == ',':
+                    line_str = line_str[:-1]
                 line_str += e + ' '
             if line_str[-2] != '=':
                 line_str = line_str[:-1] + '.'
@@ -30,7 +32,9 @@ class Narrator:
 
             # avoid repetition of tool
             tool = [e for e in sentence if e.startswith('with')]
-            if tool and tool[0] in self.current_sentence:
+            if tool and (tool[0] in self.current_sentence
+                         or tool[0].replace('his', 'her') in self.current_sentence
+                         or tool[0].replace('her', 'his') in self.current_sentence):
                 sentence.remove(tool[0])
 
             # avoid repetition of place
@@ -44,7 +48,7 @@ class Narrator:
 
     def comma(self):
         if len(self.current_sentence):
-            self.current_sentence[-1] += ','
+            self.current_sentence.append(',')
 
     def cut(self):
         if len(self.current_sentence):
