@@ -21,15 +21,16 @@ class Game:
 
     def run(self):
         day = 1
-        print(f'\n== DAY {day} START ==')
+        self.narrator.new(f'\n== DAY {day} START ==')
         self.launch(**{TIME: MORNING})
-        print(f'...')
+        self.narrator.new(f'...')
         while len(self.alive_players) > 1 and day < 10:
             self.launch(**{TIME: MORNING})
-            print(f'-- DAY {day} afternoon --')
+            self.narrator.new(f'-- DAY {day} afternoon --')
             self.launch(**{TIME: AFTERNOON})
             day += 1
-            print(f'\n== DAY {day} morning ==')
+            self.narrator.tell()
+            self.narrator.new(f'\n== DAY {day} morning ==')
 
     def play(self, **context):
         players = copy(context[PLAYERS])

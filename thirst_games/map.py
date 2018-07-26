@@ -8,7 +8,7 @@ START_AREA = 'the cornucopea'
 class Map:
     def __init__(self, size=4):
         possible_parts = [
-            'the green forest', 'the red forest', 'the white forest', 'the rocks', 'the jungle', 'the river', 'the hill'
+            'the ruins', 'the forest', 'the plain', 'the rocks', 'the jungle', 'the river', 'the hill'
         ]
         possible_parts.sort(key=lambda x: random())
         self.areas = {area_name: [] for area_name in possible_parts[0:size-1]}
