@@ -1,6 +1,8 @@
+from typing import List, Dict
+
 from random import random, choice
 
-from thirst_games.items import Weapon
+from thirst_games.items import Weapon, Item
 
 START_AREA = 'the cornucopea'
 
@@ -13,8 +15,8 @@ class Map:
         possible_parts.sort(key=lambda x: random())
         self.areas = {area_name: [] for area_name in possible_parts[0:size-1]}
         self.areas[START_AREA] = []
-        self.weapons = {area_name: [] for area_name in self.areas.keys()}
-        self.weapons[START_AREA] = [
+        self.loot: Dict[str, List[Item]] = {area_name: [] for area_name in self.areas.keys()}
+        self.loot[START_AREA] = [
             Weapon('sword', 2.5 + random()),
             Weapon('sword', 2.5 + random()),
             Weapon('trident', 2 + random()),
@@ -25,15 +27,24 @@ class Map:
             Weapon('knife', 1 + random()),
         ]
 
+    def weapons(self, area):
+        return [e for e in self.loot[area] if isinstance(e, Weapon)]
+
     def has_weapons(self, area):
-        return len(self.weapons[area]) > 0
+        return len(self.weapons(area)) > 0
 
     def pick_weapon(self, area):
         if not self.has_weapons(area):
             return None
-        w = choice(self.weapons[area])
-        self.weapons[area].remove(w)
+        w = choice(self.weapons(area))
+        self.loot[area].remove(w)
         return w
+
+    def remove_loot(self, item: Item, area: str):
+        self.loot[area].remove(item)
+
+    def add_loot(self, item: Item, area: str):
+        self.loot[area].append(item)
 
     def add_player(self, player):
         player.current_area = START_AREA

@@ -1,9 +1,8 @@
 from random import random, choice
-from typing import Dict
+from typing import Dict, List
 
 from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, MORNING, NARRATOR
-from thirst_games.items import HANDS, Weapon
-from thirst_games.map import START_AREA
+from thirst_games.items import HANDS, Weapon, Item
 
 
 class Player:
@@ -17,6 +16,7 @@ class Player:
         self.energy = 1
         self.stealth = 0
         self.wisdom = 0.9
+        self.equipement: List[Item] = []
         self.status = []
 
         self.strategy = None
@@ -61,7 +61,7 @@ class Player:
             self.drop_weapon(True, **context)
         min_player_per_area = min([len(area) for key, area in context[MAP].areas.items()])
         best_areas = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area]
-        best_areas.sort(key=lambda x: -len(context[MAP].weapons[x]))
+        best_areas.sort(key=lambda x: -len(context[MAP].loot[x]))
         best_area = best_areas[0]
         out = self.go_to(best_area, **context)
         if out is None:
@@ -72,13 +72,13 @@ class Player:
     def pursue(self, **context):
         max_player_per_area = max([len(area) for area in context[MAP].areas.values()])
         best_areas = [key for key, value in context[MAP].areas.items() if len(value) == max_player_per_area]
-        best_areas.sort(key=lambda x: -len(context[MAP].weapons[x]))
+        best_areas.sort(key=lambda x: -len(context[MAP].loot[x]))
         best_area = best_areas[0]
         out = self.go_to(best_area, **context)
         if out is None:
             context[NARRATOR].replace('hides and rests', 'rests')
         else:
-            context[NARRATOR].add([self.first_name, 'goes on a hunt', f'at {out}'])
+            context[NARRATOR].add([self.first_name, 'goes hunting', f'at {out}'])
 
     def go_to(self, area, **context):
         if area != self.current_area and self.energy >= 0.2:
@@ -213,8 +213,7 @@ class Player:
     def pillage(self, weapon, **context):
         if weapon.damage_mult > self.weapon.damage_mult:
             context[NARRATOR].add([self.first_name, 'loots', weapon.long_name])
-            if weapon in context[MAP].weapons[self.current_area]:
-                context[MAP].weapons[self.current_area].remove(weapon)
+            context[MAP].remove_loot(weapon, self.current_area)
             self.get_weapon(weapon, **context)
 
     def damage(self, **context):
@@ -226,17 +225,22 @@ class Player:
             return False
         self.health -= damage
         if self.health < 0:
-            self.drop_weapon(False, **context)
-            context[DEATH](self, **context)
+            self.die(**context)
             return True
         return False
+
+    def die(self, **context):
+        self.drop_weapon(False, **context)
+        for e in self.equipement:
+            context[MAP].add_loot(e, self.current_area)
+        context[DEATH](self, **context)
 
     def drop_weapon(self, verbose=True, **context):
         if self.weapon != HANDS:
             if verbose:
                 context[NARRATOR].add([
                     self.first_name, 'drops', f'{self.his} {self.weapon.name}', f'at {self.current_area}'])
-            context[MAP].weapons[self.current_area].append(self.weapon)
+            context[MAP].add_loot(self.weapon, self.current_area)
         self.weapon = HANDS
 
 
