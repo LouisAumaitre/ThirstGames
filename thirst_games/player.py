@@ -63,7 +63,9 @@ class Player:
             else:
                 self.hide(**context)
 
-    def flee(self, **context):
+    def flee(self, panic=False, **context):
+        if panic and random() > self.courage * 3:
+            self.drop_weapon(True, **context)
         min_player_per_area = min([len(area) for key, area in context[MAP].areas.items()])
         best_areas = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area]
         best_areas.sort(key=lambda x: -len(context[MAP].weapons[x]))
@@ -72,7 +74,7 @@ class Player:
         if out is None:
             context[NARRATOR].replace('hides and rests', 'hides')
         else:
-            context[NARRATOR].add([self.first_name, f'flees {out}'])
+            context[NARRATOR].add([self.first_name, f'flees to {out}'])
 
     def pursue(self, **context):
         max_player_per_area = max([len(area) for area in context[MAP].areas.values()])
@@ -83,7 +85,7 @@ class Player:
         if out is None:
             context[NARRATOR].replace('hides and rests', 'rests')
         else:
-            context[NARRATOR].add([self.first_name, f'goes {out}'])
+            context[NARRATOR].add([self.first_name, 'goes on a hunt', f'at {out}'])
 
     def go_to(self, area, **context):
         if area != self.current_area and self.energy >= 0.2:
@@ -105,12 +107,14 @@ class Player:
         if weapon is None:
             context[NARRATOR].add([
                 self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything'])
+            context[NARRATOR].new(str(context[MAP].weapons))
             return
         if weapon.damage_mult > self.weapon.damage_mult:
             if weapon.name == self.weapon.name:
-                context[NARRATOR].add([self.first_name, 'picks up', f'a new {weapon.name}'])
+                self.weapon.long_name.replace('\'s', '\'s old')
+                context[NARRATOR].add([self.first_name, 'picks up', f'a new {weapon.name}', f'at {self.current_area}'])
             else:
-                context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name])
+                context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name, f'at {self.current_area}'])
             self.get_weapon(weapon, **context)
 
     def craft(self, **context):
@@ -118,16 +122,17 @@ class Player:
         weapon = Weapon(name, 1 + random())
         if weapon.damage_mult > self.weapon.damage_mult:
             if weapon.name == self.weapon.name:
-                context[NARRATOR].add([self.first_name, 'crafts', f'a new {weapon.name}'])
+                self.weapon.long_name.replace('\'s', '\'s old')
+                context[NARRATOR].add([self.first_name, 'crafts', f'a new {weapon.name}', f'at {self.current_area}'])
             else:
-                context[NARRATOR].add([self.first_name, 'crafts', f'a {weapon.name}'])
+                context[NARRATOR].add([self.first_name, 'crafts', f'a {weapon.name}', f'at {self.current_area}'])
             self.get_weapon(weapon, **context)
         else:
             context[NARRATOR].add([
-                self.first_name, 'tries to craft a better weapon'])
+                self.first_name, 'tries to craft a better weapon', f'at {self.current_area}'])
 
     def get_weapon(self, weapon, **context):
-        self.drop_weapon(**context)
+        self.drop_weapon(False, **context)
         self.weapon = weapon
         self.weapon.long_name = f'{self.first_name}\'s {weapon.name}'
 
@@ -197,7 +202,7 @@ class Player:
                 if random() > other_player.courage:
                     context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon])
                     context[NARRATOR].comma()
-                    other_player.flee(**context)
+                    other_player.flee(True, **context)
                     break
                 if self.be_damaged(other_player.damage(**context), **context):
                     context[NARRATOR].add([
@@ -210,7 +215,7 @@ class Player:
                     context[NARRATOR].comma()
                     context[NARRATOR].add([
                         other_player.first_name, 'fights back', other_weapon, 'and'])
-                    self.flee(**context)
+                    self.flee(True, **context)
                     break
                 if other_player.be_damaged(self.damage(**context), **context):
                     context[NARRATOR].add([self.first_name, f'{verb} and kills', other_player.first_name, area, weapon])
@@ -237,13 +242,16 @@ class Player:
             return False
         self.health -= damage
         if self.health < 0:
-            self.drop_weapon(**context)
+            self.drop_weapon(False, **context)
             context[DEATH](self, **context)
             return True
         return False
 
-    def drop_weapon(self, **context):
+    def drop_weapon(self, verbose=True, **context):
         if self.weapon != HANDS:
+            if verbose:
+                context[NARRATOR].add([
+                    self.first_name, 'drops', f'{self.his} {self.weapon.name}', f'at {self.current_area}'])
             context[MAP].weapons[self.current_area].append(self.weapon)
         self.weapon = HANDS
 

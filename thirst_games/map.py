@@ -48,7 +48,7 @@ class Map:
         self.areas[player.current_area].remove(player)
         self.areas[new_area].append(player)
         player.current_area = new_area
-        return f'to {new_area}'
+        return new_area
 
     def neighbors_count(self, player):
         return len(self.areas[player.current_area])
