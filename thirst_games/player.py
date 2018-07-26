@@ -52,16 +52,9 @@ class Player:
     def act(self, **context):
         context[NARRATOR].cut()
         if not self.busy:
-            # print(f'{self.name} -> {self.strategy.name}')
             self.strategy.apply(self, **context)
         context[NARRATOR].cut()
-
-    def act_alone(self, **context):
-        if self.health < 0.5:
-            if self.energy > 0.2:
-                self.flee(**context)
-            else:
-                self.hide(**context)
+        self.strategy = None
 
     def flee(self, panic=False, **context):
         if panic and random() > self.courage * 3:
@@ -104,18 +97,18 @@ class Player:
 
     def loot(self, **context):
         weapon = context[MAP].pick_weapon(self.current_area)
-        if weapon is None:
+        if weapon is None or weapon.damage_mult <= self.weapon.damage_mult:
             context[NARRATOR].add([
-                self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything'])
-            context[NARRATOR].new(str(context[MAP].weapons))
+                self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
+            if weapon is None:
+                context[NARRATOR].new(str(context[MAP].weapons))
             return
-        if weapon.damage_mult > self.weapon.damage_mult:
-            if weapon.name == self.weapon.name:
-                self.weapon.long_name.replace('\'s', '\'s old')
-                context[NARRATOR].add([self.first_name, 'picks up', f'a new {weapon.name}', f'at {self.current_area}'])
-            else:
-                context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name, f'at {self.current_area}'])
-            self.get_weapon(weapon, **context)
+        if weapon.name == self.weapon.name:
+            self.weapon.long_name.replace('\'s', '\'s old')
+            context[NARRATOR].add([self.first_name, 'picks up', f'a new {weapon.name}', f'at {self.current_area}'])
+        else:
+            context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name, f'at {self.current_area}'])
+        self.get_weapon(weapon, **context)
 
     def craft(self, **context):
         name = choice(['spear', 'club'])

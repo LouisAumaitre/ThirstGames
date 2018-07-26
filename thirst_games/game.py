@@ -37,15 +37,13 @@ class Game:
         for i in range(len(players) + 2):
             if i < len(players) and players[i].is_alive:
                 players[i].think(**context)
-            if i - 2 > 0 and players[i-2].is_alive:
+            if i - 2 >= 0 and players[i-2].is_alive:
                 players[i-2].act(**context)
-        # for p in players:
-        #     p.think(context)
-        # for p in players:
-        #     p.act(context)
+        for i in range(len(players)):
+            if players[i].strategy is not None:
+                print(f'miss {i}/{len(players)} ({players[i].name})')
         for p in players:
             p.busy = False
-            p.strategy = None
         self.alive_players = [p for p in self.players if p.is_alive]
 
     def launch(self, **kwargs):
