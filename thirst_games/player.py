@@ -40,59 +40,59 @@ class Player:
             self.relationships[other_player] = Relationship()
         return self.relationships[other_player]
 
-    def think(self, context):
+    def think(self, **context):
         if context[TIME] == MORNING:
-            morning_strategies.sort(key=lambda x: -x.pref(self, context) + random() * (1 - self.wisdom))
-            # print(f'{self.name}: {[(round(s.pref(self, context), 2), s.name) for s in morning_strategies]}')
+            morning_strategies.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
+            # print(f'{self.name}: {[(round(s.pref(self, **context), 2), s.name) for s in morning_strategies]}')
             self.strategy = morning_strategies[0]
         else:
-            afternoon_strategies.sort(key=lambda x: -x.pref(self, context))
+            afternoon_strategies.sort(key=lambda x: -x.pref(self, **context))
             self.strategy = afternoon_strategies[0]
 
-    def act(self, context):
+    def act(self, **context):
         if not self.busy:
             # print(f'{self.name} -> {self.strategy.name}')
-            self.strategy.apply(self, context)
+            self.strategy.apply(self, **context)
 
-    def act_alone(self, context: Dict):
+    def act_alone(self, **context):
         if self.health < 0.5:
             if self.energy > 0.2:
-                self.flee(context)
+                self.flee(**context)
             else:
-                self.hide(context)
+                self.hide(**context)
 
-    def flee(self, context):
+    def flee(self, **context):
         min_player_per_area = min([len(area) for key, area in context[MAP].areas.items()])
         best_area = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area][0]
-        out = self.go_to(context, best_area)
+        out = self.go_to(best_area, **context)
         if out == 'hides and rests':
             return 'hides'
         return f'flees {out}'
 
-    def pursue(self, context):
+    def pursue(self, **context):
         max_player_per_area = max([len(area) for area in context[MAP].areas.values()])
         best_area = [key for key, value in context[MAP].areas.items() if len(value) == max_player_per_area][0]
-        out = self.go_to(context, best_area)
+        out = self.go_to(best_area, **context)
         if out == 'hides and rests':
             return 'rests'
         return f'goes {out}'
 
-    def go_to(self, context, area):
+    def go_to(self, area, **context):
         if area != self.current_area and self.energy >= 0.2:
             self.reveal()
             self.energy -= 0.2
             self.busy = True
             return context[MAP].move_player(self, area)
         else:
-            return self.hide(context)
+            return self.hide(**context)
 
-    def hide(self, context):
+    def hide(self, **context):
         self.stealth += random() * (1 - self.stealth)
         self.energy += random() * (1 - self.energy)
         self.health += random() * (1 - self.health)
         return 'hides and rests'
 
-    def loot(self, context):
+    def loot(self, **context):
         if self.current_area == START_AREA and len(context[MAP].weapons) > 0:
             weapon = context[MAP].weapons.pop()
             if weapon.damage_mult > self.weapon.damage_mult:
@@ -104,7 +104,7 @@ class Player:
         else:
             print(f'{self.name} tries to loot but can\'t find anything')
 
-    def craft(self, context):
+    def craft(self, **context):
         weapon = Weapon('stick', 1 + random())
         if weapon.damage_mult > self.weapon.damage_mult:
             if weapon.name == self.weapon.name:
@@ -113,18 +113,18 @@ class Player:
                 print(f'{self.name} crafts a {weapon.name}')
             self.weapon = weapon
 
-    def attack_at_random(self, context):
+    def attack_at_random(self, **context):
         preys = [p for p in context[MAP].areas[self.current_area] if random() > p.stealth and p != self]
         preys.sort(key=lambda x: x.health)
         if len(preys):
-            self.fight(preys[0], context)
+            self.fight(preys[0], **context)
         else:
-            self.pursue(context)
+            self.pursue(**context)
 
     def reveal(self):
         self.stealth = 0
 
-    def interact(self, other_player, context: Dict):
+    def interact(self, other_player, **context):
         if random() < other_player.stealth:
             return
         if self.relationship(other_player).allied:
@@ -152,7 +152,7 @@ class Player:
         else:
             self.relationship(other_player).friendship += random() / 10 - 0.05
 
-    def fight(self, other_player, context):
+    def fight(self, other_player, **context):
         self.reveal()
         other_player.reveal()
         self.relationship(other_player).friendship -= random() / 10
@@ -167,16 +167,16 @@ class Player:
         other_weapon = f' with their {other_player.weapon.name}'
         kill = False
         other_kill = False
-        if other_player.be_damaged(self.damage(context), context):
+        if other_player.be_damaged(self.damage(**context), **context):
             print(f'{self.first_name} kills {other_player.first_name} by surprise at {self.current_area}{weapon}')
             kill = True
         else:
             while True:
                 if random() > other_player.courage:
                     print(f'{self.first_name} {verb} {other_player.first_name} at {self.current_area}{weapon}, '
-                          f'{other_player.first_name} {other_player.flee(context)}')
+                          f'{other_player.first_name} {other_player.flee(**context)}')
                     break
-                if self.be_damaged(other_player.damage(context), context):
+                if self.be_damaged(other_player.damage(**context), **context):
                     print(f'{other_player.first_name} kills {self.first_name} at {self.current_area} '
                           f'in self-defense{other_weapon}')
                     other_kill = True
@@ -185,9 +185,9 @@ class Player:
                 if random() > self.courage:
                     print(f'{self.first_name} attacks {other_player.first_name} at {self.current_area}{weapon}, '
                           f'{other_player.first_name} fights back{other_weapon} '
-                          f'and {self.first_name} {self.flee(context)}')
+                          f'and {self.first_name} {self.flee(**context)}')
                     break
-                if other_player.be_damaged(self.damage(context), context):
+                if other_player.be_damaged(self.damage(**context), **context):
                     print(f'{self.first_name} {verb} and kills {other_player.first_name} '
                           f'at {self.current_area}{weapon}')
                     kill = True
@@ -202,16 +202,16 @@ class Player:
             self.weapon = dead.weapon
             print(f'{self.first_name} loots {dead.first_name}\'s {self.weapon.name}')
 
-    def damage(self, context):
+    def damage(self, **context):
         return self.weapon.damage_mult * random() / 2
 
-    def be_damaged(self, damage, context):
+    def be_damaged(self, damage, **context):
         if self.health < 0:
             print(f'{self.first_name} is already dead')
             return False
         self.health -= damage
         if self.health < 0:
-            context[DEATH](self, context)
+            context[DEATH](self, **context)
             return True
         return False
 
@@ -228,49 +228,49 @@ class Strategy:
         self.pref = pref
         self.action = action
 
-    def apply(self, player, context, **kwargs):
-        out = self.action(player, context, **kwargs)
+    def apply(self, player, **context):
+        out = self.action(player, **context)
         if isinstance(out, str):
             print(f'{player.first_name} {out}')
 
 
 morning_strategies = [
-    Strategy('hide', lambda x, c: (1 - x.health / 2) / c[MAP].neighbors_count(x), lambda x, c, **kw: x.hide(c)),
+    Strategy('hide', lambda x, **c: (1 - x.health / 2) / c[MAP].neighbors_count(x), lambda x, **c: x.hide(**c)),
     Strategy(
         'flee',
-        lambda x, c: (1 - x.health / 2) * (1 + sum([
+        lambda x, **c: (1 - x.health / 2) * (1 + sum([
             n.weapon.damage_mult > x.weapon.damage_mult for n in c[MAP].neighbors(x)
         ])) * c[MAP].neighbors_count(x) / 6 * x.energy * (c[MAP].neighbors_count(x) > x.courage * 10),
-        lambda x, c, **kw: x.flee(c)),
+        lambda x, **c: x.flee(**c)),
     Strategy(
         'fight',
-        lambda x, c: x.health * x.energy * x.weapon.damage_mult / c[MAP].neighbors_count(x),
-        lambda x, c, **kw: x.attack_at_random(c)),
+        lambda x, **c: x.health * x.energy * x.weapon.damage_mult / c[MAP].neighbors_count(x),
+        lambda x, **c: x.attack_at_random(**c)),
     Strategy(
         'loot',
-        lambda x, c: (2 if x.weapon.damage_mult == 1 else 0.1) * (
+        lambda x, **c: (2 if x.weapon.damage_mult == 1 else 0.1) * (
             x.current_area == START_AREA) * (len(c[MAP].weapons) > 0),
-        lambda x, c, **kw: x.loot(c)),
+        lambda x, **c: x.loot(**c)),
     Strategy(
         'craft',
-        lambda x, c: (2 - x.weapon.damage_mult) * (c[MAP].neighbors_count(x) < 2),
-        lambda x, c, **kw: x.craft(c)),
+        lambda x, **c: (2 - x.weapon.damage_mult) * (c[MAP].neighbors_count(x) < 2),
+        lambda x, **c: x.craft(**c)),
 ]
 
 afternoon_strategies = [
-    Strategy('hide', lambda x, c: (1 - x.health / 2) / c[MAP].neighbors_count(x), lambda x, c, **kw: x.hide(c)),
+    Strategy('hide', lambda x, **c: (1 - x.health / 2) / c[MAP].neighbors_count(x), lambda x, **c: x.hide(**c)),
     Strategy(
         'flee',
-        lambda x, c: (1 - x.health / 2) * (1 + sum([
+        lambda x, **c: (1 - x.health / 2) * (1 + sum([
             n.weapon.damage_mult > x.weapon.damage_mult for n in c[MAP].neighbors(x)
         ])) * c[MAP].neighbors_count(x) / 6 * x.energy * (c[MAP].neighbors_count(x) > x.courage * 10),
-        lambda x, c, **kw: x.flee(c)),
+        lambda x, **c: x.flee(**c)),
     Strategy(
         'loot',
-        lambda x, c: (3 - x.weapon.damage_mult) * (x.current_area == START_AREA) * (len(c[MAP].weapons) > 0),
-        lambda x, c, **kw: x.loot(c)),
+        lambda x, **c: (3 - x.weapon.damage_mult) * (x.current_area == START_AREA) * (len(c[MAP].weapons) > 0),
+        lambda x, **c: x.loot(**c)),
     Strategy(
         'craft',
-        lambda x, c: (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) / c[MAP].neighbors_count(x),
-        lambda x, c, **kw: x.craft(c)),
+        lambda x, **c: (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) / c[MAP].neighbors_count(x),
+        lambda x, **c: x.craft(**c)),
 ]

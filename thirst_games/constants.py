@@ -1,4 +1,5 @@
 MAP = 'map'
+NARRATOR = 'narrator'
 PLAYERS = 'players'
 DEATH = 'death'
 DEADS = 'deads'
