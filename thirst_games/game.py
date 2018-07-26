@@ -4,6 +4,7 @@ from random import random
 
 from thirst_games.constants import MAP, PLAYERS, DEATH, AFTERNOON, TIME, MORNING, DEADS
 from thirst_games.map import Map
+from thirst_games.narrator import Narrator
 
 
 class Game:
@@ -11,6 +12,7 @@ class Game:
         self.players = players
         self.alive_players = players
         self.map = Map()
+        self.narrator = Narrator()
         for p in self.players:
             self.map.add_player(p)
             for p2 in self.players:
@@ -22,7 +24,7 @@ class Game:
         print(f'\n== DAY {day} START ==')
         self.morning()
         print(f'...')
-        while len(self.alive_players) > 1 and day < 5:
+        while len(self.alive_players) > 1 and day < 10:
             self.morning()
             print(f'-- DAY {day} afternoon --')
             self.afternoon()

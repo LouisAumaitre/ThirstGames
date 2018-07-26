@@ -205,7 +205,7 @@ class Player:
     def damage(self, context):
         return self.weapon.damage_mult * random() / 2
 
-    def be_damaged(self, damage, context, dealer=None):
+    def be_damaged(self, damage, context):
         if self.health < 0:
             print(f'{self.first_name} is already dead')
             return False
