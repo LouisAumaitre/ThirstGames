@@ -97,16 +97,16 @@ class Player:
         context[NARRATOR].add([self.first_name, 'hides and rests', f'at {self.current_area}'])
 
     def loot(self, **context):
-        if self.current_area == START_AREA and len(context[MAP].weapons) > 0:
-            weapon = context[MAP].weapons.pop()
-            if weapon.damage_mult > self.weapon.damage_mult:
-                if weapon.name == self.weapon.name:
-                    context[NARRATOR].add([self.first_name, 'picks up', f'a new {weapon.name}'])
-                else:
-                    context[NARRATOR].add([self.first_name, 'picks up', f'a {weapon.name}'])
-                self.weapon = weapon
-        else:
+        weapon = context[MAP].pick_weapon(self.current_area)
+        if weapon is None:
             context[NARRATOR].add([self.first_name, 'tries to loot but can\'t find anything'])
+            return
+        if weapon.damage_mult > self.weapon.damage_mult:
+            if weapon.name == self.weapon.name:
+                context[NARRATOR].add([self.first_name, 'picks up', f'a new {weapon.name}'])
+            else:
+                context[NARRATOR].add([self.first_name, 'picks up', f'a {weapon.name}'])
+            self.weapon = weapon
 
     def craft(self, **context):
         name = choice(['spear', 'club'])
@@ -257,7 +257,7 @@ fight_strat = Strategy(
 loot_strat = Strategy(
     'loot',
     lambda x, **c: (2 if x.weapon.damage_mult == 1 else 0.1) * (
-        x.current_area == START_AREA) * (len(c[MAP].weapons) > 0),
+        c[MAP].has_weapons(x.current_area)) * (len(c[MAP].weapons) > 0),
     lambda x, **c: x.loot(**c))
 craft_strat_1 = Strategy(
     'craft',
@@ -267,7 +267,6 @@ craft_strat_2 = Strategy(
     'craft',
     lambda x, **c: (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) / c[MAP].neighbors_count(x),
     lambda x, **c: x.craft(**c))
-
 
 morning_strategies = [
     hide_strat, flee_strat, fight_strat, loot_strat, craft_strat_1,
