@@ -67,7 +67,8 @@ class Game:
     def status(self):
         l_name = max([len(p.name) for p in self.alive_players])
         for p in self.alive_players:
-            print(f'- {p.name:<{l_name}} {int(p.health * 100):>3}hp {int(p.energy * 100):>3}nrg {p.weapon.name:<10} '
+            print(f'- {p.name:<{l_name}} {int(p.health * 100):>3}hp {int(p.energy * 100):>3}nrg '
+                  f'{int(p.sleep * 100):>3}sleep {p.weapon.name:<10} '
                   f'{p.current_area:<10}')
 
 

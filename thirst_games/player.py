@@ -1,9 +1,11 @@
 from random import random, choice
 from typing import Dict, List
 
-from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, MORNING, NARRATOR, PANIC, SLEEPING, NIGHT
+from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT
 from thirst_games.items import HANDS, Weapon, Item
 from thirst_games.map import START_AREA
+
+MOVE_COST = 0.3
 
 
 class Player:
@@ -13,8 +15,9 @@ class Player:
         self.his = his
         self.relationships: Dict[Player, Relationship] = {}
         self.busy = False
-        self.health = 1
-        self.energy = 1
+        self._health = 1
+        self._energy = 1
+        self._sleep = 1
         self.stealth = 0
         self.wisdom = 0.9
         self.equipement: List[Item] = []
@@ -30,11 +33,32 @@ class Player:
 
     @property
     def courage(self):
-        return self.health
+        return self.health * self.energy
 
     @property
     def is_alive(self):
         return self.health > 0
+
+    @property
+    def energy(self):
+        return max(0, self._energy)
+
+    def add_energy(self, amount):
+        self._energy = max(0, min(1, self._energy + amount))
+
+    @property
+    def health(self):
+        return max(0, self._health)
+
+    def add_health(self, amount):
+        self._health = max(0, min(1, self._health + amount))
+
+    @property
+    def sleep(self):
+        return max(0, self._sleep)
+
+    def add_sleep(self, amount):
+        self._sleep = max(0, min(1, self._sleep + amount))
 
     def relationship(self, other_player):
         if other_player not in self.relationships:
@@ -44,13 +68,24 @@ class Player:
     def think(self, **context):
         if SLEEPING in self.status:
             self.status.remove(SLEEPING)
-        if context[TIME] == NIGHT:
+        else:
+            upkeep = max(random(), random()) * 0.2
+            self.add_energy(min(upkeep, self.sleep))
+            self.add_sleep(-upkeep)
+
+        if self.sleep < 0:
+            if context[MAP].neighbors_count(self) > 1 and self.energy > MOVE_COST:
+                self.strategy = flee_strat
+            else:
+                self.strategy = hide_strat
+        elif context[TIME] == NIGHT:
             night_strategies.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
             self.strategy = night_strategies[0]
         else:
             morning_strategies.sort(key=lambda x: -x.pref(self, **context))
             self.strategy = morning_strategies[0]
-            # print(f'{self.name}: {[(round(s.pref(self, **context), 2), s.name) for s in morning_strategies]}')
+            # context[NARRATOR].new([
+            #     self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in morning_strategies]}'])
 
     def act(self, **context):
         context[NARRATOR].cut()
@@ -60,17 +95,17 @@ class Player:
         self.strategy = None
 
     def flee(self, panic=False, **context):
-        if panic and random() > self.courage * 3:
+        if panic and random() > self.courage + 0.5:
             self.drop_weapon(True, **context)
         min_player_per_area = min([len(area) for key, area in context[MAP].areas.items() if key != START_AREA])
         # can't flee to or hide at the cornucopea
-        best_areas = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area]
+        best_areas = [
+            key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area and key != START_AREA
+        ]
         best_areas.sort(key=lambda x: -len(context[MAP].loot[x]))
         best_area = best_areas[0]
         out = self.go_to(best_area, **context, **{PANIC: True})
-        if out is None:
-            context[NARRATOR].replace('hides and rests', 'hides')
-        else:
+        if out is not None:
             context[NARRATOR].add([self.first_name, f'flees to {out}'])
 
     def pursue(self, **context):
@@ -85,35 +120,41 @@ class Player:
             context[NARRATOR].add([self.first_name, 'goes hunting', f'at {out}'])
 
     def go_to(self, area, **context):
-        if area != self.current_area and self.energy >= 0.2:
+        if area != self.current_area and self.energy >= MOVE_COST:
             self.reveal()
-            self.energy -= 0.2
+            self._energy -= MOVE_COST
             self.busy = True
             return context[MAP].move_player(self, area)
         else:
+            self._energy -= MOVE_COST
             self.hide(**context)
 
     def hide(self, **context):
-        if self.energy < 0.1 \
+        if context.get(PANIC, False):
+            context[NARRATOR].add([self.first_name, 'hides', f'at {self.current_area}'])
+            return
+        if self.sleep < 0.1 \
                 or (context[TIME] == NIGHT and context[MAP].neighbors_count == 1) \
-                or (context[MAP].neighbors_count == 1 and self.energy < 0.2) \
-                or (context[TIME] == NIGHT and self.energy < 0.3):
-            return self.sleep(**context)
+                or (context[MAP].neighbors_count == 1 and self.sleep < 0.2) \
+                or (context[TIME] == NIGHT and self.sleep < 0.3):
+            self.go_to_sleep(**context)
+            return
         if self.current_area == START_AREA:
-            self.energy += max(random(), random()) * (1 - self.energy)
-            self.health += max(random(), random()) * (1 - self.health)
+            self.add_health(max(self.energy, random()) * (1 - self.health))
+            self.add_energy(max(self.sleep, random()) * (1 - self.energy))
             context[NARRATOR].add([self.first_name, 'rests', f'at {self.current_area}'])
         else:
             self.stealth += random() * (1 - self.stealth)
-            self.energy += random() * (1 - self.energy)
-            self.health += random() * (1 - self.health)
+            self.add_health(max(0, min(self.energy, random())) * (1 - self.health))
+            self.add_energy(max(0, min(self.sleep, random())) * (1 - self.energy))
             context[NARRATOR].add([self.first_name, 'hides and rests', f'at {self.current_area}'])
 
-    def sleep(self, **context):
+    def go_to_sleep(self, **context):
         if self.energy < 0.2:
             context[NARRATOR].add([self.first_name, 'is exhausted'])
-        self.health += self.energy * (1 - self.health)
-        self.energy = 1
+        self.add_health(self.energy * (1 - self.health))
+        self.add_energy(self.sleep * (1 - self.energy))
+        self.add_sleep(1)
         context[NARRATOR].add([self.first_name, 'sleeps', f'at {self.current_area}'])
         self.status.append(SLEEPING)
 
@@ -194,6 +235,10 @@ class Player:
         else:
             self.relationship(other_player).friendship += random() / 10 - 0.05
 
+    def hit(self, target, mult=1, **context) -> bool:
+        self.add_energy(-0.2)
+        return target.be_damaged(self.damage(**context) * mult, **context)
+
     def fight(self, other_player, **context):
         self.reveal()
         other_player.reveal()
@@ -210,21 +255,19 @@ class Player:
         other_weapon = f'with {other_player.his} {other_player.weapon.name}'
         t_weapon = other_player.weapon
         area = f'at {self.current_area}'
+        surprise = f'in {other_player.his} sleep' if SLEEPING in other_player.status else 'by surprise'
+        surprise_mult = 2 if SLEEPING in other_player.status else 1 + self.wisdom - other_player.wisdom
 
-        if SLEEPING in other_player.status:
+        if self.hit(other_player, surprise_mult, **context):
             context[NARRATOR].add([
-                self.first_name, 'kills', other_player.first_name, f'in {other_player.his} sleep', area, weapon])
-            other_player.be_damaged(other_player.health, **context)
-        elif other_player.be_damaged(self.damage(**context), **context):
-            context[NARRATOR].add([
-                self.first_name, 'kills', other_player.first_name, 'by surprise', area, weapon])
+                self.first_name, 'kills', other_player.first_name, surprise, area, weapon])
         else:
             while True:
                 if random() > other_player.courage:
                     context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon])
                     other_player.flee(True, **context)
                     break
-                if self.be_damaged(other_player.damage(**context), **context):
+                if other_player.hit(self, **context):
                     context[NARRATOR].add([
                         other_player.first_name, 'kills', self.first_name, area, 'in self-defense', other_weapon])
                     break
@@ -235,7 +278,7 @@ class Player:
                         other_player.first_name, 'fights back', other_weapon, 'and'])
                     self.flee(True, **context)
                     break
-                if other_player.be_damaged(self.damage(**context), **context):
+                if self.hit(other_player, **context):
                     context[NARRATOR].add([self.first_name, f'{verb} and kills', other_player.first_name, area, weapon])
                     break
         if other_player.weapon == HANDS and t_weapon != HANDS:
@@ -252,12 +295,12 @@ class Player:
     def damage(self, **context):
         return self.weapon.damage_mult * random() / 2
 
-    def be_damaged(self, damage, **context):
+    def be_damaged(self, damage, **context) -> bool:
         if self.health < 0:
             print(f'{self.first_name} is already dead')
             return False
-        self.health -= damage
-        if self.health < 0:
+        self.add_health(-damage)
+        if self.health <= 0:
             self.die(**context)
             return True
         return False
@@ -295,28 +338,33 @@ class Strategy:
             print(f'{player.first_name} {out}')
 
 
-hide_strat = Strategy('hide', lambda x, **c: (1 - x.health / 2) / c[MAP].neighbors_count(x), lambda x, **c: x.hide(**c))
+hide_strat = Strategy(
+    'hide',
+    lambda x, **c: (c[MAP].neighbors_count(x) == 1 or x.current_area != START_AREA) *
+                   (1 - x.health) * (1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x),
+    lambda x, **c: x.hide(**c))
 flee_strat = Strategy(
     'flee',
-    lambda x, **c: (1 - x.health / 2) * (1 + sum([
+    lambda x, **c: (x.energy - 0.3) * (1 - x.health / 2) * (1 + sum([
         n.weapon.damage_mult > x.weapon.damage_mult for n in c[MAP].neighbors(x)
     ])) * c[MAP].neighbors_count(x) / 6 * x.energy * (c[MAP].neighbors_count(x) > x.courage * 10),
     lambda x, **c: x.flee(**c))
 fight_strat = Strategy(
     'fight',
-    lambda x, **c: x.health * x.energy * x.weapon.damage_mult / c[MAP].neighbors_count(x),
+    lambda x, **c: (x.health - 0.5) * (x.energy - 0.3) * x.weapon.damage_mult / c[MAP].neighbors_count(x),
     lambda x, **c: x.attack_at_random(**c))
 loot_strat = Strategy(
     'loot',
-    lambda x, **c: (2 if x.weapon.damage_mult == 1 else 0.2) * c[MAP].has_weapons(x.current_area),
+    lambda x, **c: (x.energy - 0.3) * (2 if x.weapon.damage_mult == 1 else 0.2) * c[MAP].has_weapons(x.current_area),
     lambda x, **c: x.loot(**c))
 craft_strat_1 = Strategy(
     'craft',
-    lambda x, **c: (2 - x.weapon.damage_mult) * (c[MAP].neighbors_count(x) < 2),
+    lambda x, **c: (x.energy - 0.2) * (2 - x.weapon.damage_mult) * (c[MAP].neighbors_count(x) < 2),
     lambda x, **c: x.craft(**c))
 craft_strat_2 = Strategy(
     'craft',
-    lambda x, **c: (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) / c[MAP].neighbors_count(x),
+    lambda x, **c: (x.energy - 0.2) * (x.weapon.damage_mult < 2) *
+                   (2 - x.weapon.damage_mult) / c[MAP].neighbors_count(x),
     lambda x, **c: x.craft(**c))
 
 morning_strategies = [

@@ -3,7 +3,7 @@ from thirst_games.player import Player
 
 game = Game([
     Player('White Rabbit', 1, 'his'),
-    Player('Arthour', 1, 'his'),
+    Player('Tutur', 1, 'his'),
     Player('Sebou', 2, 'his'),
     Player('Florence', 2, 'her'),
     Player('Yah', 7, 'his'),
