@@ -22,10 +22,22 @@ class Narrator:
 
     def add(self, sentence):
         if isinstance(sentence, list):
+            # avoid repetition of subject
             if sentence[0] == self.active_subject:
                 sentence[0] = 'and'
             else:
                 self.active_subject = sentence[0]
+
+            # avoid repetition of tool
+            tool = [e for e in sentence if e.startswith('with')]
+            if tool and tool[0] in self.current_sentence:
+                sentence.remove(tool[0])
+
+            # avoid repetition of place
+            place = [e for e in sentence if e.startswith('at')]
+            if place and place[0] in self.current_sentence:
+                sentence.remove(place[0])
+
             self.current_sentence.extend(sentence)
         else:
             self.current_sentence.append(sentence)

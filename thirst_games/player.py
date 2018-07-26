@@ -1,4 +1,3 @@
-from copy import copy
 from random import random, choice
 from typing import Dict
 
@@ -8,9 +7,10 @@ from thirst_games.map import START_AREA
 
 
 class Player:
-    def __init__(self, first_name: str, district: int):
+    def __init__(self, first_name: str, district: int, his='their'):
         self.first_name = first_name
         self.district = district
+        self.his = his
         self.relationships: Dict[Player, Relationship] = {}
         self.busy = False
         self.health = 1
@@ -94,7 +94,7 @@ class Player:
         self.stealth += random() * (1 - self.stealth)
         self.energy += random() * (1 - self.energy)
         self.health += random() * (1 - self.health)
-        context[NARRATOR].add([self.first_name, 'hides and rests'])
+        context[NARRATOR].add([self.first_name, 'hides and rests', f'at {self.current_area}'])
 
     def loot(self, **context):
         if self.current_area == START_AREA and len(context[MAP].weapons) > 0:
@@ -168,8 +168,8 @@ class Player:
         other_player.relationship(self).allied = False
 
         verb = 'attacks'
-        weapon = f'with their {self.weapon.name}'
-        other_weapon = f'with their {other_player.weapon.name}'
+        weapon = f'with {self.his} {self.weapon.name}'
+        other_weapon = f'with {other_player.his} {other_player.weapon.name}'
         area = f'at {self.current_area}'
         kill = False
         other_kill = False

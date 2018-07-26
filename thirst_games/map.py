@@ -15,7 +15,7 @@ class Map:
         self.areas[START_AREA] = []
         self.weapons = [
             Weapon('sword', 2.5 + random()),
-            Weapon('lance', 2 + random()),
+            Weapon('sword', 2.5 + random()),
             Weapon('trident', 2 + random()),
             Weapon('axe', 2.5 + random()),
             Weapon('knife', 1 + random()),
