@@ -1,5 +1,5 @@
 from random import random, choice
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT
 from thirst_games.items import HANDS, Weapon, Item
@@ -191,6 +191,17 @@ class Player:
             context[NARRATOR].add([
                 self.first_name, 'tries to craft a better weapon', f'at {self.current_area}'])
 
+    def estimate(self, item: Union[Item, List[Item]], **content) -> float:
+        if isinstance(item, Item):
+            if isinstance(item, Weapon):
+                return item.damage_mult - self.weapon.damage_mult
+            else:
+                return 0
+        elif len(item):
+            return max([self.estimate(i) for i in list(item)])
+        else:
+            return 0
+
     def get_weapon(self, weapon, **context):
         self.drop_weapon(False, **context)
         self.weapon = weapon
@@ -355,7 +366,8 @@ fight_strat = Strategy(
     lambda x, **c: x.attack_at_random(**c))
 loot_strat = Strategy(
     'loot',
-    lambda x, **c: (x.energy - 0.3) * (2 if x.weapon.damage_mult == 1 else 0.2) * c[MAP].has_weapons(x.current_area),
+    lambda x, **c: (x.energy - 0.3) * (2 if x.weapon.damage_mult == 1 else 0.2) *
+                   x.estimate(c[MAP].loot[x.current_area], **c),
     lambda x, **c: x.loot(**c))
 craft_strat_1 = Strategy(
     'craft',
