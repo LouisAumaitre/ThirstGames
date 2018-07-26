@@ -127,6 +127,7 @@ class Player:
                 self.first_name, 'tries to craft a better weapon'])
 
     def get_weapon(self, weapon, **context):
+        self.drop_weapon(**context)
         self.weapon = weapon
         self.weapon.long_name = f'{self.first_name}\'s {weapon.name}'
 
@@ -181,7 +182,9 @@ class Player:
 
         verb = 'attacks'
         weapon = f'with {self.his} {self.weapon.name}'
+        y_weapon = self.weapon
         other_weapon = f'with {other_player.his} {other_player.weapon.name}'
+        t_weapon = other_player.weapon
         area = f'at {self.current_area}'
         kill = False
         other_kill = False
@@ -214,16 +217,16 @@ class Player:
                     kill = True
                     break
         if kill:
-            self.pillage(other_player, **context)
+            self.pillage(t_weapon, **context)
         elif other_kill:
-            other_player.pillage(self, **context)
+            other_player.pillage(y_weapon, **context)
 
-    def pillage(self, dead, **context):
-        if dead.weapon.damage_mult > self.weapon.damage_mult:
-            context[NARRATOR].add([self.first_name, 'loots', dead.weapon.long_name])
-            self.get_weapon(dead.weapon, **context)
-            if self.weapon in context[MAP].weapons[self.current_area]:
-                context[MAP].weapons[self.current_area].remove(self.weapon)
+    def pillage(self, weapon, **context):
+        if weapon.damage_mult > self.weapon.damage_mult:
+            context[NARRATOR].add([self.first_name, 'loots', weapon.long_name])
+            if weapon in context[MAP].weapons[self.current_area]:
+                context[MAP].weapons[self.current_area].remove(weapon)
+            self.get_weapon(weapon, **context)
 
     def damage(self, **context):
         return self.weapon.damage_mult * random() / 2
@@ -234,11 +237,15 @@ class Player:
             return False
         self.health -= damage
         if self.health < 0:
-            if self.weapon.damage_mult != 1:
-                context[MAP].weapons[self.current_area].append(self.weapon)
+            self.drop_weapon(**context)
             context[DEATH](self, **context)
             return True
         return False
+
+    def drop_weapon(self, **context):
+        if self.weapon != HANDS:
+            context[MAP].weapons[self.current_area].append(self.weapon)
+        self.weapon = HANDS
 
 
 class Relationship:
