@@ -30,7 +30,10 @@ class Game:
             self.launch(**{TIME: AFTERNOON})
             day += 1
             self.narrator.tell()
+            self.status()
             self.narrator.new(f'\n== DAY {day} morning ==')
+        if len(self.alive_players) == 1:
+            print(f'{self.alive_players[0].name} wins the Hunger Games!')
 
     def play(self, **context):
         players = copy(context[PLAYERS])
@@ -58,6 +61,12 @@ class Game:
             **kwargs
         }
         self.play(**context)
+
+    def status(self):
+        l_name = max([len(p.name) for p in self.alive_players])
+        for p in self.alive_players:
+            print(f'- {p.name:<{l_name}} {int(p.health * 100):>3}hp {int(p.energy * 100):>3}nrg {p.weapon.name:<10} '
+                  f'{p.current_area:<10}')
 
 
 def death(dead_player, **context):

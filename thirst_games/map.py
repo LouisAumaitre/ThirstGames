@@ -25,6 +25,7 @@ class Map:
             Weapon('knife', 1 + random()),
             Weapon('knife', 1 + random()),
             Weapon('knife', 1 + random()),
+            Item('bullshit item'),
         ]
 
     def weapons(self, area):
@@ -39,6 +40,13 @@ class Map:
         w = choice(self.weapons(area))
         self.loot[area].remove(w)
         return w
+
+    def pick_item(self, area):
+        if not len(self.loot[area]):
+            return None
+        i = choice(self.loot[area])
+        self.loot[area].remove(i)
+        return i
 
     def remove_loot(self, item: Item, area: str):
         self.loot[area].remove(item)

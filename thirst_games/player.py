@@ -3,6 +3,7 @@ from typing import Dict, List
 
 from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, MORNING, NARRATOR
 from thirst_games.items import HANDS, Weapon, Item
+from thirst_games.map import START_AREA
 
 
 class Player:
@@ -59,7 +60,8 @@ class Player:
     def flee(self, panic=False, **context):
         if panic and random() > self.courage * 3:
             self.drop_weapon(True, **context)
-        min_player_per_area = min([len(area) for key, area in context[MAP].areas.items()])
+        min_player_per_area = min([len(area) for key, area in context[MAP].areas.items() if key != START_AREA])
+        # can't flee to or hide at the cornucopea
         best_areas = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area]
         best_areas.sort(key=lambda x: -len(context[MAP].loot[x]))
         best_area = best_areas[0]
@@ -90,23 +92,34 @@ class Player:
             self.hide(**context)
 
     def hide(self, **context):
-        self.stealth += random() * (1 - self.stealth)
-        self.energy += random() * (1 - self.energy)
-        self.health += random() * (1 - self.health)
-        context[NARRATOR].add([self.first_name, 'hides and rests', f'at {self.current_area}'])
+        if self.current_area == START_AREA:
+            self.energy += max(random(), random()) * (1 - self.energy)
+            self.health += max(random(), random()) * (1 - self.health)
+            context[NARRATOR].add([self.first_name, 'rests', f'at {self.current_area}'])
+        else:
+            self.stealth += random() * (1 - self.stealth)
+            self.energy += random() * (1 - self.energy)
+            self.health += random() * (1 - self.health)
+            context[NARRATOR].add([self.first_name, 'hides and rests', f'at {self.current_area}'])
 
     def loot(self, **context):
-        weapon = context[MAP].pick_weapon(self.current_area)
-        if weapon is None or weapon.damage_mult <= self.weapon.damage_mult:
+        item = context[MAP].pick_item(self.current_area)
+        if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
             context[NARRATOR].add([
                 self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
             return
-        if weapon.name == self.weapon.name:
-            self.weapon.long_name.replace('\'s', '\'s old')
-            context[NARRATOR].add([self.first_name, 'picks up', f'a new {weapon.name}', f'at {self.current_area}'])
+        if isinstance(item, Weapon):
+            weapon: Weapon = item
+            if weapon.name == self.weapon.name:
+                self.weapon.long_name.replace('\'s', '\'s old')
+                context[NARRATOR].add([
+                    self.first_name, 'picks up', f'a better {weapon.name}', f'at {self.current_area}'])
+            else:
+                context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name, f'at {self.current_area}'])
+            self.get_weapon(weapon, **context)
         else:
-            context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name, f'at {self.current_area}'])
-        self.get_weapon(weapon, **context)
+            self.equipement.append(item)
+            context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
 
     def craft(self, **context):
         name = choice(['spear', 'club'])
@@ -114,7 +127,7 @@ class Player:
         if weapon.damage_mult > self.weapon.damage_mult:
             if weapon.name == self.weapon.name:
                 self.weapon.long_name.replace('\'s', '\'s old')
-                context[NARRATOR].add([self.first_name, 'crafts', f'a new {weapon.name}', f'at {self.current_area}'])
+                context[NARRATOR].add([self.first_name, 'crafts', f'a better {weapon.name}', f'at {self.current_area}'])
             else:
                 context[NARRATOR].add([self.first_name, 'crafts', f'a {weapon.name}', f'at {self.current_area}'])
             self.get_weapon(weapon, **context)
