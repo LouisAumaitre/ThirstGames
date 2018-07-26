@@ -5,6 +5,7 @@ DEATH = 'death'
 DEADS = 'deads'
 
 TIME = 'time'
+STARTER = 'starter'
 MORNING = 'morning'
 AFTERNOON = 'afternoon'
 NIGHT = 'night'

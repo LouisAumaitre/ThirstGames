@@ -1,7 +1,7 @@
 from random import random, choice
 from typing import Dict, List, Union
 
-from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT
+from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER
 from thirst_games.items import HANDS, Weapon, Item
 from thirst_games.map import START_AREA
 
@@ -13,6 +13,7 @@ class Player:
         self.first_name = first_name
         self.district = district
         self.his = his
+        self.him = 'him' if his == 'his' else ('her' if his == 'her' else 'them')
         self.relationships: Dict[Player, Relationship] = {}
         self.busy = False
         self._health = 1
@@ -78,12 +79,15 @@ class Player:
                 self.strategy = flee_strat
             else:
                 self.strategy = hide_strat
-        elif context[TIME] == NIGHT:
-            night_strategies.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
-            self.strategy = night_strategies[0]
         else:
-            morning_strategies.sort(key=lambda x: -x.pref(self, **context))
-            self.strategy = morning_strategies[0]
+            if context[TIME] == NIGHT:
+                strats = night_strategies
+            elif context[TIME] == STARTER:
+                strats = start_strategies
+            else:
+                strats = morning_strategies
+            strats.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
+            self.strategy = strats[0]
             # context[NARRATOR].new([
             #     self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in morning_strategies]}'])
 
@@ -279,8 +283,9 @@ class Player:
                     other_player.flee(True, **context)
                     break
                 if other_player.hit(self, **context):
+                    context[NARRATOR].add([self.first_name, 'attack', other_player.first_name, area, weapon, 'and'])
                     context[NARRATOR].add([
-                        other_player.first_name, 'kills', self.first_name, area, 'in self-defense', other_weapon])
+                        other_player.first_name, 'kills', self.him, 'in self-defense', other_weapon])
                     break
                 verb = 'fights'
                 if random() > self.courage:
@@ -378,6 +383,10 @@ craft_strat_2 = Strategy(
     lambda x, **c: (x.energy - 0.2) * (x.weapon.damage_mult < 2) *
                    (2 - x.weapon.damage_mult) / c[MAP].neighbors_count(x),
     lambda x, **c: x.craft(**c))
+
+start_strategies = [
+    flee_strat, fight_strat, loot_strat,
+]
 
 morning_strategies = [
     hide_strat, flee_strat, fight_strat, loot_strat, craft_strat_1,

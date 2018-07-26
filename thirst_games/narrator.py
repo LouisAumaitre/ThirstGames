@@ -30,7 +30,7 @@ class Narrator:
                 if e == ',':
                     line_str = line_str[:-1]
                 line_str += self.switch(e) + ' '
-            if line_str[-2] != '=':
+            if line_str[-2] not in ['=', '-', '.']:
                 line_str = line_str[:-1] + '.'
             print(line_str)
 
