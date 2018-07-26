@@ -234,43 +234,36 @@ class Strategy:
             print(f'{player.first_name} {out}')
 
 
+hide_strat = Strategy('hide', lambda x, **c: (1 - x.health / 2) / c[MAP].neighbors_count(x), lambda x, **c: x.hide(**c))
+flee_strat = Strategy(
+    'flee',
+    lambda x, **c: (1 - x.health / 2) * (1 + sum([
+        n.weapon.damage_mult > x.weapon.damage_mult for n in c[MAP].neighbors(x)
+    ])) * c[MAP].neighbors_count(x) / 6 * x.energy * (c[MAP].neighbors_count(x) > x.courage * 10),
+    lambda x, **c: x.flee(**c))
+fight_strat = Strategy(
+    'fight',
+    lambda x, **c: x.health * x.energy * x.weapon.damage_mult / c[MAP].neighbors_count(x),
+    lambda x, **c: x.attack_at_random(**c))
+loot_strat = Strategy(
+    'loot',
+    lambda x, **c: (2 if x.weapon.damage_mult == 1 else 0.1) * (
+        x.current_area == START_AREA) * (len(c[MAP].weapons) > 0),
+    lambda x, **c: x.loot(**c))
+craft_strat_1 = Strategy(
+    'craft',
+    lambda x, **c: (2 - x.weapon.damage_mult) * (c[MAP].neighbors_count(x) < 2),
+    lambda x, **c: x.craft(**c))
+craft_strat_2 = Strategy(
+    'craft',
+    lambda x, **c: (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) / c[MAP].neighbors_count(x),
+    lambda x, **c: x.craft(**c))
+
+
 morning_strategies = [
-    Strategy('hide', lambda x, **c: (1 - x.health / 2) / c[MAP].neighbors_count(x), lambda x, **c: x.hide(**c)),
-    Strategy(
-        'flee',
-        lambda x, **c: (1 - x.health / 2) * (1 + sum([
-            n.weapon.damage_mult > x.weapon.damage_mult for n in c[MAP].neighbors(x)
-        ])) * c[MAP].neighbors_count(x) / 6 * x.energy * (c[MAP].neighbors_count(x) > x.courage * 10),
-        lambda x, **c: x.flee(**c)),
-    Strategy(
-        'fight',
-        lambda x, **c: x.health * x.energy * x.weapon.damage_mult / c[MAP].neighbors_count(x),
-        lambda x, **c: x.attack_at_random(**c)),
-    Strategy(
-        'loot',
-        lambda x, **c: (2 if x.weapon.damage_mult == 1 else 0.1) * (
-            x.current_area == START_AREA) * (len(c[MAP].weapons) > 0),
-        lambda x, **c: x.loot(**c)),
-    Strategy(
-        'craft',
-        lambda x, **c: (2 - x.weapon.damage_mult) * (c[MAP].neighbors_count(x) < 2),
-        lambda x, **c: x.craft(**c)),
+    hide_strat, flee_strat, fight_strat, loot_strat, craft_strat_1,
 ]
 
 afternoon_strategies = [
-    Strategy('hide', lambda x, **c: (1 - x.health / 2) / c[MAP].neighbors_count(x), lambda x, **c: x.hide(**c)),
-    Strategy(
-        'flee',
-        lambda x, **c: (1 - x.health / 2) * (1 + sum([
-            n.weapon.damage_mult > x.weapon.damage_mult for n in c[MAP].neighbors(x)
-        ])) * c[MAP].neighbors_count(x) / 6 * x.energy * (c[MAP].neighbors_count(x) > x.courage * 10),
-        lambda x, **c: x.flee(**c)),
-    Strategy(
-        'loot',
-        lambda x, **c: (3 - x.weapon.damage_mult) * (x.current_area == START_AREA) * (len(c[MAP].weapons) > 0),
-        lambda x, **c: x.loot(**c)),
-    Strategy(
-        'craft',
-        lambda x, **c: (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) / c[MAP].neighbors_count(x),
-        lambda x, **c: x.craft(**c)),
+    hide_strat, flee_strat, loot_strat, craft_strat_2,
 ]
