@@ -2,7 +2,7 @@
 from copy import copy
 from random import random
 
-from thirst_games.constants import MAP, PLAYERS, DEATH, AFTERNOON, TIME, MORNING, DEADS, NARRATOR
+from thirst_games.constants import MAP, PLAYERS, DEATH, AFTERNOON, TIME, MORNING, DEADS, NARRATOR, NIGHT
 from thirst_games.map import Map
 from thirst_games.narrator import Narrator
 
@@ -28,6 +28,8 @@ class Game:
             self.launch(**{TIME: MORNING})
             self.narrator.new(f'-- DAY {day} afternoon --')
             self.launch(**{TIME: AFTERNOON})
+            self.narrator.new(f'-- NIGHT {day} --')
+            self.launch(**{TIME: NIGHT})
             day += 1
             self.narrator.tell()
             self.status()

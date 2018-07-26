@@ -1,7 +1,7 @@
 from random import random, choice
 from typing import Dict, List
 
-from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, MORNING, NARRATOR
+from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, MORNING, NARRATOR, PANIC, SLEEPING, NIGHT
 from thirst_games.items import HANDS, Weapon, Item
 from thirst_games.map import START_AREA
 
@@ -42,13 +42,15 @@ class Player:
         return self.relationships[other_player]
 
     def think(self, **context):
-        if context[TIME] == MORNING:
-            morning_strategies.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
-            # print(f'{self.name}: {[(round(s.pref(self, **context), 2), s.name) for s in morning_strategies]}')
-            self.strategy = morning_strategies[0]
+        if SLEEPING in self.status:
+            self.status.remove(SLEEPING)
+        if context[TIME] == NIGHT:
+            night_strategies.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
+            self.strategy = night_strategies[0]
         else:
-            afternoon_strategies.sort(key=lambda x: -x.pref(self, **context))
-            self.strategy = afternoon_strategies[0]
+            morning_strategies.sort(key=lambda x: -x.pref(self, **context))
+            self.strategy = morning_strategies[0]
+            # print(f'{self.name}: {[(round(s.pref(self, **context), 2), s.name) for s in morning_strategies]}')
 
     def act(self, **context):
         context[NARRATOR].cut()
@@ -65,7 +67,7 @@ class Player:
         best_areas = [key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area]
         best_areas.sort(key=lambda x: -len(context[MAP].loot[x]))
         best_area = best_areas[0]
-        out = self.go_to(best_area, **context)
+        out = self.go_to(best_area, **context, **{PANIC: True})
         if out is None:
             context[NARRATOR].replace('hides and rests', 'hides')
         else:
@@ -92,6 +94,11 @@ class Player:
             self.hide(**context)
 
     def hide(self, **context):
+        if self.energy < 0.1 \
+                or (context[TIME] == NIGHT and context[MAP].neighbors_count == 1) \
+                or (context[MAP].neighbors_count == 1 and self.energy < 0.2) \
+                or (context[TIME] == NIGHT and self.energy < 0.3):
+            return self.sleep(**context)
         if self.current_area == START_AREA:
             self.energy += max(random(), random()) * (1 - self.energy)
             self.health += max(random(), random()) * (1 - self.health)
@@ -101,6 +108,14 @@ class Player:
             self.energy += random() * (1 - self.energy)
             self.health += random() * (1 - self.health)
             context[NARRATOR].add([self.first_name, 'hides and rests', f'at {self.current_area}'])
+
+    def sleep(self, **context):
+        if self.energy < 0.2:
+            context[NARRATOR].add([self.first_name, 'is exhausted'])
+        self.health += self.energy * (1 - self.health)
+        self.energy = 1
+        context[NARRATOR].add([self.first_name, 'sleeps', f'at {self.current_area}'])
+        self.status.append(SLEEPING)
 
     def loot(self, **context):
         item = context[MAP].pick_item(self.current_area)
@@ -195,7 +210,12 @@ class Player:
         other_weapon = f'with {other_player.his} {other_player.weapon.name}'
         t_weapon = other_player.weapon
         area = f'at {self.current_area}'
-        if other_player.be_damaged(self.damage(**context), **context):
+
+        if SLEEPING in other_player.status:
+            context[NARRATOR].add([
+                self.first_name, 'kills', other_player.first_name, f'in {other_player.his} sleep', area, weapon])
+            other_player.be_damaged(other_player.health, **context)
+        elif other_player.be_damaged(self.damage(**context), **context):
             context[NARRATOR].add([
                 self.first_name, 'kills', other_player.first_name, 'by surprise', area, weapon])
         else:
@@ -303,6 +323,6 @@ morning_strategies = [
     hide_strat, flee_strat, fight_strat, loot_strat, craft_strat_1,
 ]
 
-afternoon_strategies = [
+night_strategies = [
     hide_strat, flee_strat, loot_strat, craft_strat_2,
 ]
