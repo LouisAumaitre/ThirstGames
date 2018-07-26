@@ -6,6 +6,18 @@ class Narrator:
         self.current_sentence: List[str] = []
         self.active_subject = ''
         self.text: List[List[str]] = []
+        self._switch = {
+            'at the ruins': 'in the ruins',
+            'at the plain': 'in the plain',
+            'at the jungle': 'in the jungle',
+            'at the forest': 'in the forest',
+            'at the hill': 'on the hill',
+        }
+
+    def switch(self, sentence: str) -> str:
+        if sentence in self._switch:
+            return self._switch[sentence]
+        return sentence
 
     def tell(self):
         self.cut()
@@ -17,7 +29,7 @@ class Narrator:
             for e in line:
                 if e == ',':
                     line_str = line_str[:-1]
-                line_str += e + ' '
+                line_str += self.switch(e) + ' '
             if line_str[-2] != '=':
                 line_str = line_str[:-1] + '.'
             print(line_str)
