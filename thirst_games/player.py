@@ -199,6 +199,12 @@ class Player(Positionable):
                 extra_bag = bags[i]
                 self._equipment.remove(extra_bag)
                 bags[0].content.extend(extra_bag.content)
+            bag_weapons = [
+                i for i in bags[0].content if isinstance(i, Weapon) and i.damage_mult > self.weapon.damage_mult]
+            bag_weapons.sort(key=lambda x: -x.damage_mult)
+            if len(bag_weapons):
+                bags[0].content.remove(bag_weapons[0])
+                self.get_weapon(bag_weapons[0], **context)
 
     def flee(self, panic=False, **context):
         self.status.append(FLEEING)
@@ -285,7 +291,8 @@ class Player(Positionable):
     def loot_weapon(self, weapon: Optional[Weapon]=None, **context):
         if weapon is None:
             weapon = context[MAP].pick_weapon(self.current_area)
-        if weapon is None or weapon.damage_mult <= self.weapon.damage_mult:
+        if weapon is None or (weapon.damage_mult <= self.weapon.damage_mult and (
+                    not weapon.small or context[TIME] == STARTER or self.bag is None)):
             context[NARRATOR].add([
                 self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
             return
@@ -331,9 +338,15 @@ class Player(Positionable):
             return 0
 
     def get_weapon(self, weapon, **context):
-        self.drop_weapon(False, **context)
-        self.weapon = weapon
-        self.weapon.long_name = f'{self.first_name}\'s {weapon.name}'
+        if weapon.damage_mult > self.weapon.damage_mult:
+            if self.weapon.small and self.bag is not None:
+                self.bag.content.append(self.weapon)
+            else:
+                self.drop_weapon(verbose=False, **context)
+            self.weapon = weapon
+            self.weapon.long_name = f'{self.first_name}\'s {weapon.name}'
+        elif weapon.small and self.bag is not None:
+            self.bag.content.append(weapon)
 
     def get_item(self, item, **context):
         if isinstance(item, Bag):
@@ -429,6 +442,8 @@ class Player(Positionable):
         other_player.pillage(self_stuff, **context)
 
     def pillage(self, stuff, **context):
+        if len([p for p in context[PLAYERS] if p.is_alive]) == 1:
+            return
         if context[MAP].neighbors_count(self) > 1:
             return
         looted = []

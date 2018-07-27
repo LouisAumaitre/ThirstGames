@@ -30,8 +30,14 @@ def get_area(area: Union[str, Positionable]) -> str:
 
 def random_bag() -> Bag:
     elements = []
-    for i in range(randint(0, 2) + randint(0, 2)):
+    for i in range(1 + randint(0, 2) + randint(0, 2)):
         elements.append(Food('rations', 0.5 + random() / 2))
+    if random() > 0.4:
+        elements.append(Item('rope'))
+    if random() > 1/3:
+        elements.append(Weapon('hatchet', 1 + random()))
+    elif random() > 0.5:
+        elements.append(Weapon('knife', 1 + random()))
     return Bag(elements)
 
 
