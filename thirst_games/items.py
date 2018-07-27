@@ -19,3 +19,9 @@ class Food(Item):
     def __init__(self, name, value):
         Item.__init__(self, name)
         self.value = value
+
+
+class Bag(Item):
+    def __init__(self, content):
+        Item.__init__(self, 'bag')
+        self.content = content

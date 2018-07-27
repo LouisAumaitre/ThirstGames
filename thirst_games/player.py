@@ -237,6 +237,30 @@ class Player(Positionable):
             self.equipement.append(item)
             context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
 
+    def loot_weapon(self, **context):
+        item = context[MAP].pick_weapon(self.current_area)
+        if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
+            context[NARRATOR].add([
+                self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
+            return
+        weapon: Weapon = item
+        if weapon.name == self.weapon.name:
+            self.weapon.long_name.replace('\'s', '\'s old')
+            context[NARRATOR].add([
+                self.first_name, 'picks up', f'a better {weapon.name}', f'at {self.current_area}'])
+        else:
+            context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name, f'at {self.current_area}'])
+        self.get_weapon(weapon, **context)
+
+    def loot_bag(self, **context):
+        item = context[MAP].pick_bag(self.current_area)
+        if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
+            context[NARRATOR].add([
+                self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
+            return
+        self.equipement.append(item)
+        context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
+
     def craft(self, **context):
         name = choice(['spear', 'club'])
         weapon = Weapon(name, 1 + random())

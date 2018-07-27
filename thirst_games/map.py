@@ -2,7 +2,7 @@ from typing import List, Dict, Union
 
 from random import random, choice
 
-from thirst_games.items import Weapon, Item, Food
+from thirst_games.items import Weapon, Item, Food, Bag
 
 START_AREA = 'the cornucopea'
 
@@ -65,10 +65,11 @@ class Map:
             Weapon('knife', 1 + random()),
             Weapon('knife', 1 + random()),
             Weapon('knife', 1 + random()),
-            Food('rations', 0.5 + random() / 2),
-            Food('rations', 0.5 + random() / 2),
-            Food('rations', 0.5 + random() / 2),
-            Food('rations', 0.5 + random() / 2),
+            Bag([Food('rations', 0.5 + random() / 2)]),
+            Bag([Food('rations', 0.5 + random() / 2)]),
+            Bag([Food('rations', 0.5 + random() / 2)]),
+            Bag([Food('rations', 0.5 + random() / 2)]),
+            Bag([Food('rations', 0.5 + random() / 2)]),
         ]
 
     def forage_potential(self, area):
@@ -90,6 +91,12 @@ class Map:
     def has_weapons(self, area):
         return len(self.weapons(get_area(area))) > 0
 
+    def bags(self, area):
+        return [e for e in self.loot[get_area(area)] if isinstance(e, Bag)]
+
+    def has_bags(self, area):
+        return len(self.bags(get_area(area))) > 0
+
     def pick_weapon(self, area):
         area = get_area(area)
         if not self.has_weapons(area):
@@ -97,6 +104,14 @@ class Map:
         w = choice(self.weapons(area))
         self.loot[area].remove(w)
         return w
+
+    def pick_bag(self, area):
+        area = get_area(area)
+        if not self.has_bags(area):
+            return None
+        b = choice(self.bags(area))
+        self.loot[area].remove(b)
+        return b
 
     def pick_item(self, area):
         area = get_area(area)
