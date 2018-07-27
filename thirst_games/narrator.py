@@ -95,7 +95,7 @@ class Narrator:
 
             # avoid repetition of verb
             if len(sentence) > 1 and sentence[1] in sentence and sentence[1] in self.current_sentence and \
-                            sentence[0] == 'and':
+                            sentence[0] == '_and_':
                 sentence.remove(sentence[1])
 
             self.current_sentence.extend(sentence)

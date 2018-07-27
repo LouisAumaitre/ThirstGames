@@ -4,6 +4,7 @@ from typing import Dict, List, Union, Optional
 from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER
 from thirst_games.items import HANDS, Weapon, Item, Food, Bag
 from thirst_games.map import START_AREA, Positionable
+from thirst_games.narrator import format_list
 
 MOVE_COST = 0.3
 
@@ -159,6 +160,20 @@ class Player(Positionable):
         context[NARRATOR].cut()
         self.strategy = None
 
+    def check_bag(self, **context):
+        if 'unchecked bag' in self.status:
+            self.status.remove('unchecked bag')
+            bags = [e for e in self.equipement if isinstance(e, Bag)]
+            if not len(bags):
+                return
+            context[NARRATOR].new([
+                self.first_name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
+                'finds', format_list([e.name for bag in bags for e in bag.content])])
+            for i in range(1, len(bags)):
+                extra_bag = bags[i]
+                self.equipement.remove(extra_bag)
+                bags[0].content.extend(extra_bag.content)
+
     def flee(self, panic=False, **context):
         self.status.append(FLEEING)
         if panic and random() > self.courage + 0.5:
@@ -206,11 +221,15 @@ class Player(Positionable):
             self.go_to_sleep(**context)
             return
         if self.current_area == START_AREA:
+            self.check_bag(**context)
             self.add_health(max(self.energy, random()) * (1 - self.health))
             self.add_energy(max(self.sleep, random()) * (1 - self.energy))
+            if self.has_food and self.hunger > 0:
+                self.dine(**context)
             context[NARRATOR].add([self.first_name, 'rests', f'at {self.current_area}'])
         else:
             self.stealth += random() * (1 - self.stealth)
+            self.check_bag(**context)
             self.add_health(max(0, min(self.energy, random())) * (1 - self.health))
             self.add_energy(max(0, min(self.sleep, random())) * (1 - self.energy))
             context[NARRATOR].add([self.first_name, 'hides and rests', f'at {self.current_area}'])
@@ -225,6 +244,7 @@ class Player(Positionable):
         self.status.append(SLEEPING)
 
     def loot(self, **context):
+        self.check_bag(**context)
         item = context[MAP].pick_item(self.current_area)
         if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
             context[NARRATOR].add([
@@ -259,6 +279,7 @@ class Player(Positionable):
         self.get_item(item, **context)
 
     def craft(self, **context):
+        self.check_bag(**context)
         name = choice(['spear', 'club'])
         weapon = Weapon(name, 1 + random())
         if weapon.damage_mult > self.weapon.damage_mult:
@@ -291,6 +312,8 @@ class Player(Positionable):
     def get_item(self, item, **context):
         if isinstance(item, Bag):
             item.long_name = f'{self.first_name}\'s {item.name}'
+            if 'unchecked bag' not in self.status:
+                self.status.append('unchecked bag')
         self.equipement.append(item)
 
     def attack_at_random(self, **context):
@@ -303,34 +326,6 @@ class Player(Positionable):
 
     def reveal(self):
         self.stealth = 0
-
-    def interact(self, other_player, **context):
-        if random() < other_player.stealth:
-            return
-        if self.relationship(other_player).allied:
-            self.relationship(other_player).friendship += random() / 10 - 0.025
-            if random() > self.relationship(other_player).friendship or len(context[PLAYERS]) < 3:
-                print(f'{self.first_name} betrays {other_player.first_name}')
-                return self.fight(other_player, context)
-        # elif random() < self.relationship(other_player).friendship and len(context[PLAYERS]) > 3:
-        #     if random() < other_player.relationship(self).friendship:
-        #         print(f'{self.first_name} makes an alliance with {other_player.first_name}')
-        #         self.relationship(other_player).friendship += random() / 10
-        #         other_player.relationship(self).friendship += random() / 10
-        #         self.busy = True
-        #         other_player.busy = True
-        #         self.relationship(other_player).allied = True
-        #         other_player.relationship(self).allied = True
-        #     else:
-        #         print(f'{self.first_name} tries to make an alliance with {other_player.first_name},'
-        #               f' but {other_player.first_name} refuses')
-        #         self.relationship(other_player).friendship -= random() / 10
-        #         self.busy = True
-        #         other_player.busy = True
-        elif random() < -self.relationship(other_player).friendship:
-            self.fight(other_player, context)
-        else:
-            self.relationship(other_player).friendship += random() / 10 - 0.05
 
     def hit(self, target, mult=1, **context) -> bool:
         self.add_energy(-0.1)
@@ -412,6 +407,7 @@ class Player(Positionable):
         return len([e for e in self.equipement if isinstance(e, Food)]) > 0
 
     def dine(self, **context):
+        self.check_bag(**context)
         if not self.has_food:
             context[NARRATOR].add([self.name, 'does not have', 'anything to eat'])
         else:
