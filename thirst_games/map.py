@@ -25,7 +25,7 @@ def get_area(area: Union[str, Positionable]) -> str:
         return area.current_area
     if isinstance(area, str):
         return area
-    raise ValueError(f'{area} is neither a string or a positionnable')
+    raise ValueError(f'{area} is neither a string or a positionable')
 
 
 def random_bag() -> Bag:

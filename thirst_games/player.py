@@ -1,3 +1,4 @@
+from copy import copy
 from random import random, choice
 from typing import Dict, List, Union, Optional
 
@@ -46,6 +47,13 @@ class Player(Positionable):
     def equipment(self):
         bags = [e for e in self._equipment if isinstance(e, Bag)]
         return [*[e for e in self._equipment if not isinstance(e, Bag)], *[e for b in bags for e in b.content]]
+
+    @property
+    def drops(self):
+        stuff = copy(self._equipment)
+        if self.weapon != HANDS:
+            stuff.append(self.weapon)
+        return stuff
 
     @property
     def courage(self):
@@ -378,9 +386,9 @@ class Player(Positionable):
         if FLEEING in other_player.status:
             other_player.status.remove(FLEEING)
         weapon = f'with {self.his} {self.weapon.name}'
-        y_weapon = self.weapon
+        self_stuff = []
         other_weapon = f'with {other_player.his} {other_player.weapon.name}'
-        t_weapon = other_player.weapon
+        other_stuff = []
         area = f'at {self.current_area}'
         surprise = f'in {other_player.his} sleep' if SLEEPING in other_player.status else 'by surprise'
         surprise_mult = 2 if SLEEPING in other_player.status else 1 + self.wisdom - other_player.wisdom
@@ -388,38 +396,58 @@ class Player(Positionable):
         if self.hit(other_player, surprise_mult, **context):
             context[NARRATOR].add([
                 self.first_name, 'kills', other_player.first_name, surprise, area, weapon])
+            other_stuff = other_player.drops
         else:
             while True:
                 if random() > other_player.courage:
                     context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon])
+                    other_stuff = [other_player.weapon]
                     other_player.flee(True, **context)
+                    other_stuff = other_stuff if other_player.weapon == HANDS else []
                     break
                 if other_player.hit(self, **context):
                     context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon, 'and'])
                     context[NARRATOR].add([
                         other_player.first_name, 'kills', self.him, 'in self-defense', other_weapon])
+                    self_stuff = self.drops
                     break
                 verb.replace('attacks', 'fights')
                 if random() > self.courage:
                     context[NARRATOR].add([self.first_name, 'attacks', other_player.first_name, area, weapon])
                     context[NARRATOR].add([
                         other_player.first_name, 'fights back', other_weapon, 'and'])
+                    self_stuff = [self.weapon]
                     self.flee(True, **context)
+                    self_stuff = self_stuff if self.weapon == HANDS else []
                     break
                 if self.hit(other_player, **context):
                     context[NARRATOR].add([
                         self.first_name, verb, 'and', 'kills', other_player.first_name, area, weapon])
+                    other_stuff = other_player.drops
                     break
-        if other_player.weapon == HANDS and t_weapon != HANDS:
-            self.pillage(t_weapon, **context)
-        elif self.weapon == HANDS and y_weapon != HANDS:
-            other_player.pillage(y_weapon, **context)
+        self.pillage(other_stuff, **context)
+        other_player.pillage(self_stuff, **context)
 
-    def pillage(self, weapon, **context):
-        if weapon.damage_mult > self.weapon.damage_mult:
-            context[NARRATOR].add([self.first_name, 'loots', weapon.long_name])
-            context[MAP].remove_loot(weapon, self.current_area)
-            self.get_weapon(weapon, **context)
+    def pillage(self, stuff, **context):
+        if context[MAP].neighbors_count(self) > 1:
+            return
+        looted = []
+        for item in stuff:
+            if isinstance(item, Weapon):
+                if item.damage_mult > self.weapon.damage_mult:
+                    looted.append(item)
+                    context[MAP].remove_loot(item, self.current_area)
+            else:
+                looted.append(item)
+                context[MAP].remove_loot(item, self.current_area)
+        if not len(looted):
+            return
+        context[NARRATOR].add([self.first_name, 'loots', format_list([e.long_name for e in looted])])
+        for item in looted:
+            if isinstance(item, Weapon):
+                self.get_weapon(item, **context)
+            else:
+                self.get_item(item, **context)
 
     def forage(self, **context):
         food: Food = context[MAP].get_forage(self)

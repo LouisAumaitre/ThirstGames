@@ -3,7 +3,14 @@ from typing import List, Optional
 
 
 def format_list(names: List[str]):
-    names.sort()
+    unique_names = list(set(names))
+    unique_names.sort()
+    amount_by_name = {name: names.count(name) for name in unique_names}
+    counted_names = [
+        ('' if amount_by_name[name] == 1 else str(amount_by_name[name]) + ' ') + name for name in unique_names
+    ]
+    names = counted_names
+
     if len(names) == 1:
         return names[0]
     out = ''
