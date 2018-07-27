@@ -1,6 +1,6 @@
 from typing import List, Dict, Union
 
-from random import random, choice
+from random import random, choice, randint
 
 from thirst_games.items import Weapon, Item, Food, Bag
 
@@ -26,6 +26,13 @@ def get_area(area: Union[str, Positionable]) -> str:
     if isinstance(area, str):
         return area
     raise ValueError(f'{area} is neither a string or a positionnable')
+
+
+def random_bag() -> Bag:
+    elements = []
+    for i in range(randint(0, 2) + randint(0, 2)):
+        elements.append(Food('rations', 0.5 + random() / 2))
+    return Bag(elements)
 
 
 class Map:
@@ -65,12 +72,9 @@ class Map:
             Weapon('knife', 1 + random()),
             Weapon('knife', 1 + random()),
             Weapon('knife', 1 + random()),
-            Bag([Food('rations', 0.5 + random() / 2)]),
-            Bag([Food('rations', 0.5 + random() / 2)]),
-            Bag([Food('rations', 0.5 + random() / 2)]),
-            Bag([Food('rations', 0.5 + random() / 2)]),
-            Bag([Food('rations', 0.5 + random() / 2)]),
         ]
+        for i in range(5):
+            self.loot[START_AREA].append(random_bag())
 
     def forage_potential(self, area):
         foods = self.nature[get_area(area)]['food']
