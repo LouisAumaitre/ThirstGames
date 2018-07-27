@@ -39,6 +39,7 @@ class Game:
                     'remain at',
                     START_AREA
                 ])
+                self.launch(**{TIME: STARTER})
         self.narrator.tell(filters=[f'at {START_AREA}'])
         while len(self.alive_players) > 1 and day < 10:
             if day != 1:
@@ -75,7 +76,8 @@ class Game:
                 p.upkeep(**context)
         for i in range(len(players) + 2):
             if i < len(players) and players[i].is_alive:
-                players[i].think(**context)
+                if context[TIME] != STARTER or players[i].current_area == START_AREA:
+                    players[i].think(**context)
             if i - 2 >= 0 and players[i-2].is_alive:
                 if context[TIME] != STARTER or players[i-2].current_area == START_AREA:
                     players[i-2].act(**context)

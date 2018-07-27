@@ -2,7 +2,7 @@ from random import random, choice
 from typing import Dict, List, Union, Optional
 
 from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER
-from thirst_games.items import HANDS, Weapon, Item, Food
+from thirst_games.items import HANDS, Weapon, Item, Food, Bag
 from thirst_games.map import START_AREA, Positionable
 
 MOVE_COST = 0.3
@@ -126,8 +126,9 @@ class Player(Positionable):
                 strats = morning_strategies
             strats.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
             self.strategy = strats[0]
-            # context[NARRATOR].new([
-            #     self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in morning_strategies]}'])
+            # if context[TIME] == STARTER:
+            #     context[NARRATOR].new([
+            #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
     def upkeep(self, **context):
         energy_upkeep = -random() * 0.1  # loses energy while being awake
@@ -149,7 +150,12 @@ class Player(Positionable):
             self.status.remove(FLEEING)
         context[NARRATOR].cut()
         if not self.busy:
-            self.strategy.apply(self, **context)
+            if context[TIME] == STARTER and self.current_area == START_AREA and context[MAP].neighbors_count(self) == 1:
+                strats = [loot_bag_strat, loot_weapon_strat, hide_strat]
+                for s in [strat for strat in strats if strat.pref(self, **context) > 0]:
+                    s.apply(self, **context)
+            else:
+                self.strategy.apply(self, **context)
         context[NARRATOR].cut()
         self.strategy = None
 
@@ -225,25 +231,18 @@ class Player(Positionable):
                 self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
             return
         if isinstance(item, Weapon):
-            weapon: Weapon = item
-            if weapon.name == self.weapon.name:
-                self.weapon.long_name.replace('\'s', '\'s old')
-                context[NARRATOR].add([
-                    self.first_name, 'picks up', f'a better {weapon.name}', f'at {self.current_area}'])
-            else:
-                context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name, f'at {self.current_area}'])
-            self.get_weapon(weapon, **context)
+            self.loot_weapon(item, **context)
         else:
-            self.equipement.append(item)
             context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
+            self.get_item(item, **context)
 
-    def loot_weapon(self, **context):
-        item = context[MAP].pick_weapon(self.current_area)
-        if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
+    def loot_weapon(self, weapon: Optional[Weapon]=None, **context):
+        if weapon is None:
+            weapon = context[MAP].pick_weapon(self.current_area)
+        if weapon is None or weapon.damage_mult <= self.weapon.damage_mult:
             context[NARRATOR].add([
                 self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
             return
-        weapon: Weapon = item
         if weapon.name == self.weapon.name:
             self.weapon.long_name.replace('\'s', '\'s old')
             context[NARRATOR].add([
@@ -254,12 +253,10 @@ class Player(Positionable):
 
     def loot_bag(self, **context):
         item = context[MAP].pick_bag(self.current_area)
-        if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
-            context[NARRATOR].add([
-                self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
-            return
-        self.equipement.append(item)
+        if item is None:
+            return self.loot(**context)
         context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
+        self.get_item(item, **context)
 
     def craft(self, **context):
         name = choice(['spear', 'club'])
@@ -290,6 +287,11 @@ class Player(Positionable):
         self.drop_weapon(False, **context)
         self.weapon = weapon
         self.weapon.long_name = f'{self.first_name}\'s {weapon.name}'
+
+    def get_item(self, item, **context):
+        if isinstance(item, Bag):
+            item.long_name = f'{self.first_name}\'s {item.name}'
+        self.equipement.append(item)
 
     def attack_at_random(self, **context):
         preys = [p for p in context[MAP].areas[self.current_area] if random() > p.stealth and p != self]
@@ -469,25 +471,38 @@ class Strategy:
 
 hide_strat = Strategy(
     'hide',
-    lambda x, **c: (c[MAP].neighbors_count(x) == 1 or x.current_area != START_AREA) *
-                   (1 - x.health / 2) * (1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x),
+    lambda x, **c: (1 - x.health / 2) * (1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x),
     lambda x, **c: x.hide(**c))
 flee_strat = Strategy(
     'flee',
     lambda x, **c: (x.energy > 0.3) * (1 + sum([
         n.weapon.damage_mult * n.health > x.weapon.damage_mult * x.health for n in c[MAP].neighbors(x)
-    ])) * (c[MAP].neighbors_count(x) - 1 > max(x.courage, 1 - x.wisdom) * 10),
+    ])) * (c[MAP].neighbors_count(x) - 1 > max(x.courage, 1 - x.wisdom) * 10) + 0.1,
     lambda x, **c: x.flee(**c))
-fight_strat = Strategy(
+attack_strat = Strategy(
     'fight',
     lambda x, **c: x.health * min(x.energy, x.stomach, x.sleep) *
                    x.weapon.damage_mult / c[MAP].neighbors_count(x),
+    lambda x, **c: x.attack_at_random(**c))
+fight_strat = Strategy(
+    'fight',
+    lambda x, **c: (x.health if len(c[PLAYERS]) > c[MAP].neighbors_count(x) else 1) * sum([
+        x.weapon.damage_mult * x.health > n.weapon.damage_mult * n.health for n in c[MAP].neighbors(x)
+    ]),
     lambda x, **c: x.attack_at_random(**c))
 loot_strat = Strategy(
     'loot',
     lambda x, **c: (x.energy - 0.3) * (2 if x.weapon.damage_mult == 1 else 0.2) *
                    x.estimate(c[MAP].loot[x.current_area], **c),
     lambda x, **c: x.loot(**c))
+loot_bag_strat = Strategy(
+    'loot bag',
+    lambda x, **c: x.weapon.damage_mult * c[MAP].has_bags(x) * ('bag' not in [e.name for e in x.equipement]),
+    lambda x, **c: x.loot_bag(**c))
+loot_weapon_strat = Strategy(
+    'loot weapon',
+    lambda x, **c: x.estimate(c[MAP].weapons(x), **c),
+    lambda x, **c: x.loot_weapon(**c))
 forage_strat = Strategy(
     'forage',
     lambda x, **c: x.hunger * c[MAP].forage_potential(x) / c[MAP].neighbors_count(x),
@@ -507,11 +522,11 @@ craft_strat_2 = Strategy(
     lambda x, **c: x.craft(**c))
 
 start_strategies = [
-    flee_strat, fight_strat, loot_strat,
+    flee_strat, fight_strat, loot_bag_strat, loot_weapon_strat,
 ]
 
 morning_strategies = [
-    hide_strat, flee_strat, fight_strat, loot_strat, craft_strat_1, forage_strat, dine_strat,
+    hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat,
 ]
 
 night_strategies = [

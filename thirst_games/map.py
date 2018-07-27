@@ -142,7 +142,7 @@ class Map:
         player.current_area = new_area
         return new_area
 
-    def neighbors_count(self, area):  # TODO: rename
+    def neighbors_count(self, area):  # TODO: rename
         return len(self.areas[get_area(area)])
 
     def neighbors(self, element: Positionable):
