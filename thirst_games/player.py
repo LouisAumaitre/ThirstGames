@@ -549,7 +549,7 @@ start_strategies = [
 ]
 
 morning_strategies = [
-    hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat,
+    hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
 ]
 
 night_strategies = [
