@@ -7,12 +7,12 @@ from thirst_games.items import Weapon, Item, Food
 START_AREA = 'the cornucopea'
 
 food_values = {
-    'roots': 0.2,
-    'algae': 0.25,
-    'mushrooms': 0.3,
-    'berries': 0.3,
-    'fruits': 0.4,
-    'ration': 0.5,
+    'roots': 0.3,
+    'algae': 0.5,
+    'mushrooms': 0.7,
+    'berries': 0.6,
+    'fruits': 0.8,
+    'ration': 1,
 }
 
 

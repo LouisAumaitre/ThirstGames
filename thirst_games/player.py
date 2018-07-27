@@ -7,6 +7,8 @@ from thirst_games.map import START_AREA, Positionable
 
 MOVE_COST = 0.3
 
+FLEEING = 'fleeing'
+
 
 class Player(Positionable):
     def __init__(self, first_name: str, district: int, his='their'):
@@ -86,7 +88,7 @@ class Player(Positionable):
             if 'sleepy' not in self.status:
                 context[NARRATOR].add([self.first_name, 'needs', 'to sleep'])
                 self.status.append('sleepy')
-            self.add_energy(self._sleep)
+            self.add_energy(self._sleep, **context)
             self._sleep = 0
         else:
             if 'sleepy' in self.status:
@@ -143,6 +145,8 @@ class Player(Positionable):
         self.add_energy(energy_upkeep + sleep_upkeep + food_upkeep, **context)
 
     def act(self, **context):
+        if FLEEING in self.status:
+            self.status.remove(FLEEING)
         context[NARRATOR].cut()
         if not self.busy:
             self.strategy.apply(self, **context)
@@ -150,6 +154,7 @@ class Player(Positionable):
         self.strategy = None
 
     def flee(self, panic=False, **context):
+        self.status.append(FLEEING)
         if panic and random() > self.courage + 0.5:
             self.drop_weapon(True, **context)
         min_player_per_area = min([len(area) for key, area in context[MAP].areas.items() if key != START_AREA])
@@ -302,7 +307,7 @@ class Player(Positionable):
             self.relationship(other_player).friendship += random() / 10 - 0.05
 
     def hit(self, target, mult=1, **context) -> bool:
-        self.add_energy(-0.2)
+        self.add_energy(-0.1)
         return target.be_damaged(self.damage(**context) * mult, **context)
 
     def fight(self, other_player, **context):
@@ -315,7 +320,9 @@ class Player(Positionable):
         self.relationship(other_player).allied = False
         other_player.relationship(self).allied = False
 
-        verb = 'attacks'
+        verb = 'catches and attacks' if FLEEING in other_player.status else 'attacks'
+        if FLEEING in other_player.status:
+            other_player.status.remove(FLEEING)
         weapon = f'with {self.his} {self.weapon.name}'
         y_weapon = self.weapon
         other_weapon = f'with {other_player.his} {other_player.weapon.name}'
@@ -334,11 +341,11 @@ class Player(Positionable):
                     other_player.flee(True, **context)
                     break
                 if other_player.hit(self, **context):
-                    context[NARRATOR].add([self.first_name, 'attack', other_player.first_name, area, weapon, 'and'])
+                    context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon, 'and'])
                     context[NARRATOR].add([
                         other_player.first_name, 'kills', self.him, 'in self-defense', other_weapon])
                     break
-                verb = 'fights'
+                verb.replace('attacks', 'fights')
                 if random() > self.courage:
                     context[NARRATOR].add([self.first_name, 'attacks', other_player.first_name, area, weapon])
                     context[NARRATOR].add([
@@ -371,8 +378,8 @@ class Player(Positionable):
                 self.eat(food, quantifier='some', **context)
             else:
                 context[NARRATOR].add([self.name, 'finds', 'some', food.name, f'at {self.current_area}'])
-                self.equipement.append(food)
-            self.equipement.append(food)  # some extras
+                food.value *= 2
+            self.equipement.append(food)  # some extras / all of it
 
     @property
     def has_food(self):
@@ -439,17 +446,18 @@ class Strategy:
 hide_strat = Strategy(
     'hide',
     lambda x, **c: (c[MAP].neighbors_count(x) == 1 or x.current_area != START_AREA) *
-                   (1 - x.health) * (1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x),
+                   (1 - x.health / 2) * (1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x),
     lambda x, **c: x.hide(**c))
 flee_strat = Strategy(
     'flee',
-    lambda x, **c: (x.energy - 0.3) * (1 - x.health / 2) * (1 + sum([
-        n.weapon.damage_mult > x.weapon.damage_mult for n in c[MAP].neighbors(x)
-    ])) * c[MAP].neighbors_count(x) / 6 * x.energy * (c[MAP].neighbors_count(x) > x.courage * 10),
+    lambda x, **c: (x.energy > 0.3) * (1 + sum([
+        n.weapon.damage_mult * n.health > x.weapon.damage_mult * x.health for n in c[MAP].neighbors(x)
+    ])) * (c[MAP].neighbors_count(x) - 1 > max(x.courage, 1 - x.wisdom) * 10),
     lambda x, **c: x.flee(**c))
 fight_strat = Strategy(
     'fight',
-    lambda x, **c: (x.health - 0.5) * (x.energy - 0.3) * x.weapon.damage_mult / c[MAP].neighbors_count(x),
+    lambda x, **c: x.health * min(x.energy, x.stomach, x.sleep) *
+                   x.weapon.damage_mult / c[MAP].neighbors_count(x),
     lambda x, **c: x.attack_at_random(**c))
 loot_strat = Strategy(
     'loot',

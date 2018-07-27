@@ -2,6 +2,17 @@ from random import choice
 from typing import List, Optional
 
 
+def format_list(names: List[str]):
+    names.sort()
+    if len(names) == 1:
+        return names[0]
+    out = ''
+    for i in range(len(names) - 2):
+        out += names[i] + ', '
+    out += names[-2] + ' and ' + names[-1]
+    return out
+
+
 class Narrator:
     def __init__(self):
         self.current_sentence: List[str] = []
@@ -34,7 +45,7 @@ class Narrator:
     def kill_switch(self, phrase: str, full_sentence: List[str]):
         if phrase == 'kills':
             tools = [word.split(' ')[-1] for word in full_sentence if word.startswith('with ')]
-            if len(tools):
+            if len(tools) == 1:
                 tool = tools[0]
                 if tool in self.kill_word:
                     return choice(self.kill_word[tool])
