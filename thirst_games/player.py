@@ -178,9 +178,15 @@ class Player(Positionable):
             bags = [e for e in self._equipment if isinstance(e, Bag)]
             if not len(bags):
                 return
-            context[NARRATOR].new([
-                self.first_name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
-                'finds', format_list([e.name for bag in bags for e in bag.content])])
+            stuff = [e.name for bag in bags for e in bag.content]
+            if len(stuff):
+                context[NARRATOR].new([
+                    self.first_name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
+                    'finds', format_list(stuff)])
+            else:
+                context[NARRATOR].new([
+                    self.first_name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
+                    'finds', 'they are' if len(bags) > 1 else 'it is', 'empty'])
             for i in range(1, len(bags)):
                 extra_bag = bags[i]
                 self._equipment.remove(extra_bag)

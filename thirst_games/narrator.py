@@ -24,6 +24,7 @@ class Narrator:
             'at the jungle': 'in the jungle',
             'at the forest': 'in the forest',
             'at the hill': 'on the hill',
+            '_and_': 'and',
         }
         self.kill_word = {
             'axe': ['decapitates'],
@@ -75,7 +76,7 @@ class Narrator:
         if isinstance(sentence, list):
             # avoid repetition of subject
             if sentence[0] == self.active_subject:
-                sentence[0] = 'and'
+                sentence[0] = '_and_'
             else:
                 self.active_subject = sentence[0]
                 if len(self.current_sentence) and self.current_sentence[-1] != 'and':
