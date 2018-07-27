@@ -372,6 +372,7 @@ class Player(Positionable):
             else:
                 context[NARRATOR].add([self.name, 'finds', 'some', food.name, f'at {self.current_area}'])
                 self.equipement.append(food)
+            self.equipement.append(food)  # some extras
 
     @property
     def has_food(self):
@@ -474,7 +475,7 @@ craft_strat_2 = Strategy(
     lambda x, **c: x.craft(**c))
 
 start_strategies = [
-    flee_strat, fight_strat, loot_strat, forage_strat, dine_strat,
+    flee_strat, fight_strat, loot_strat,
 ]
 
 morning_strategies = [

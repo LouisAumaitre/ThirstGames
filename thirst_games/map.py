@@ -69,7 +69,6 @@ class Map:
             Food('rations', 0.5 + random() / 2),
             Food('rations', 0.5 + random() / 2),
             Food('rations', 0.5 + random() / 2),
-            Item('bullshit item'),
         ]
 
     def forage_potential(self, area):

@@ -1,5 +1,5 @@
 from random import choice
-from typing import List
+from typing import List, Optional
 
 
 class Narrator:
@@ -40,7 +40,9 @@ class Narrator:
                     return choice(self.kill_word[tool])
         return phrase
 
-    def tell(self):
+    def tell(self, filters: Optional[List[str]]=None):
+        if filters is None:
+            filters = []
         self.cut()
         while len(self.text):
             line = self.text.pop(0)
@@ -48,6 +50,8 @@ class Narrator:
                 continue
             line_str = ''
             for e in line:
+                if e in filters:
+                    continue
                 if e == ',':
                     line_str = line_str[:-1]
                 e = self.kill_switch(e, line)

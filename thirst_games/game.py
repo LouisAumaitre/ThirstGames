@@ -25,6 +25,7 @@ class Game:
         while len(self.map.areas[START_AREA]) > 1:
             self.launch(**{TIME: STARTER})
             self.narrator.new(f'...')
+        self.narrator.tell(filters=[f'at {START_AREA}'])
         while len(self.alive_players) > 1 and day < 10:
             if day != 1:
                 self.launch(**{TIME: MORNING})
