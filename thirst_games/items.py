@@ -11,3 +11,9 @@ class Weapon(Item):
 
 
 HANDS = Weapon('bare hands', 1)
+
+
+class Food(Item):
+    def __init__(self, name, value):
+        Item.__init__(self, name)
+        self.value = value

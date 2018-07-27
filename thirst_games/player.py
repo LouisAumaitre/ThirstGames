@@ -1,14 +1,14 @@
 from random import random, choice
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 
 from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER
-from thirst_games.items import HANDS, Weapon, Item
-from thirst_games.map import START_AREA
+from thirst_games.items import HANDS, Weapon, Item, Food
+from thirst_games.map import START_AREA, Positionable
 
 MOVE_COST = 0.3
 
 
-class Player:
+class Player(Positionable):
     def __init__(self, first_name: str, district: int, his='their'):
         self.first_name = first_name
         self.district = district
@@ -19,13 +19,13 @@ class Player:
         self._health = 1
         self._energy = 1
         self._sleep = 1
+        self._stomach = 1
         self.stealth = 0
         self.wisdom = 0.9
         self.equipement: List[Item] = []
         self.status = []
 
         self.strategy = None
-        self.current_area = None
         self.weapon = HANDS
 
     @property
@@ -44,22 +44,65 @@ class Player:
     def energy(self):
         return max(0, self._energy)
 
-    def add_energy(self, amount):
-        self._energy = max(0, min(1, self._energy + amount))
+    def add_energy(self, amount, **context):
+        self._energy = min(1, self._energy + amount)
+
+        if self._energy < 0:
+            if 'exhausted' not in self.status:
+                context[NARRATOR].add([self.first_name, 'needs', 'to rest'])
+                self.status.append('exhausted')
+            self.add_health(self._energy, **context)
+            if not self.is_alive:
+                context[NARRATOR].add([self.first_name, 'dies of exhaustion'])
+            self._energy = 0
+        else:
+            if 'exhausted' in self.status:
+                self.status.remove('exhausted')
 
     @property
     def health(self):
         return max(0, self._health)
 
-    def add_health(self, amount):
-        self._health = max(0, min(1, self._health + amount))
+    def add_health(self, amount, **context):
+        self._health = min(1, self._health + amount)
+        if self._health <= 0:
+            self.die(**context)
 
     @property
     def sleep(self):
         return max(0, self._sleep)
 
-    def add_sleep(self, amount):
-        self._sleep = max(0, min(1, self._sleep + amount))
+    @property
+    def hunger(self):
+        return 1 - self._stomach
+
+    @property
+    def stomach(self):
+        return self._stomach
+
+    def add_sleep(self, amount, **context):
+        self._sleep = min(1, self._sleep + amount)
+        if self._sleep < 0:
+            if 'sleepy' not in self.status:
+                context[NARRATOR].add([self.first_name, 'needs', 'to sleep'])
+                self.status.append('sleepy')
+            self.add_energy(self._sleep)
+            self._sleep = 0
+        else:
+            if 'sleepy' in self.status:
+                self.status.remove('sleepy')
+
+    def consume_nutriments(self, value, **context):
+        self._stomach += value
+        if self._stomach < 0:
+            if 'hungry' not in self.status:
+                context[NARRATOR].add([self.first_name, 'needs', 'to eat'])
+                self.status.append('hungry')
+            self.add_energy(self._stomach, **context)
+            self._stomach = 0
+        else:
+            if 'hungry' in self.status:
+                self.status.remove('hungry')
 
     def relationship(self, other_player):
         if other_player not in self.relationships:
@@ -67,13 +110,6 @@ class Player:
         return self.relationships[other_player]
 
     def think(self, **context):
-        if SLEEPING in self.status:
-            self.status.remove(SLEEPING)
-        else:
-            upkeep = max(random(), random()) * 0.2
-            self.add_energy(min(upkeep, self.sleep))
-            self.add_sleep(-upkeep)
-
         if self.sleep < 0:
             if context[MAP].neighbors_count(self) > 1 and self.energy > MOVE_COST:
                 self.strategy = flee_strat
@@ -90,6 +126,21 @@ class Player:
             self.strategy = strats[0]
             # context[NARRATOR].new([
             #     self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in morning_strategies]}'])
+
+    def upkeep(self, **context):
+        energy_upkeep = -random() * 0.1  # loses energy while being awake
+        sleep_upkeep = max(random(), random()) * 0.2
+        food_upkeep = max(random(), random()) * 0.2
+        if SLEEPING in self.status:
+            self.status.remove(SLEEPING)
+            sleep_upkeep = 0
+            energy_upkeep = 0
+            food_upkeep /= 2
+        energy_upkeep += min(sleep_upkeep, self.sleep)  # compensates with sleep reserves
+        energy_upkeep += min(food_upkeep, self.stomach)  # compensates with food reserves
+        self.add_sleep(-sleep_upkeep, **context)  # consumes sleep reserves
+        self.consume_nutriments(-food_upkeep, **context)  # consumes food reserves
+        self.add_energy(energy_upkeep + sleep_upkeep + food_upkeep, **context)
 
     def act(self, **context):
         context[NARRATOR].cut()
@@ -121,7 +172,7 @@ class Player:
         if out is None:
             context[NARRATOR].replace('hides and rests', 'rests')
         else:
-            context[NARRATOR].add([self.first_name, 'goes hunting', f'at {out}'])
+            context[NARRATOR].add([self.first_name, 'searches for players', f'at {out}'])
 
     def go_to(self, area, **context):
         if area != self.current_area and self.energy >= MOVE_COST:
@@ -309,6 +360,23 @@ class Player:
             context[MAP].remove_loot(weapon, self.current_area)
             self.get_weapon(weapon, **context)
 
+    def forage(self, **context):
+        food: Food = context[MAP].get_forage(self)
+        if food is None:
+            context[NARRATOR].add([self.name, 'searches for food', 'but does not find anything edible'])
+            return
+        else:
+            if food.value <= self.hunger:
+                context[NARRATOR].add([self.name, 'finds'])
+                self.eat(food, **context)
+            else:
+                context[NARRATOR].add([self.name, 'finds', 'some', food.name, f'at {self.current_area}'])
+                self.equipement.append(food)
+
+    def eat(self, food: Food, **context):
+        context[NARRATOR].add([self.name, 'eats', 'some', food.name, f'at {self.current_area}'])
+        self.consume_nutriments(food.value)
+
     def damage(self, **context):
         return self.weapon.damage_mult * random() / 2
 
@@ -316,11 +384,8 @@ class Player:
         if self.health < 0:
             print(f'{self.first_name} is already dead')
             return False
-        self.add_health(-damage)
-        if self.health <= 0:
-            self.die(**context)
-            return True
-        return False
+        self.add_health(-damage, **context)
+        return self.health <= 0
 
     def die(self, **context):
         self.drop_weapon(False, **context)
@@ -375,6 +440,10 @@ loot_strat = Strategy(
     lambda x, **c: (x.energy - 0.3) * (2 if x.weapon.damage_mult == 1 else 0.2) *
                    x.estimate(c[MAP].loot[x.current_area], **c),
     lambda x, **c: x.loot(**c))
+forage_strat = Strategy(
+    'forage',
+    lambda x, **c: x.hunger * c[MAP].forage_potential(x) / c[MAP].neighbors_count(x),
+    lambda x, **c: x.forage(**c))
 craft_strat_1 = Strategy(
     'craft',
     lambda x, **c: (x.energy - 0.2) * (2 - x.weapon.damage_mult) * (c[MAP].neighbors_count(x) < 2),
@@ -386,13 +455,13 @@ craft_strat_2 = Strategy(
     lambda x, **c: x.craft(**c))
 
 start_strategies = [
-    flee_strat, fight_strat, loot_strat,
+    flee_strat, fight_strat, loot_strat, forage_strat,
 ]
 
 morning_strategies = [
-    hide_strat, flee_strat, fight_strat, loot_strat, craft_strat_1,
+    hide_strat, flee_strat, fight_strat, loot_strat, craft_strat_1, forage_strat,
 ]
 
 night_strategies = [
-    hide_strat, flee_strat, loot_strat, craft_strat_2,
+    hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat,
 ]

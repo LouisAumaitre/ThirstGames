@@ -78,6 +78,10 @@ class Narrator:
             if place and place[0] in self.current_sentence:
                 sentence.remove(place[0])
 
+            # avoid repetition of verb
+            if sentence[1] in sentence and sentence[1] in self.current_sentence and sentence[0] == 'and':
+                sentence.remove(sentence[1])
+
             self.current_sentence.extend(sentence)
         else:
             self.current_sentence.append(sentence)
