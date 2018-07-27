@@ -311,16 +311,34 @@ class Player(Positionable):
         context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
         self.get_item(item, **context)
 
+    @property
+    def has_crafting_tool(self):
+        if self.weapon.name in ['knife', 'hatchet']:
+            return self.weapon
+        tools = [i for i in self.equipment if i.name in ['knife', 'hatchet']]
+        if len(tools):
+            return tools[0]
+        return None
+
     def craft(self, **context):
         self.check_bag(**context)
+        self.craft_weapon(**context)
+
+    def craft_weapon(self, **context):
+        crafting_tool = self.has_crafting_tool
         name = choice(['spear', 'club'])
-        weapon = Weapon(name, 1 + random())
+        weapon = Weapon(name, 1 + random() + (random() if crafting_tool is not None else 0))
         if weapon.damage_mult > self.weapon.damage_mult:
+            description = weapon.long_name
             if weapon.name == self.weapon.name:
-                self.weapon.long_name.replace('\'s', '\'s old')
-                context[NARRATOR].add([self.first_name, 'crafts', f'a better {weapon.name}', f'at {self.current_area}'])
+                self.weapon.long_name = f'{self.first_name}\'s old {self.weapon.name}'
+                description = f'a better {weapon.name}'
+            if crafting_tool is not None:
+                context[NARRATOR].add([
+                    self.first_name, 'crafts', description, f'with {self.his} {crafting_tool.name}',
+                    f'at {self.current_area}'])
             else:
-                context[NARRATOR].add([self.first_name, 'crafts', f'a {weapon.name}', f'at {self.current_area}'])
+                context[NARRATOR].add([self.first_name, 'crafts', description, f'at {self.current_area}'])
             self.get_weapon(weapon, **context)
         else:
             context[NARRATOR].add([
