@@ -326,6 +326,7 @@ class Player(Positionable):
 
     def craft_weapon(self, **context):
         crafting_tool = self.has_crafting_tool
+        with_tool = '' if crafting_tool is None else f'with {self.his} {crafting_tool.name}'
         name = choice(['spear', 'club'])
         weapon = Weapon(name, 1 + random() + (random() if crafting_tool is not None else 0))
         if weapon.damage_mult > self.weapon.damage_mult:
@@ -333,12 +334,7 @@ class Player(Positionable):
             if weapon.name == self.weapon.name:
                 self.weapon.long_name = f'{self.first_name}\'s old {self.weapon.name}'
                 description = f'a better {weapon.name}'
-            if crafting_tool is not None:
-                context[NARRATOR].add([
-                    self.first_name, 'crafts', description, f'with {self.his} {crafting_tool.name}',
-                    f'at {self.current_area}'])
-            else:
-                context[NARRATOR].add([self.first_name, 'crafts', description, f'at {self.current_area}'])
+            context[NARRATOR].add([self.first_name, 'crafts', description, with_tool, f'at {self.current_area}'])
             self.get_weapon(weapon, **context)
         else:
             context[NARRATOR].add([
@@ -421,8 +417,9 @@ class Player(Positionable):
         other_weapon = f'with {other_player.his} {other_player.weapon.name}'
         other_stuff = []
         area = f'at {self.current_area}'
-        surprise = f'in {other_player.his} sleep' if SLEEPING in other_player.status else 'by surprise'
-        surprise_mult = 2 if SLEEPING in other_player.status else 1 + self.wisdom - other_player.wisdom
+        surprise = f'in {other_player.his} sleep' if SLEEPING in other_player.status else (
+            'by surprise' if random() > other_player.wisdom / 2 else '')
+        surprise_mult = 2 if SLEEPING in other_player.status else (1.5 if surprise == 'by surprise' else 1)
 
         if self.hit(other_player, surprise_mult, **context):
             context[NARRATOR].add([
@@ -520,11 +517,11 @@ class Player(Positionable):
         return self.weapon.damage_mult * random() / 2
 
     def be_damaged(self, damage, **context) -> bool:
-        if self.health < 0:
+        if not self.is_alive:
             print(f'{self.first_name} is already dead')
             return False
         self.add_health(-damage, **context)
-        return self.health <= 0
+        return not self.is_alive
 
     def die(self, **context):
         self.drop_weapon(False, **context)
@@ -572,7 +569,7 @@ flee_strat = Strategy(
 attack_strat = Strategy(
     'fight',
     lambda x, **c: x.health * min(x.energy, x.stomach, x.sleep) *
-                   x.weapon.damage_mult / c[MAP].neighbors_count(x),
+                   x.weapon.damage_mult / c[MAP].neighbors_count(x),  # * (len(c[PLAYERS]) < 4),
     lambda x, **c: x.attack_at_random(**c))
 fight_strat = Strategy(
     'fight',

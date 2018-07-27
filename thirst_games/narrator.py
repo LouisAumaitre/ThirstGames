@@ -40,7 +40,7 @@ class Narrator:
             'trident': ['stabs'],
             'spear': ['stabs'],
             'bare hands': ['strangle'],
-            'club': ['knocks'],
+            'club': [],
         }
         for key, value in self.kill_word.items():
             value.append('kills')
@@ -62,19 +62,20 @@ class Narrator:
     def tell(self, filters: Optional[List[str]]=None):
         if filters is None:
             filters = []
+        filters.append('')
         self.cut()
         while len(self.text):
             line = self.text.pop(0)
             if not len(line):
                 continue
             line_str = ''
-            for e in line:
-                if e in filters:
+            for phrase in line:
+                if phrase in filters:
                     continue
-                if e == ',':
+                if phrase == ',':
                     line_str = line_str[:-1]
-                e = self.kill_switch(e, line)
-                line_str += self.switch(e) + ' '
+                phrase = self.kill_switch(phrase, line)
+                line_str += self.switch(phrase) + ' '
             if line_str[-2] not in ['=', '-', '.']:
                 line_str = line_str[:-1] + '.'
             print(line_str)

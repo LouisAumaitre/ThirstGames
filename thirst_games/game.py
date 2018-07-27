@@ -102,4 +102,7 @@ def death(dead_player, **context):
         context[PLAYERS].remove(dead_player)
         context[MAP].remove_player(dead_player)
     except ValueError as e:
-        raise ValueError(dead_player.first_name) from e
+        raise ValueError(
+            f'{dead_player.first_name} has {dead_player.health}hp, is_alive={dead_player.is_alive}, '
+            f'is_in_players={dead_player in context[PLAYERS]}'
+        ) from e
