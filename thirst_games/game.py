@@ -91,7 +91,7 @@ class Game:
     def status(self):
         l_name = max([len(p.name) for p in self.alive_players])
         for p in self.alive_players:
-            bag = str([e.name for e in p.equipement]).replace('\'', '')
+            bag = str([str(e) for e in p._equipment]).replace('\'', '')
             print(f'- {p.name:<{l_name}} {int(p.health * 100):>3}hp {int(p.energy * 100):>3}nrg '
                   f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm {p.weapon.name:<10} '
                   f'{p.current_area:<10} {bag}')

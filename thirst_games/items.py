@@ -5,6 +5,9 @@ class Item:
         if name[-1] == 's':
             self.long_name = name
 
+    def __str__(self):
+        return self.name
+
 
 class Weapon(Item):
     def __init__(self, name, damage_mult):
@@ -25,3 +28,6 @@ class Bag(Item):
     def __init__(self, content):
         Item.__init__(self, 'bag')
         self.content = content
+
+    def __str__(self):
+        return self.name + str([str(e) for e in self.content]).replace('\'', '')

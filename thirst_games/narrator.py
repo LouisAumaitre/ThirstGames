@@ -27,7 +27,7 @@ class Narrator:
         }
         self.kill_word = {
             'axe': ['decapitates'],
-            'sword': ['decapitates'],
+            'sword': ['decapitates', 'stabs'],
             'knife': ['stabs'],
             'trident': ['stabs'],
             'spear': ['stabs'],

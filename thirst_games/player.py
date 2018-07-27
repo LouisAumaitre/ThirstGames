@@ -25,7 +25,7 @@ class Player(Positionable):
         self._stomach = 1
         self.stealth = 0
         self.wisdom = 0.9
-        self.equipement: List[Item] = []
+        self._equipment: List[Item] = []
         self.status = []
 
         self.strategy = None
@@ -34,6 +34,18 @@ class Player(Positionable):
     @property
     def name(self):
         return self.first_name
+
+    @property
+    def bag(self):
+        bags = [e for e in self._equipment if isinstance(e, Bag)]
+        if not len(bags):
+            return None
+        return bags[0]
+
+    @property
+    def equipment(self):
+        bags = [e for e in self._equipment if isinstance(e, Bag)]
+        return [*[e for e in self._equipment if not isinstance(e, Bag)], *[e for b in bags for e in b.content]]
 
     @property
     def courage(self):
@@ -163,7 +175,7 @@ class Player(Positionable):
     def check_bag(self, **context):
         if 'unchecked bag' in self.status:
             self.status.remove('unchecked bag')
-            bags = [e for e in self.equipement if isinstance(e, Bag)]
+            bags = [e for e in self._equipment if isinstance(e, Bag)]
             if not len(bags):
                 return
             context[NARRATOR].new([
@@ -171,7 +183,7 @@ class Player(Positionable):
                 'finds', format_list([e.name for bag in bags for e in bag.content])])
             for i in range(1, len(bags)):
                 extra_bag = bags[i]
-                self.equipement.remove(extra_bag)
+                self._equipment.remove(extra_bag)
                 bags[0].content.extend(extra_bag.content)
 
     def flee(self, panic=False, **context):
@@ -314,7 +326,22 @@ class Player(Positionable):
             item.long_name = f'{self.first_name}\'s {item.name}'
             if 'unchecked bag' not in self.status:
                 self.status.append('unchecked bag')
-        self.equipement.append(item)
+            self._equipment.append(item)
+        else:
+            if self.bag is not None:
+                self.bag.content.append(item)
+            else:
+                self._equipment.append(item)
+
+    def remove_item(self, item, **context):
+        if item in self._equipment:
+            self._equipment.remove(item)
+            return
+        for b in [e for e in self._equipment if isinstance(e, Bag)]:
+            if item in b.content:
+                b.content.remove(item)
+                return
+        raise KeyError(f'no {item.name} in {self.name}\'s stash')
 
     def attack_at_random(self, **context):
         preys = [p for p in context[MAP].areas[self.current_area] if random() > p.stealth and p != self]
@@ -400,22 +427,22 @@ class Player(Positionable):
             else:
                 context[NARRATOR].add([self.name, 'finds', 'some', food.name, f'at {self.current_area}'])
                 food.value *= 2
-            self.equipement.append(food)  # some extras / all of it
+            self.get_item(food, **context)  # some extras / all of it
 
     @property
     def has_food(self):
-        return len([e for e in self.equipement if isinstance(e, Food)]) > 0
+        return len([e for e in self.equipment if isinstance(e, Food)]) > 0
 
     def dine(self, **context):
         self.check_bag(**context)
         if not self.has_food:
             context[NARRATOR].add([self.name, 'does not have', 'anything to eat'])
         else:
-            foods = [e for e in self.equipement if isinstance(e, Food)]
+            foods = [e for e in self.equipment if isinstance(e, Food)]
             foods.sort(key=lambda x: x.value)
             while self.hunger > 0 and len(foods):
                 meal = foods.pop()
-                self.equipement.remove(meal)
+                self.remove_item(meal)
                 self.eat(meal, quantifier=self.his, **context)
 
     def eat(self, food: Food, quantifier, **context):
@@ -434,7 +461,7 @@ class Player(Positionable):
 
     def die(self, **context):
         self.drop_weapon(False, **context)
-        for e in self.equipement:
+        for e in self._equipment:
             context[MAP].add_loot(e, self.current_area)
         context[DEATH](self, **context)
 
@@ -493,7 +520,7 @@ loot_strat = Strategy(
     lambda x, **c: x.loot(**c))
 loot_bag_strat = Strategy(
     'loot bag',
-    lambda x, **c: x.weapon.damage_mult * c[MAP].has_bags(x) * ('bag' not in [e.name for e in x.equipement]),
+    lambda x, **c: x.weapon.damage_mult * c[MAP].has_bags(x) * (x.bag is None),
     lambda x, **c: x.loot_bag(**c))
 loot_weapon_strat = Strategy(
     'loot weapon',
