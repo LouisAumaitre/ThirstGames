@@ -368,13 +368,28 @@ class Player(Positionable):
         else:
             if food.value <= self.hunger:
                 context[NARRATOR].add([self.name, 'finds'])
-                self.eat(food, **context)
+                self.eat(food, quantifier='some', **context)
             else:
                 context[NARRATOR].add([self.name, 'finds', 'some', food.name, f'at {self.current_area}'])
                 self.equipement.append(food)
 
-    def eat(self, food: Food, **context):
-        context[NARRATOR].add([self.name, 'eats', 'some', food.name, f'at {self.current_area}'])
+    @property
+    def has_food(self):
+        return len([e for e in self.equipement if isinstance(e, Food)]) > 0
+
+    def dine(self, **context):
+        if not self.has_food:
+            context[NARRATOR].add([self.name, 'does not have', 'anything to eat'])
+        else:
+            foods = [e for e in self.equipement if isinstance(e, Food)]
+            foods.sort(key=lambda x: x.value)
+            while self.hunger > 0 and len(foods):
+                meal = foods.pop()
+                self.equipement.remove(meal)
+                self.eat(meal, quantifier=self.his, **context)
+
+    def eat(self, food: Food, quantifier, **context):
+        context[NARRATOR].add([self.name, 'eats', quantifier, food.name, f'at {self.current_area}'])
         self.consume_nutriments(food.value)
 
     def damage(self, **context):
@@ -444,6 +459,10 @@ forage_strat = Strategy(
     'forage',
     lambda x, **c: x.hunger * c[MAP].forage_potential(x) / c[MAP].neighbors_count(x),
     lambda x, **c: x.forage(**c))
+dine_strat = Strategy(
+    'dine',
+    lambda x, **c: x.hunger * x.has_food / c[MAP].neighbors_count(x),
+    lambda x, **c: x.dine(**c))
 craft_strat_1 = Strategy(
     'craft',
     lambda x, **c: (x.energy - 0.2) * (2 - x.weapon.damage_mult) * (c[MAP].neighbors_count(x) < 2),
@@ -455,13 +474,13 @@ craft_strat_2 = Strategy(
     lambda x, **c: x.craft(**c))
 
 start_strategies = [
-    flee_strat, fight_strat, loot_strat, forage_strat,
+    flee_strat, fight_strat, loot_strat, forage_strat, dine_strat,
 ]
 
 morning_strategies = [
-    hide_strat, flee_strat, fight_strat, loot_strat, craft_strat_1, forage_strat,
+    hide_strat, flee_strat, fight_strat, loot_strat, craft_strat_1, forage_strat, dine_strat,
 ]
 
 night_strategies = [
-    hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat,
+    hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat,
 ]

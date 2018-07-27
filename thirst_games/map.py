@@ -65,10 +65,10 @@ class Map:
             Weapon('knife', 1 + random()),
             Weapon('knife', 1 + random()),
             Weapon('knife', 1 + random()),
-            Food('ration', 0.5 + random() / 2),
-            Food('ration', 0.5 + random() / 2),
-            Food('ration', 0.5 + random() / 2),
-            Food('ration', 0.5 + random() / 2),
+            Food('rations', 0.5 + random() / 2),
+            Food('rations', 0.5 + random() / 2),
+            Food('rations', 0.5 + random() / 2),
+            Food('rations', 0.5 + random() / 2),
             Item('bullshit item'),
         ]
 
