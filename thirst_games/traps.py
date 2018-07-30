@@ -103,4 +103,6 @@ class ExplosiveTrap(Trap):
             context[NARRATOR].new([player.first_name, 'blows up', 'on', f'{name}!'])
         else:
             context[NARRATOR].new([player.first_name, 'steps', 'on', f'{name}!'])
+            if not context[NARRATOR].has_stock:
+                context[NARRATOR].new([player.first_name, 'is', 'lightly wounded'])
             context[NARRATOR].apply_stock()
