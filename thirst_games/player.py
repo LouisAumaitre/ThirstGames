@@ -730,7 +730,7 @@ hide_strat = Strategy(
 flee_strat = Strategy(
     'flee',
     lambda x, **c: (x.energy > x.move_cost) * (
-        x.estimate_of_power(x.current_area, **c) / c[MAP].neighbors_count(x) - x.dangerosity(**c)) + 0.1,
+        x.estimate_of_power(x.current_area, **c) / min(c[MAP].neighbors_count(x), 6) - x.dangerosity(**c)) + 0.1,
     lambda x, **c: x.flee(**c))
 attack_strat = Strategy(
     'attack',
