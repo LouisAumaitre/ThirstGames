@@ -58,6 +58,9 @@ class Player(Positionable):
         bags = [e for e in self._equipment if isinstance(e, Bag)]
         return [*[e for e in self._equipment if not isinstance(e, Bag)], *[e for b in bags for e in b.content]]
 
+    def has_item(self, item_name):
+        return item_name in [i.name for i in self.equipment]
+
     @property
     def drops(self):
         stuff = copy(self._equipment)
@@ -322,12 +325,9 @@ class Player(Positionable):
         self.check_bag(**context)
         wounds = self.wounds
         if BLEEDING in wounds:
-            context[NARRATOR].add([self.first_name, 'stops', self.his, 'wounds', 'from bleeding'])
-            self.status.remove(BLEEDING)
+            self.patch_bleeding(**context)
         elif len(wounds):
-            pick_wound = choice(wounds)
-            context[NARRATOR].add([self.first_name, 'patches', self.his, pick_wound])
-            self.status.remove(pick_wound)
+            self.patch_wound(context, wounds)
         else:
             self.add_health(max(self.energy, random()) * (self.max_health - self.health))
             self.add_energy(max(self.sleep, random()) * (1 - self.energy))
@@ -336,6 +336,22 @@ class Player(Positionable):
         if self.current_area == START_AREA:
             if self.has_food and self.hunger > 0:
                 self.dine(**context)
+
+    def patch_wound(self, context, wounds):
+        tool = 'bandages' if self.has_item('bandages') else choice(['moss', 'cloth'])
+        if tool != 'bandages':
+            self._max_health *= 0.95
+            # TODO: infection
+        pick_wound = choice(wounds)
+        context[NARRATOR].add([self.first_name, 'patches', self.his, pick_wound, 'using', tool])
+        self.status.remove(pick_wound)
+
+    def patch_bleeding(self, **context):
+        tool = 'bandages' if self.has_item('bandages') else choice(['moss', 'cloth'])
+        if tool != 'bandages':
+            self._max_health *= 0.95
+        context[NARRATOR].add([self.first_name, 'stops', self.his, 'wounds', 'from bleeding', 'using', tool])
+        self.status.remove(BLEEDING)
 
     def go_to_sleep(self, **context):
         if self.energy < 0.2:

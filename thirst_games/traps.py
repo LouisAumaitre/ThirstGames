@@ -42,9 +42,8 @@ class Trap:
     def can_be_built(cls, player, **context) -> bool:
         if cls.requires_tools and not player.has_crafting_tool:
             return False
-        player_stuff = [i.name for i in player.equipment]
         for item in cls.ingredients:
-            if item not in player_stuff:
+            if not player.has_item(item):
                 return False
         if cls.areas != [] and player.current_area not in cls.areas:
             return False
