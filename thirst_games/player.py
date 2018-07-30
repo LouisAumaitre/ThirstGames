@@ -25,6 +25,7 @@ class Player(Positionable):
         self.relationships: Dict[Player, Relationship] = {}
         self.busy = False
         self._health = 1
+        self._max_health = 1
         self._energy = 1
         self._sleep = 1
         self._stomach = 1
@@ -32,6 +33,7 @@ class Player(Positionable):
         self.wisdom = 0.9
         self._equipment: List[Item] = []
         self.status = []
+        self._rage = 0
 
         self.strategy = None
         self.weapon = HANDS
@@ -61,7 +63,7 @@ class Player(Positionable):
 
     @property
     def courage(self):
-        return self.health * self.energy
+        return self.health * self.energy + self._rage
 
     @property
     def is_alive(self):
@@ -93,11 +95,15 @@ class Player(Positionable):
     def health(self):
         return max(0, self._health)
 
-    def add_health(self, amount, **context):
-        max_hp = 1
+    @property
+    def max_health(self):
+        max_hp = self._max_health
         if BELLY_WOUND in self.status:
-            max_hp = self.health
-        self._health = min(max_hp, self._health + amount)
+            max_hp = min(self.health, max_hp)
+        return max_hp
+
+    def add_health(self, amount, **context):
+        self._health = min(self.max_health, self._health + amount)
         if self._health <= 0:
             self.die(**context)
 
@@ -193,6 +199,7 @@ class Player(Positionable):
         if BLEEDING in self.status:
             if self.be_damaged(max(0.05, self.health/5), **context):
                 context[NARRATOR].add([self.first_name, 'bleeds', 'to death'])
+        self._rage = 0
 
     def act(self, **context):
         if FLEEING in self.status:
@@ -300,7 +307,7 @@ class Player(Positionable):
             context[NARRATOR].add([self.first_name, 'patches', self.his, pick_wound])
             self.status.remove(pick_wound)
         else:
-            self.add_health(max(self.energy, random()) * (1 - self.health))
+            self.add_health(max(self.energy, random()) * (self.max_health - self.health))
             self.add_energy(max(self.sleep, random()) * (1 - self.energy))
             context[NARRATOR].add([self.first_name, 'rests', f'at {self.current_area}'])
 
@@ -521,9 +528,9 @@ class Player(Positionable):
         other_weapon = f'with {other_player.his} {other_player.weapon.name}'
         other_stuff = []
         area = f'at {self.current_area}'
+        surprise_mult = 2 if SLEEPING in other_player.status else (1.5 if random() > other_player.wisdom / 2 else 1)
         surprise = f'in {other_player.his} sleep' if SLEEPING in other_player.status else (
-            'by surprise' if random() > other_player.wisdom / 2 else '')
-        surprise_mult = 2 if SLEEPING in other_player.status else (1.5 if surprise == 'by surprise' else 1)
+            'by surprise' if surprise_mult > 1 else '')
 
         if self.hit(other_player, surprise_mult, **context):
             context[NARRATOR].add([
@@ -531,35 +538,30 @@ class Player(Positionable):
             other_stuff = other_player.drops
         else:
             while True:
+                context[NARRATOR].new([self.first_name, verb, other_player.first_name, area, weapon])
+                context[NARRATOR].apply_stock()
+                verb = 'fights'
+                area = ''
                 if random() > other_player.courage:
-                    context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon])
-                    context[NARRATOR].apply_stock()
                     other_stuff = [other_player.weapon]
                     other_player.flee(True, **context)
                     other_stuff = other_stuff if other_player.weapon == HANDS else []
                     break
                 if other_player.hit(self, **context):
-                    context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon])
-                    context[NARRATOR].apply_stock()
                     context[NARRATOR].add(['and'])
-                    context[NARRATOR].add([
-                        other_player.first_name, 'kills', self.him, 'in self-defense', other_weapon])
+                    context[NARRATOR].add([other_player.first_name, 'kills', self.him, 'in self-defense', other_weapon])
                     self_stuff = self.drops
                     break
-                verb.replace('attacks', 'fights')
+                context[NARRATOR].add([other_player.first_name, 'fights back', other_weapon])
+                context[NARRATOR].apply_stock()
                 if random() > self.courage:
-                    context[NARRATOR].add([self.first_name, 'attacks', other_player.first_name, area, weapon])
-                    context[NARRATOR].add([
-                        other_player.first_name, 'fights back', other_weapon])
-                    context[NARRATOR].apply_stock()
                     context[NARRATOR].add(['and'])
                     self_stuff = [self.weapon]
                     self.flee(True, **context)
                     self_stuff = self_stuff if self.weapon == HANDS else []
                     break
                 if self.hit(other_player, **context):
-                    context[NARRATOR].add([
-                        self.first_name, verb, 'and', 'kills', other_player.first_name, area, weapon])
+                    context[NARRATOR].new([self.first_name, verb, 'and', 'kills', other_player.first_name, weapon])
                     other_stuff = other_player.drops
                     break
         self.pillage(other_stuff, **context)
@@ -567,7 +569,16 @@ class Player(Positionable):
 
     def hit(self, target, mult=1, **context) -> bool:
         self.add_energy(-0.1)
-        return target.be_damaged(self.damage(**context) * mult, attacker_name=self.first_name, **context)
+        hit_chance = mult if mult > 1 else 0.6
+        if ARM_WOUND in self.status:
+            hit_chance -= 0.2
+        if random() < hit_chance:
+            self._rage += 0.1
+            return target.be_damaged(self.damage(**context) * mult, attacker_name=self.first_name, **context)
+        else:  # Miss
+            self._rage -= 0.1
+            context[NARRATOR].stock([self.first_name, 'misses'])
+            return False
 
     def damage(self, **context):
         mult = 1
@@ -576,6 +587,7 @@ class Player(Positionable):
         return mult * self.weapon.damage_mult * random() / 2
 
     def be_damaged(self, damage, attacker_name=None, **context) -> bool:
+        self._rage += random() / 4 - damage
         if not self.is_alive:
             print(f'{self.first_name} is already dead')
             return False
@@ -629,9 +641,13 @@ flee_strat = Strategy(
     ])) * (c[MAP].neighbors_count(x) - 1 > max(x.courage, 1 - x.wisdom) * 10) + 0.1,
     lambda x, **c: x.flee(**c))
 attack_strat = Strategy(
-    'fight',
+    'attack',
     lambda x, **c: x.health * min(x.energy, x.stomach, x.sleep) *
                    x.weapon.damage_mult / c[MAP].neighbors_count(x),  # * (len(c[PLAYERS]) < 4),
+    lambda x, **c: x.attack_at_random(**c))
+hunt_player_strat = Strategy(
+    'hunt player',
+    lambda x, **c: x.health * x.weapon.damage_mult * (len(c[PLAYERS]) < 4),
     lambda x, **c: x.attack_at_random(**c))
 fight_strat = Strategy(
     'fight',
@@ -676,8 +692,9 @@ start_strategies = [
 
 morning_strategies = [
     hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
+    hunt_player_strat,
 ]
 
 night_strategies = [
-    hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat,
+    hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat,
 ]

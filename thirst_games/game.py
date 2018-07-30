@@ -44,10 +44,16 @@ class Game:
         while len(self.alive_players) > 1 and day < 10:
             if day != 1:
                 self.launch(**{TIME: MORNING})
+            if len(self.alive_players) < 2:
+                break
             self.narrator.new(f'-- DAY {day} afternoon --')
             self.launch(**{TIME: AFTERNOON})
+            if len(self.alive_players) < 2:
+                break
             self.narrator.new(f'-- NIGHT {day} --')
             self.launch(**{TIME: NIGHT})
+            if len(self.alive_players) < 2:
+                break
             day += 1
             self.narrator.tell()
             self.status()
