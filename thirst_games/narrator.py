@@ -1,6 +1,8 @@
 from random import choice
 from typing import List, Optional, Tuple
 
+from thirst_games.weapons import weapon_kill_word
+
 
 def format_list(names: List[str]):
     if not len(names):
@@ -36,17 +38,6 @@ class Narrator:
             'at the hill': 'on the hill',
             '_and_': 'and',
         }
-        self.kill_word = {
-            'axe': ['decapitates'],
-            'sword': ['decapitates', 'stabs'],
-            'knife': ['stabs'],
-            'trident': ['stabs'],
-            'spear': ['stabs'],
-            'bare hands': ['strangle'],
-            'club': [],
-        }
-        for key, value in self.kill_word.items():
-            value.append('kills')
 
     def switch(self, phrase: str) -> str:
         if phrase in self._switch:
@@ -58,8 +49,8 @@ class Narrator:
             tools = [word.split(' ')[-1] for word in full_sentence if word.startswith('with ')]
             if len(tools) == 1:
                 tool = tools[0]
-                if tool in self.kill_word:
-                    return choice(self.kill_word[tool])
+                if tool in weapon_kill_word:
+                    return choice(weapon_kill_word[tool])
         return phrase
 
     def tell(self, filters: Optional[List[str]]=None):

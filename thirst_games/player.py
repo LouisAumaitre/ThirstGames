@@ -6,6 +6,7 @@ from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, S
 from thirst_games.items import HANDS, Weapon, Item, Food, Bag
 from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
+from thirst_games.weapons import get_weapon_wound, get_weapon_blood
 
 FLEEING = 'fleeing'
 AMBUSH = 'ambush'
@@ -612,25 +613,42 @@ class Player(Positionable):
             mult -= 0.2
         return mult * self.weapon.damage_mult * random() / 2
 
-    def be_damaged(self, damage, attacker_name=None, **context) -> bool:
+    def be_damaged(self, damage, weapon='default', attacker_name=None, **context) -> bool:
         self._rage += random() / 4 - damage
         if not self.is_alive:
             print(f'{self.first_name} is already dead')
             return False
         self.add_health(-damage, **context)
-        if self.is_alive and damage > 0.3 and random() > 0.5:
-            possible_wounds = [w for w in [ARM_WOUND, LEG_WOUND, BELLY_WOUND, HEAD_WOUND] if w not in self.status]
-            wound = choice(possible_wounds)
-            self.status.append(wound)
-            self.status.append(BLEEDING)
-            if attacker_name is None:
-                context[NARRATOR].stock([
-                    self.first_name, 'suffers', 'an' if wound[0] in ['a', 'e', 'i', 'o', 'u', 'y'] else 'a', wound])
-            else:
-                element = wound.split(' ')[0]
-                context[NARRATOR].stock([attacker_name, 'wounds', self.him, 'at the', element])
-        elif self.is_alive and attacker_name is not None and damage > 0.2:
-            context[NARRATOR].stock([attacker_name, 'wounds', self.him])
+        if self.is_alive and damage > 0.3:
+            wound_element = get_weapon_wound(weapon)
+            bleeding = get_weapon_blood(weapon)
+            wound = wound_element + ' wound' if wound_element is not None else None
+            if wound and bleeding:
+                self.status.append(wound)
+                self.status.append(BLEEDING)
+                if attacker_name is None:
+                    context[NARRATOR].stock([
+                        self.first_name, 'suffers', 'a bleeding', wound])
+                else:
+                    element = wound.split(' ')[0]
+                    context[NARRATOR].stock([attacker_name, 'wounds', self.him, 'at the', element])
+            elif wound:
+                self.status.append(wound)
+                if attacker_name is None:
+                    context[NARRATOR].stock([
+                        self.first_name, 'suffers', 'an' if wound[0] in ['a', 'e', 'i', 'o', 'u', 'y'] else 'a', wound])
+                else:
+                    element = wound.split(' ')[0]
+                    context[NARRATOR].stock([attacker_name, 'wounds', self.him, 'at the', element])
+            elif bleeding:
+                self.status.append(wound)
+                self.status.append(BLEEDING)
+                if attacker_name is None:
+                    context[NARRATOR].stock([
+                        self.first_name, 'suffers', 'a bleeding wound'])
+                else:
+                    element = wound.split(' ')[0]
+                    context[NARRATOR].stock([attacker_name, 'wounds', self.him])
         return not self.is_alive
 
     def die(self, **context):

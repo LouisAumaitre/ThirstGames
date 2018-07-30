@@ -10,7 +10,6 @@ from thirst_games.narrator import Narrator, format_list
 class Game:
     def __init__(self, players: list):
         self.players = players
-        self.alive_players = players
         self.map = Map()
         self.narrator = Narrator()
         for p in self.players:
@@ -18,6 +17,10 @@ class Game:
             for p2 in self.players:
                 if p != p2 and p.district == p2.district:
                     p.relationship(p2).friendship += 0.5
+
+    @property
+    def alive_players(self):
+        return [p for p in self.players if p.is_alive]
 
     def run(self):
         day = 1
@@ -59,6 +62,7 @@ class Game:
             self.status()
             self.narrator.new(f'\n== DAY {day} morning ==')
         if len(self.alive_players) == 1:
+            self.narrator.tell()
             print(f'{self.alive_players[0].name} wins the Hunger Games!')
 
     def launch(self, **kwargs):
@@ -92,7 +96,6 @@ class Game:
         #         print(f'miss {i}/{len(players)} ({players[i].name})')
         for p in players:
             p.busy = False
-        self.alive_players = [p for p in self.players if p.is_alive]
 
     def status(self):
         l_name = max([len(p.name) for p in self.alive_players])
