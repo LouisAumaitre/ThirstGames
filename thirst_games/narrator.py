@@ -1,8 +1,10 @@
 from random import choice
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 def format_list(names: List[str]):
+    if not len(names):
+        return ''
     unique_names = list(set(names))
     unique_names.sort()
     amount_by_name = {name: names.count(name) for name in unique_names}
@@ -25,6 +27,7 @@ class Narrator:
         self.current_sentence: List[str] = []
         self.active_subject = ''
         self.text: List[List[str]] = []
+        self._stock: List[Tuple(str, int)] = []
         self._switch = {
             'at the ruins': 'in the ruins',
             'at the plain': 'in the plain',
@@ -80,7 +83,7 @@ class Narrator:
                 line_str = line_str[:-1] + '.'
             print(line_str)
 
-    def add(self, sentence):
+    def _add(self, sentence):
         if isinstance(sentence, list):
             # avoid repetition of subject
             if sentence[0] == self.active_subject:
@@ -111,6 +114,9 @@ class Narrator:
         else:
             self.current_sentence.append(sentence)
 
+    def add(self, sentence):
+        self._add(sentence)
+
     def comma(self):
         if len(self.current_sentence):
             self.current_sentence.append(',')
@@ -132,3 +138,11 @@ class Narrator:
 
     def remove(self, to_remove):
         self.current_sentence.remove(to_remove)
+
+    def stock(self, to_stock):
+        self._stock.append(to_stock)
+
+    def apply_stock(self):
+        for s in self._stock:
+            self._add(s)
+        self._stock.clear()

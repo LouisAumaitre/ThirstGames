@@ -10,6 +10,10 @@ from thirst_games.narrator import format_list
 MOVE_COST = 0.3
 
 FLEEING = 'fleeing'
+ARM_WOUND = 'arm wound'
+LEG_WOUND = 'leg wound'
+BELLY_WOUND = 'belly wound'
+HEAD_WOUND = 'head wound'
 
 
 class Player(Positionable):
@@ -397,7 +401,7 @@ class Player(Positionable):
 
     def hit(self, target, mult=1, **context) -> bool:
         self.add_energy(-0.1)
-        return target.be_damaged(self.damage(**context) * mult, **context)
+        return target.be_damaged(self.damage(**context) * mult, attacker_name=self.first_name, **context)
 
     def fight(self, other_player, **context):
         self.reveal()
@@ -429,12 +433,15 @@ class Player(Positionable):
             while True:
                 if random() > other_player.courage:
                     context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon])
+                    context[NARRATOR].apply_stock()
                     other_stuff = [other_player.weapon]
                     other_player.flee(True, **context)
                     other_stuff = other_stuff if other_player.weapon == HANDS else []
                     break
                 if other_player.hit(self, **context):
-                    context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon, 'and'])
+                    context[NARRATOR].add([self.first_name, verb, other_player.first_name, area, weapon])
+                    context[NARRATOR].apply_stock()
+                    context[NARRATOR].add(['and'])
                     context[NARRATOR].add([
                         other_player.first_name, 'kills', self.him, 'in self-defense', other_weapon])
                     self_stuff = self.drops
@@ -443,7 +450,9 @@ class Player(Positionable):
                 if random() > self.courage:
                     context[NARRATOR].add([self.first_name, 'attacks', other_player.first_name, area, weapon])
                     context[NARRATOR].add([
-                        other_player.first_name, 'fights back', other_weapon, 'and'])
+                        other_player.first_name, 'fights back', other_weapon])
+                    context[NARRATOR].apply_stock()
+                    context[NARRATOR].add(['and'])
                     self_stuff = [self.weapon]
                     self.flee(True, **context)
                     self_stuff = self_stuff if self.weapon == HANDS else []
@@ -516,11 +525,21 @@ class Player(Positionable):
     def damage(self, **context):
         return self.weapon.damage_mult * random() / 2
 
-    def be_damaged(self, damage, **context) -> bool:
+    def be_damaged(self, damage, attacker_name=None, **context) -> bool:
         if not self.is_alive:
             print(f'{self.first_name} is already dead')
             return False
         self.add_health(-damage, **context)
+        if self.is_alive and damage > 0.3 and random() > 0.5:
+            possible_wounds = [w for w in [ARM_WOUND, LEG_WOUND, BELLY_WOUND, HEAD_WOUND] if w not in self.status]
+            wound = choice(possible_wounds)
+            self.status.append(wound)
+            if attacker_name is None:
+                context[NARRATOR].stock([
+                    self.first_name, 'suffers', 'an' if wound[0] in ['a', 'e', 'i', 'o', 'u', 'y'] else 'a', wound])
+            else:
+                element = wound.split(' ')[0]
+                context[NARRATOR].stock([attacker_name, 'wounds', self.him, 'at the', element])
         return not self.is_alive
 
     def die(self, **context):

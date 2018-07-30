@@ -94,7 +94,7 @@ class Game:
             bag = str([str(e) for e in p._equipment]).replace('\'', '')
             print(f'- {p.name:<{l_name}} {int(p.health * 100):>3}hp {int(p.energy * 100):>3}nrg '
                   f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm {p.weapon.name:<10} '
-                  f'{p.current_area:<10} {bag}')
+                  f'{p.current_area:<10} {bag}, {format_list(p.status)}')
 
 
 def death(dead_player, **context):
