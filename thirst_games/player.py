@@ -6,6 +6,7 @@ from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, S
 from thirst_games.items import HANDS, Weapon, Item, Food, Bag
 from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
+from thirst_games.traps import can_build_any_trap, build_any_trap
 from thirst_games.weapons import get_weapon_wound, get_weapon_blood
 
 FLEEING = 'fleeing'
@@ -792,6 +793,10 @@ craft_strat_2 = Strategy(
     lambda x, **c: (x.energy - 0.2) * (x.weapon.damage_mult < 2) *
                    (2 - x.weapon.damage_mult) / c[MAP].neighbors_count(x),
     lambda x, **c: x.craft(**c))
+trap_strat = Strategy(
+    'build trap',
+    lambda x, **c: 6 * (can_build_any_trap(x, **c)),
+    lambda x, **c: build_any_trap(x, **c))
 
 start_strategies = [
     flee_strat, fight_strat, loot_bag_strat, loot_weapon_strat,
@@ -799,10 +804,10 @@ start_strategies = [
 
 morning_strategies = [
     hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
-    hunt_player_strat, ambush_strat, loot_cornucopea_strat,
+    hunt_player_strat, ambush_strat, loot_cornucopea_strat, trap_strat,
 ]
 
 night_strategies = [
     hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat, ambush_strat,
-    loot_cornucopea_strat,
+    loot_cornucopea_strat, trap_strat,
 ]

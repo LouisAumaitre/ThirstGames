@@ -79,6 +79,7 @@ class Map:
             Weapon('knife', 1 + random()),
             Weapon('knife', 1 + random()),
         ]
+        self.traps = {area_name: [] for area_name in self.areas.keys()}
         for i in range(5):
             self.loot[START_AREA].append(random_bag())
         self.test = False

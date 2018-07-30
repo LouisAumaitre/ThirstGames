@@ -29,3 +29,4 @@ game = Game([
 ])
 
 game.run()
+print(game.map.test)
