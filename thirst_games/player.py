@@ -2,7 +2,7 @@ from copy import copy
 from random import random, choice
 from typing import Dict, List, Union, Optional
 
-from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER, DAY
+from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER
 from thirst_games.items import HANDS, Weapon, Item, Food, Bag
 from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
@@ -128,7 +128,7 @@ class Player(Positionable):
 
     @property
     def wounds(self):
-        wounds = [w for w in self.status if 'wound' in w]
+        wounds = [w for w in self.status if w.find('wound') != -1]
         if BLEEDING in self.status:
             wounds.append(BLEEDING)
         return wounds
@@ -310,6 +310,8 @@ class Player(Positionable):
 
     def reveal(self):
         self.stealth = 0
+        if AMBUSH in self.status:
+            self.status.remove(AMBUSH)
 
     def rest(self, **context):
         if self.current_area != START_AREA:
@@ -645,7 +647,8 @@ class Player(Positionable):
             hit_chance -= 0.2
         if random() < hit_chance:
             self._rage += 0.1
-            return target.be_damaged(self.damage(**context) * mult, attacker_name=self.first_name, **context)
+            return target.be_damaged(
+                self.damage(**context) * mult, weapon=self.weapon.name, attacker_name=self.first_name, **context)
         else:  # Miss
             self._rage -= 0.1
             context[NARRATOR].stock([self.first_name, 'misses'])
@@ -667,31 +670,31 @@ class Player(Positionable):
             wound_element = get_weapon_wound(weapon)
             bleeding = get_weapon_blood(weapon)
             wound = wound_element + ' wound' if wound_element is not None else None
-            if wound and bleeding:
+            if wound is not None and bleeding:
                 self.status.append(wound)
                 self.status.append(BLEEDING)
                 if attacker_name is None:
                     context[NARRATOR].stock([
                         self.first_name, 'suffers', 'a bleeding', wound])
                 else:
-                    element = wound.split(' ')[0]
-                    context[NARRATOR].stock([attacker_name, 'wounds', self.him, 'at the', element])
-            elif wound:
+                    context[NARRATOR].stock([attacker_name, 'wounds', self.him, 'deeply', 'at the', wound_element])
+            elif wound is not None:
                 self.status.append(wound)
                 if attacker_name is None:
                     context[NARRATOR].stock([
                         self.first_name, 'suffers', 'an' if wound[0] in ['a', 'e', 'i', 'o', 'u', 'y'] else 'a', wound])
                 else:
-                    element = wound.split(' ')[0]
-                    context[NARRATOR].stock([attacker_name, 'wounds', self.him, 'at the', element])
+                    context[NARRATOR].stock([attacker_name, 'wounds', self.him, 'at the', wound_element])
             elif bleeding:
-                self.status.append(wound)
                 self.status.append(BLEEDING)
                 if attacker_name is None:
                     context[NARRATOR].stock([
                         self.first_name, 'suffers', 'a bleeding wound'])
                 else:
-                    context[NARRATOR].stock([attacker_name, 'wounds', self.him])
+                    context[NARRATOR].stock([attacker_name, 'wounds', self.him, 'deeply'])
+            if wound is not None:
+                self._max_health *= 0.9
+
         return not self.is_alive
 
     def die(self, **context):
