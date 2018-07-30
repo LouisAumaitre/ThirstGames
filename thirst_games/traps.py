@@ -3,6 +3,7 @@ from typing import Type
 from random import random
 
 from thirst_games.constants import NARRATOR, PANIC, MAP
+from thirst_games.map import START_AREA
 
 
 class Trap:
@@ -50,31 +51,6 @@ class Trap:
         return True
 
 
-def build_trap(player, trap_class: Type[Trap], **context):
-    player.reveal()
-    if not trap_class.can_be_built(player, **context):
-        return
-    for ingredient in trap_class.ingredients:
-        item = [i for i in player.equipment if i.name == ingredient][0]
-        player.remove_item(item)
-    trap = trap_class(player, random() / 2 + 0.5)
-    context[MAP].traps[player.current_area].append(trap)
-    context[NARRATOR].add([player.first_name, 'builds', 'a', trap.name, f'at {player.current_area}'])
-
-
-def can_build_any_trap(player, **context) -> bool:
-    for trap_class in [StakeTrap, ExplosiveTrap]:
-        if trap_class.can_be_built(player, **context):
-            return True
-    return False
-
-
-def build_any_trap(player, **context):
-    for trap_class in [StakeTrap, ExplosiveTrap]:
-        if trap_class.can_be_built(player, **context):
-            return build_trap(player, trap_class, **context)
-
-
 class StakeTrap(Trap):
     ingredients = ['rope']
     areas = ['the forest', 'the jungle']
@@ -105,3 +81,39 @@ class ExplosiveTrap(Trap):
             if not context[NARRATOR].has_stock:
                 context[NARRATOR].new([player.first_name, 'is', 'wounded'])
             context[NARRATOR].apply_stock()
+
+
+class NetTrap(Trap):
+    ingredients = ['net', 'rope']
+    areas = ['the forest', 'the jungle', 'the ruins', START_AREA]
+    requires_tools = False
+    name = 'net trap'
+
+    def _apply(self, name, player, **context):
+        context[NARRATOR].new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
+        # TODO
+
+
+def build_trap(player, trap_class: Type[Trap], **context):
+    player.reveal()
+    if not trap_class.can_be_built(player, **context):
+        return
+    for ingredient in trap_class.ingredients:
+        item = [i for i in player.equipment if i.name == ingredient][0]
+        player.remove_item(item)
+    trap = trap_class(player, random() / 2 + 0.5)
+    context[MAP].traps[player.current_area].append(trap)
+    context[NARRATOR].add([player.first_name, 'builds', 'a', trap.name, f'at {player.current_area}'])
+
+
+def can_build_any_trap(player, **context) -> bool:
+    for trap_class in [StakeTrap, ExplosiveTrap, NetTrap]:
+        if trap_class.can_be_built(player, **context):
+            return True
+    return False
+
+
+def build_any_trap(player, **context):
+    for trap_class in [StakeTrap, ExplosiveTrap, NetTrap]:
+        if trap_class.can_be_built(player, **context):
+            return build_trap(player, trap_class, **context)
