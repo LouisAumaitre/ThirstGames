@@ -60,7 +60,6 @@ def build_trap(player, trap_class: Type[Trap], **context):
         player.remove_item(item)
     trap = trap_class(player, random() / 2 + 0.5)
     context[MAP].traps[player.current_area].append(trap)
-    context[MAP].test = True
     context[NARRATOR].add([player.first_name, 'builds', 'a', trap.name, f'at {player.current_area}'])
 
 
@@ -79,11 +78,12 @@ def build_any_trap(player, **context):
 
 class StakeTrap(Trap):
     ingredients = ['rope']
-    areas = ['forest', 'jungle']
+    areas = ['the forest', 'the jungle']
     requires_tools = True
     name = 'stake trap'
 
     def _apply(self, name, player, **context):
+        context[MAP].test = True
         if player.be_damaged(random(), 'trident', **context):
             context[NARRATOR].new([player.first_name, 'impales', f'{player.him}self', 'on', f'{name}!'])
         else:

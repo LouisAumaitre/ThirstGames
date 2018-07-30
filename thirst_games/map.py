@@ -34,7 +34,7 @@ def random_bag() -> Bag:
         elements.append(Food('rations', 0.5 + random() / 2))
     if random() > 0.4:
         elements.append(Item('rope'))
-    if random() > 0.2:
+    if random() > 0.1:
         elements.append(Item('explosive'))
     if random() > 1/3:
         elements.append(Weapon('hatchet', 1 + random()))
@@ -136,7 +136,10 @@ class Map:
         return i
 
     def remove_loot(self, item: Item, area: str):
-        self.loot[area].remove(item)
+        try:
+            self.loot[area].remove(item)
+        except ValueError as e:
+            print(f'WARNING: tried to remove {item.long_name} from loot at {area} but couldn\'t')
 
     def add_loot(self, item: Item, area: str):
         self.loot[area].append(item)

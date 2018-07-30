@@ -340,9 +340,9 @@ class Player(Positionable):
     def go_to_sleep(self, **context):
         if self.energy < 0.2:
             context[NARRATOR].add([self.first_name, 'is exhausted'])
-        self.add_health(self.energy * (1 - self.health))
-        self.add_energy(self.sleep * (1 - self.energy))
-        self.add_sleep(1)
+        self.add_health(self.energy * (1 - self.health), **context)
+        self.add_energy(self.sleep * (1 - self.energy), **context)
+        self.add_sleep(1, **context)
         context[NARRATOR].add([self.first_name, 'sleeps', f'at {self.current_area}'])
         self.status.append(SLEEPING)
 
@@ -800,7 +800,7 @@ craft_strat_2 = Strategy(
     lambda x, **c: x.craft(**c))
 trap_strat = Strategy(
     'build trap',
-    lambda x, **c: 6 * (can_build_any_trap(x, **c)),
+    lambda x, **c: (x.energy - 0.2) * (c[MAP].neighbors_count(x) < 2) * (can_build_any_trap(x, **c)),
     lambda x, **c: build_any_trap(x, **c))
 
 start_strategies = [
