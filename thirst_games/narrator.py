@@ -70,8 +70,9 @@ class Narrator:
                     line_str = line_str[:-1]
                 phrase = self.kill_switch(phrase, line)
                 line_str += self.switch(phrase) + ' '
-            if line_str[-2] not in ['=', '-', '.']:
+            if line_str[-2] not in ['=', '-', '.', '!']:
                 line_str = line_str[:-1] + '.'
+            line_str.replace(' and.', '')
             print(line_str)
 
     def _add(self, sentence):

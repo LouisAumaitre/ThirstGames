@@ -9,6 +9,7 @@ STARTER = 'starter'
 MORNING = 'morning'
 AFTERNOON = 'afternoon'
 NIGHT = 'night'
+DAY = 'day'
 
 PANIC = 'panic'
 

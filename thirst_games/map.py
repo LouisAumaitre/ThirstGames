@@ -81,6 +81,7 @@ class Map:
         ]
         for i in range(5):
             self.loot[START_AREA].append(random_bag())
+        self.test = False
 
     def forage_potential(self, area):
         foods = self.nature[get_area(area)]['food']
@@ -155,5 +156,7 @@ class Map:
     def neighbors_count(self, area):  # TODO: rename
         return len(self.areas[get_area(area)])
 
-    def neighbors(self, element: Positionable):
-        return [p for p in self.areas[element.current_area] if p != element]
+    def neighbors(self, element: Positionable, area=None):
+        if area is None:
+            area = element.current_area
+        return [p for p in self.areas[area] if p != element]

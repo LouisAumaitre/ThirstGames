@@ -2,7 +2,7 @@
 from copy import copy
 from random import random
 
-from thirst_games.constants import MAP, PLAYERS, DEATH, AFTERNOON, TIME, MORNING, DEADS, NARRATOR, NIGHT, STARTER
+from thirst_games.constants import MAP, PLAYERS, DEATH, AFTERNOON, TIME, MORNING, DEADS, NARRATOR, NIGHT, STARTER, DAY
 from thirst_games.map import Map, START_AREA
 from thirst_games.narrator import Narrator, format_list
 
@@ -27,7 +27,7 @@ class Game:
         self.narrator.new(f'\n== DAY {day} START ==')
         self.narrator.new(['All players start at', START_AREA])
         while len(self.map.areas[START_AREA]) > 1:
-            self.launch(**{TIME: STARTER})
+            self.launch(**{TIME: STARTER, DAY: day})
             self.narrator.new(f'...')
             if len(self.map.areas[START_AREA]) > 1:
                 self.narrator.new([
@@ -42,19 +42,19 @@ class Game:
                     'remain at',
                     START_AREA
                 ])
-                self.launch(**{TIME: STARTER})
+                self.launch(**{TIME: STARTER, DAY: day})
         self.narrator.tell(filters=[f'at {START_AREA}'])
         while len(self.alive_players) > 1 and day < 10:
             if day != 1:
-                self.launch(**{TIME: MORNING})
+                self.launch(**{TIME: MORNING, DAY: day})
             if len(self.alive_players) < 2:
                 break
             self.narrator.new(f'-- DAY {day} afternoon --')
-            self.launch(**{TIME: AFTERNOON})
+            self.launch(**{TIME: AFTERNOON, DAY: day})
             if len(self.alive_players) < 2:
                 break
             self.narrator.new(f'-- NIGHT {day} --')
-            self.launch(**{TIME: NIGHT})
+            self.launch(**{TIME: NIGHT, DAY: day})
             if len(self.alive_players) < 2:
                 break
             day += 1

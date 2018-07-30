@@ -2,7 +2,7 @@ from copy import copy
 from random import random, choice
 from typing import Dict, List, Union, Optional
 
-from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER
+from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER, DAY
 from thirst_games.items import HANDS, Weapon, Item, Food, Bag
 from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
@@ -137,6 +137,12 @@ class Player(Positionable):
             wounds.append(BLEEDING)
         return wounds
 
+    def dangerosity(self, **context):
+        power = self.health * self.damage(**context)
+        if SLEEPING in self.status:
+            power *= 0.1
+        return power
+
     def add_sleep(self, amount, **context):
         self._sleep = min(1, self._sleep + amount)
         if self._sleep < 0:
@@ -187,7 +193,7 @@ class Player(Positionable):
 
     def upkeep(self, **context):
         energy_upkeep = -random() * 0.1  # loses energy while being awake
-        sleep_upkeep = max(random(), random()) * 0.2
+        sleep_upkeep = max(random(), random()) * 0.1
         food_upkeep = max(random(), random()) * 0.2
         if SLEEPING in self.status:
             self.status.remove(SLEEPING)
@@ -196,7 +202,7 @@ class Player(Positionable):
             food_upkeep /= 2
         energy_upkeep += min(sleep_upkeep, self.sleep)  # compensates with sleep reserves
         energy_upkeep += min(food_upkeep, self.stomach)  # compensates with food reserves
-        self.add_sleep(-sleep_upkeep, **context)  # consumes sleep reserves
+        self.add_sleep(-sleep_upkeep * 2, **context)  # consumes sleep reserves
         self.consume_nutriments(-food_upkeep, **context)  # consumes food reserves
         self.add_energy(energy_upkeep + sleep_upkeep + food_upkeep, **context)
 
@@ -244,6 +250,9 @@ class Player(Positionable):
             if len(bag_weapons):
                 bags[0].content.remove(bag_weapons[0])
                 self.get_weapon(bag_weapons[0], **context)
+
+    def can_flee(self, **context):
+        return self.energy > self.move_cost or self.current_area != START_AREA
 
     def flee(self, panic=False, **context):
         self.status.append(FLEEING)
@@ -345,13 +354,14 @@ class Player(Positionable):
                 self.pursue(**context)
 
     def check_for_ambush(self, **context):
-        ambushers = [p for p in context[MAP].neighbors(self) if AMBUSH in p.status]
+        ambushers = [p for p in context[MAP].neighbors(self) if AMBUSH in p.status and not SLEEPING in p.status]
         if not len(ambushers):
-            return
+            return False
         ambusher = choice(ambushers)
         ambusher.status.remove(AMBUSH)
         context[NARRATOR].new([self.first_name, 'falls', 'into', f'{ambusher.first_name}\'s ambush!'])
         ambusher.fight(self, **context)
+        return True
 
 # CRAFTING
     @property
@@ -396,6 +406,32 @@ class Player(Positionable):
         else:
             context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
             self.get_item(item, **context)
+
+    def estimate_of_cornucopea_power(self, **context) -> float:
+        neighbors = context[MAP].neighbors(self, START_AREA)
+        if not len(neighbors):
+            return 0
+        seen_neighbors = [p for p in neighbors if random() * self.wisdom > p.stealth]
+        return sum([p.dangerosity(**context) for p in seen_neighbors])
+
+    def loot_cornucopea(self, **context):
+        out = self.go_to(START_AREA, **context)
+        if out is not None:
+            context[NARRATOR].add([self.first_name, f'goes to {out}'])
+        if self.check_for_ambush(**context):
+            return
+        neighbors = context[MAP].neighbors(self)
+        if not len(neighbors):
+            self.loot(**context)
+            return
+        seen_neighbors = [p for p in neighbors if random() * self.wisdom > p.stealth]
+        if sum([p.dangerosity(**context) for p in seen_neighbors]) > self.dangerosity(**context):
+            context[NARRATOR].add([self.first_name, 'sees', format_list([p.first_name for p in neighbors])])
+            self.flee(**context)
+        elif len(seen_neighbors):
+            self.attack_at_random(**context)
+        else:
+            self.loot(**context)
 
     def loot_weapon(self, weapon: Optional[Weapon]=None, **context):
         if weapon is None:
@@ -532,8 +568,8 @@ class Player(Positionable):
 
 # FIGHTING
     def attack_at_random(self, **context):
-        preys = [p for p in context[MAP].areas[self.current_area] if random() > p.stealth and p != self]
-        preys.sort(key=lambda x: x.health)
+        preys = [p for p in context[MAP].areas[self.current_area] if random() * self.wisdom > p.stealth and p != self]
+        preys.sort(key=lambda x: x.health * x.damage(**context))
         if len(preys):
             self.fight(preys[0], **context)
         else:
@@ -570,7 +606,7 @@ class Player(Positionable):
                 context[NARRATOR].apply_stock()
                 verb = 'fights'
                 area = ''
-                if random() > other_player.courage:
+                if random() > other_player.courage and other_player.can_flee(**context):
                     other_stuff = [other_player.weapon]
                     other_player.flee(True, **context)
                     other_stuff = other_stuff if other_player.weapon == HANDS else []
@@ -582,7 +618,7 @@ class Player(Positionable):
                     break
                 context[NARRATOR].add([other_player.first_name, 'fights back', other_weapon])
                 context[NARRATOR].apply_stock()
-                if random() > self.courage:
+                if random() > self.courage and self.can_flee(**context):
                     self_stuff = [self.weapon]
                     self.flee(True, **context)
                     self_stuff = self_stuff if self.weapon == HANDS else []
@@ -711,6 +747,12 @@ loot_strat = Strategy(
     lambda x, **c: (x.energy - x.move_cost) * (2 if x.weapon.damage_mult == 1 else 0.2) *
                    x.estimate(c[MAP].loot[x.current_area], **c),
     lambda x, **c: x.loot(**c))
+loot_cornucopea_strat = Strategy(
+    'loot cornucopea',
+    lambda x, **c: (x.energy - x.move_cost) * max(x.hunger, 3 - x.weapon.damage_mult) *
+                   x.estimate(c[MAP].loot[START_AREA], **c) * (x.current_area != START_AREA) *
+                   (x.dangerosity(**c) >= x.estimate_of_cornucopea_power(**c)),
+    lambda x, **c: x.loot_cornucopea(**c))
 loot_bag_strat = Strategy(
     'loot bag',
     lambda x, **c: x.weapon.damage_mult * c[MAP].has_bags(x) * (x.bag is None),
@@ -743,9 +785,10 @@ start_strategies = [
 
 morning_strategies = [
     hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
-    hunt_player_strat, ambush_strat,
+    hunt_player_strat, ambush_strat, loot_cornucopea_strat,
 ]
 
 night_strategies = [
     hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat, ambush_strat,
+    loot_cornucopea_strat,
 ]
