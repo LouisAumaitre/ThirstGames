@@ -8,6 +8,7 @@ from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
 
 FLEEING = 'fleeing'
+AMBUSH = 'ambush'
 
 ARM_WOUND = 'arm wound'
 LEG_WOUND = 'leg wound'
@@ -34,6 +35,7 @@ class Player(Positionable):
         self._equipment: List[Item] = []
         self.status = []
         self._rage = 0
+        self._waiting = 0
 
         self.strategy = None
         self.weapon = HANDS
@@ -103,8 +105,9 @@ class Player(Positionable):
         return max_hp
 
     def add_health(self, amount, **context):
+        was_alive = self.is_alive
         self._health = min(self.max_health, self._health + amount)
-        if self._health <= 0:
+        if self._health <= 0 and was_alive:
             self.die(**context)
 
     @property
@@ -255,6 +258,7 @@ class Player(Positionable):
         out = self.go_to(best_area, **context, **{PANIC: True})
         if out is not None:
             context[NARRATOR].add([self.first_name, f'flees to {out}'])
+            self.check_for_ambush(**context)
 
     def pursue(self, **context):
         max_player_per_area = max([len(area) for area in context[MAP].areas.values()])
@@ -266,6 +270,7 @@ class Player(Positionable):
             context[NARRATOR].replace('hides and rests', 'rests')
         else:
             context[NARRATOR].add([self.first_name, 'searches for players', f'at {out}'])
+            self.check_for_ambush(**context)
 
     def go_to(self, area, **context):
         if area != self.current_area and self.energy >= self.move_cost:
@@ -323,6 +328,29 @@ class Player(Positionable):
         self.add_sleep(1)
         context[NARRATOR].add([self.first_name, 'sleeps', f'at {self.current_area}'])
         self.status.append(SLEEPING)
+
+    def set_up_ambush(self, **context):
+        self.stealth += (random() / 2 + 0.5) * (1 - self.stealth)
+        if AMBUSH not in self.status:
+            self.status.append(AMBUSH)
+            context[NARRATOR].add([self.first_name, 'sets up', 'an ambush', f'at {self.current_area}'])
+        else:
+            self._waiting += 1
+            if self._waiting < 2:
+                context[NARRATOR].add([self.first_name, 'keeps', 'hiding', f'at {self.current_area}'])
+            else:
+                context[NARRATOR].add([self.first_name, 'gets', 'tired of hiding', f'at {self.current_area}'])
+                self.status.remove(AMBUSH)
+                self.pursue(**context)
+
+    def check_for_ambush(self, **context):
+        ambushers = [p for p in context[MAP].neighbors(self) if AMBUSH in p.status]
+        if not len(ambushers):
+            return
+        ambusher = choice(ambushers)
+        ambusher.status.remove(AMBUSH)
+        context[NARRATOR].new([self.first_name, 'falls', 'into', f'{ambusher.first_name}\'s ambush!'])
+        ambusher.fight(self, **context)
 
 # CRAFTING
     @property
@@ -511,10 +539,6 @@ class Player(Positionable):
             self.pursue(**context)
 
     def fight(self, other_player, **context):
-        self.reveal()
-        other_player.reveal()
-        self.relationship(other_player).friendship -= random() / 10
-        other_player.relationship(self).friendship -= random() / 10
         self.busy = True
         other_player.busy = True
         self.relationship(other_player).allied = False
@@ -528,9 +552,12 @@ class Player(Positionable):
         other_weapon = f'with {other_player.his} {other_player.weapon.name}'
         other_stuff = []
         area = f'at {self.current_area}'
-        surprise_mult = 2 if SLEEPING in other_player.status else (1.5 if random() > other_player.wisdom / 2 else 1)
+        surprise_mult = 2 if SLEEPING in other_player.status else (
+            1.5 if random() + self.stealth > other_player.wisdom else 1)
         surprise = f'in {other_player.his} sleep' if SLEEPING in other_player.status else (
             'by surprise' if surprise_mult > 1 else '')
+        self.reveal()
+        other_player.reveal()
 
         if self.hit(other_player, surprise_mult, **context):
             context[NARRATOR].add([
@@ -555,7 +582,6 @@ class Player(Positionable):
                 context[NARRATOR].add([other_player.first_name, 'fights back', other_weapon])
                 context[NARRATOR].apply_stock()
                 if random() > self.courage:
-                    context[NARRATOR].add(['and'])
                     self_stuff = [self.weapon]
                     self.flee(True, **context)
                     self_stuff = self_stuff if self.weapon == HANDS else []
@@ -603,6 +629,8 @@ class Player(Positionable):
             else:
                 element = wound.split(' ')[0]
                 context[NARRATOR].stock([attacker_name, 'wounds', self.him, 'at the', element])
+        elif self.is_alive and attacker_name is not None and damage > 0.2:
+            context[NARRATOR].stock([attacker_name, 'wounds', self.him])
         return not self.is_alive
 
     def die(self, **context):
@@ -643,8 +671,13 @@ flee_strat = Strategy(
 attack_strat = Strategy(
     'attack',
     lambda x, **c: x.health * min(x.energy, x.stomach, x.sleep) *
-                   x.weapon.damage_mult / c[MAP].neighbors_count(x),  # * (len(c[PLAYERS]) < 4),
+                   x.weapon.damage_mult / len(c[PLAYERS]),  # * (len(c[PLAYERS]) < 4),
     lambda x, **c: x.attack_at_random(**c))
+ambush_strat = Strategy(
+    'ambush',
+    lambda x, **c: x.health * min(x.energy, x.stomach, x.sleep) *
+                   x.weapon.damage_mult * (c[MAP].neighbors_count(x) == 1),
+    lambda x, **c: x.set_up_ambush(**c))
 hunt_player_strat = Strategy(
     'hunt player',
     lambda x, **c: x.health * x.weapon.damage_mult * (len(c[PLAYERS]) < 4),
@@ -692,9 +725,9 @@ start_strategies = [
 
 morning_strategies = [
     hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
-    hunt_player_strat,
+    hunt_player_strat, ambush_strat,
 ]
 
 night_strategies = [
-    hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat,
+    hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat, ambush_strat,
 ]
