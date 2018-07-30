@@ -63,7 +63,7 @@ class StakeTrap(Trap):
         else:
             context[NARRATOR].new([player.first_name, 'falls', f'into', f'{name}!'])
             if not context[NARRATOR].has_stock:
-                context[NARRATOR].new([player.first_name, 'is', 'lightly wounded'])
+                context[NARRATOR].add([player.first_name, 'is', 'lightly wounded'])
             context[NARRATOR].apply_stock()
 
 
@@ -79,7 +79,7 @@ class ExplosiveTrap(Trap):
         else:
             context[NARRATOR].new([player.first_name, 'steps', 'on', f'{name}!'])
             if not context[NARRATOR].has_stock:
-                context[NARRATOR].new([player.first_name, 'is', 'wounded'])
+                context[NARRATOR].add([player.first_name, 'is', 'wounded'])
             context[NARRATOR].apply_stock()
 
 
@@ -92,6 +92,19 @@ class NetTrap(Trap):
     def _apply(self, name, player, **context):
         context[NARRATOR].new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
         # TODO
+
+
+class WireTrap(Trap):
+    ingredients = ['wire']
+    areas = ['the forest', 'the jungle', 'the ruins', START_AREA, 'the river']
+    requires_tools = False
+    name = 'wire trap'
+
+    def _apply(self, name, player, **context):
+        context[NARRATOR].new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
+        if random() > 0.1:
+            player.status.append('leg wound')
+        context[NARRATOR].add([player.first_name, 'wounds', player.his, 'leg'])
 
 
 def build_trap(player, trap_class: Type[Trap], **context):

@@ -38,6 +38,8 @@ def random_bag() -> Bag:
         elements.append(Item('bandages'))
     if random() > 0.7:
         elements.append(Item('net'))
+    if random() > 0.7:
+        elements.append(Item('wire'))
     if random() > 0.2:
         elements.append(Bottle(float(random() > 0.5)))
     if random() > 0.8:
