@@ -44,7 +44,7 @@ class Game:
                 ])
                 self.launch(**{TIME: STARTER, DAY: day})
         self.narrator.tell(filters=[f'at {START_AREA}'])
-        while len(self.alive_players) > 1 and day < 20:
+        while len(self.alive_players) > 1 and day < 10:
             if day != 1:
                 self.launch(**{TIME: MORNING, DAY: day})
             if len(self.alive_players) < 2:

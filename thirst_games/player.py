@@ -271,7 +271,7 @@ class Player(Positionable):
         out = self.go_to(best_area, **context, **{PANIC: True})
         if out is not None:
             context[NARRATOR].add([self.first_name, f'flees to {out}'])
-            self.check_for_ambush(**context)
+            self.check_for_ambush_and_traps(**context)
 
     def pursue(self, **context):
         max_player_per_area = max([len(area) for area in context[MAP].areas.values()])
@@ -285,7 +285,7 @@ class Player(Positionable):
             targets = [p.first_name for p in context[PLAYERS] if p != self]
             players = 'players' if len(targets) > 1 else targets[0]
             context[NARRATOR].add([self.first_name, 'searches for', players, f'at {out}'])
-            self.check_for_ambush(**context)
+            self.check_for_ambush_and_traps(**context)
 
     def go_to(self, area, **context):
         if area != self.current_area and self.energy >= self.move_cost:
@@ -360,7 +360,12 @@ class Player(Positionable):
                 self.status.remove(AMBUSH)
                 self.pursue(**context)
 
-    def check_for_ambush(self, **context):
+    def check_for_ambush_and_traps(self, **context):
+        traps = context[MAP].traps[self.current_area]
+        for t in traps:
+            if t.check(self, **context):
+                t.apply(self, **context)
+                return True
         ambushers = [p for p in context[MAP].neighbors(self) if AMBUSH in p.status and not SLEEPING in p.status]
         if not len(ambushers):
             return False
@@ -425,7 +430,7 @@ class Player(Positionable):
         out = self.go_to(START_AREA, **context)
         if out is not None:
             context[NARRATOR].add([self.first_name, f'goes to {out}'])
-        if self.check_for_ambush(**context):
+        if self.check_for_ambush_and_traps(**context):
             return
         neighbors = context[MAP].neighbors(self)
         if not len(neighbors):

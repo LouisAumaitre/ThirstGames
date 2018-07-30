@@ -34,6 +34,8 @@ def random_bag() -> Bag:
         elements.append(Food('rations', 0.5 + random() / 2))
     if random() > 0.4:
         elements.append(Item('rope'))
+    if random() > 0.2:
+        elements.append(Item('explosive'))
     if random() > 1/3:
         elements.append(Weapon('hatchet', 1 + random()))
     elif random() > 0.5:
