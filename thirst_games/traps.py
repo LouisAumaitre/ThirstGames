@@ -83,11 +83,12 @@ class StakeTrap(Trap):
     name = 'stake trap'
 
     def _apply(self, name, player, **context):
-        context[MAP].test = True
         if player.be_damaged(random(), 'trident', **context):
             context[NARRATOR].new([player.first_name, 'impales', f'{player.him}self', 'on', f'{name}!'])
         else:
             context[NARRATOR].new([player.first_name, 'falls', f'into', f'{name}!'])
+            if not context[NARRATOR].has_stock:
+                context[NARRATOR].new([player.first_name, 'is', 'lightly wounded'])
             context[NARRATOR].apply_stock()
 
 

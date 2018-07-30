@@ -142,3 +142,7 @@ class Narrator:
         for s in self._stock:
             self._add(s)
         self._stock.clear()
+
+    @property
+    def has_stock(self):
+        return len(self._stock) > 0
