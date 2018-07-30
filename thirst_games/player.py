@@ -601,6 +601,7 @@ class Player(Positionable):
             'by surprise' if surprise_mult > 1 else '')
         self.reveal()
         other_player.reveal()
+        round = 1
 
         if self.hit(other_player, surprise_mult, **context):
             context[NARRATOR].add([
@@ -629,6 +630,9 @@ class Player(Positionable):
                     self.flee(True, **context)
                     self_stuff = self_stuff if self.weapon == HANDS else []
                     break
+                if context[TIME] == STARTER and round > 3:
+                    break
+                round += 1
                 if self.hit(other_player, **context):
                     context[NARRATOR].new([self.first_name, verb, 'and', 'kills', other_player.first_name, weapon])
                     other_stuff = other_player.drops

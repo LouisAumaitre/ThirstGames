@@ -101,7 +101,6 @@ class Narrator:
             # avoid repetition of verb
             if len(sentence) > 1:
                 if sentence[1] in self._used_verbs and self._used_verbs[sentence[1]] == self.active_subject:
-                    print(f'remove {sentence[1]} from {sentence}')
                     sentence.remove(sentence[1])
                 else:
                     self._used_verbs[sentence[1]] = self.active_subject
