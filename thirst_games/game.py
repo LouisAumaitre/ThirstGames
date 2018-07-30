@@ -24,7 +24,7 @@ class Game:
 
     def run(self):
         day = 1
-        self.narrator.new(f'\n== DAY {day} START ==')
+        self.narrator.new(f'== DAY {day} START ==')
         self.narrator.new(['All players start at', START_AREA])
         while len(self.map.areas[START_AREA]) > 1:
             self.launch(**{TIME: STARTER, DAY: day})

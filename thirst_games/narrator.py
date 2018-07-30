@@ -27,7 +27,8 @@ def format_list(names: List[str]):
 class Narrator:
     def __init__(self):
         self.current_sentence: List[str] = []
-        self.active_subject = ''
+        self.active_subject = None
+        self._used_verbs = {}
         self.text: List[List[str]] = []
         self._stock: List[Tuple(str, int)] = []
         self._switch = {
@@ -72,7 +73,6 @@ class Narrator:
                 line_str += self.switch(phrase) + ' '
             if line_str[-2] not in ['=', '-', '.', '!']:
                 line_str = line_str[:-1] + '.'
-            line_str.replace('and.', '.')
             line_str.replace('!,', '!')
             print(line_str)
 
@@ -99,9 +99,12 @@ class Narrator:
                 sentence.remove(place[0])
 
             # avoid repetition of verb
-            if len(sentence) > 1 and sentence[1] in sentence and sentence[1] in self.current_sentence and \
-                            sentence[0] == '_and_':
-                sentence.remove(sentence[1])
+            if len(sentence) > 1:
+                if sentence[1] in self._used_verbs and self._used_verbs[sentence[1]] == self.active_subject:
+                    print(f'remove {sentence[1]} from {sentence}')
+                    sentence.remove(sentence[1])
+                else:
+                    self._used_verbs[sentence[1]] = self.active_subject
 
             self.current_sentence.extend(sentence)
         else:
@@ -118,7 +121,8 @@ class Narrator:
         if len(self.current_sentence):
             self.text.append(self.current_sentence)
         self.current_sentence = []
-        self.active_subject = ''
+        self._used_verbs = {}
+        self.active_subject = None
 
     def new(self, sentence):
         self.cut()

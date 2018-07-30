@@ -691,7 +691,6 @@ class Player(Positionable):
                     context[NARRATOR].stock([
                         self.first_name, 'suffers', 'a bleeding wound'])
                 else:
-                    element = wound.split(' ')[0]
                     context[NARRATOR].stock([attacker_name, 'wounds', self.him])
         return not self.is_alive
 
