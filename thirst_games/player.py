@@ -7,13 +7,13 @@ from thirst_games.items import HANDS, Weapon, Item, Food, Bag
 from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
 
-MOVE_COST = 0.3
-
 FLEEING = 'fleeing'
+
 ARM_WOUND = 'arm wound'
 LEG_WOUND = 'leg wound'
 BELLY_WOUND = 'belly wound'
 HEAD_WOUND = 'head wound'
+BLEEDING = 'bleeding'
 
 
 class Player(Positionable):
@@ -72,7 +72,10 @@ class Player(Positionable):
         return max(0, self._energy)
 
     def add_energy(self, amount, **context):
-        self._energy = min(1, self._energy + amount)
+        max_nrg = 1
+        if HEAD_WOUND in self.status:
+            max_nrg = 0.6
+        self._energy = min(max_nrg, self._energy + amount)
 
         if self._energy < 0:
             if 'exhausted' not in self.status:
@@ -91,7 +94,10 @@ class Player(Positionable):
         return max(0, self._health)
 
     def add_health(self, amount, **context):
-        self._health = min(1, self._health + amount)
+        max_hp = 1
+        if BELLY_WOUND in self.status:
+            max_hp = self.health
+        self._health = min(max_hp, self._health + amount)
         if self._health <= 0:
             self.die(**context)
 
@@ -106,6 +112,20 @@ class Player(Positionable):
     @property
     def stomach(self):
         return self._stomach
+
+    @property
+    def move_cost(self):
+        cost = 0.3
+        if LEG_WOUND in self.status:
+            cost += 0.2
+        return cost
+
+    @property
+    def wounds(self):
+        wounds = [w for w in self.status if 'wound' in w]
+        if BLEEDING in self.status:
+            wounds.append(BLEEDING)
+        return wounds
 
     def add_sleep(self, amount, **context):
         self._sleep = min(1, self._sleep + amount)
@@ -138,7 +158,7 @@ class Player(Positionable):
 
     def think(self, **context):
         if self.sleep < 0:
-            if context[MAP].neighbors_count(self) > 1 and self.energy > MOVE_COST:
+            if context[MAP].neighbors_count(self) > 1 and self.energy > self.move_cost:
                 self.strategy = flee_strat
             else:
                 self.strategy = hide_strat
@@ -169,6 +189,10 @@ class Player(Positionable):
         self.add_sleep(-sleep_upkeep, **context)  # consumes sleep reserves
         self.consume_nutriments(-food_upkeep, **context)  # consumes food reserves
         self.add_energy(energy_upkeep + sleep_upkeep + food_upkeep, **context)
+
+        if BLEEDING in self.status:
+            if self.be_damaged(max(0.05, self.health/5), **context):
+                context[NARRATOR].add([self.first_name, 'bleeds', 'to death'])
 
     def act(self, **context):
         if FLEEING in self.status:
@@ -237,13 +261,13 @@ class Player(Positionable):
             context[NARRATOR].add([self.first_name, 'searches for players', f'at {out}'])
 
     def go_to(self, area, **context):
-        if area != self.current_area and self.energy >= MOVE_COST:
+        if area != self.current_area and self.energy >= self.move_cost:
             self.reveal()
-            self._energy -= MOVE_COST
+            self._energy -= self.move_cost
             self.busy = True
             return context[MAP].move_player(self, area)
         else:
-            self._energy -= MOVE_COST
+            self._energy -= self.move_cost
             self.hide(**context)
 
     def hide(self, **context):
@@ -251,24 +275,35 @@ class Player(Positionable):
             context[NARRATOR].add([self.first_name, 'hides', f'at {self.current_area}'])
             return
         if self.sleep < 0.1 \
-                or (context[TIME] == NIGHT and context[MAP].neighbors_count == 1) \
-                or (context[MAP].neighbors_count == 1 and self.sleep < 0.2) \
-                or (context[TIME] == NIGHT and self.sleep < 0.3):
+                or (context[TIME] == NIGHT and context[MAP].neighbors_count == 1 and len(self.wounds) == 0) \
+                or (context[MAP].neighbors_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
+                or (context[TIME] == NIGHT and self.sleep < 0.3 and len(self.wounds) == 0):
             self.go_to_sleep(**context)
             return
-        if self.current_area == START_AREA:
-            self.check_bag(**context)
+        return self.rest(**context)
+
+    def rest(self, **context):
+        if self.current_area != START_AREA:
+            self.stealth += random() * (1 - self.stealth)
+            context[NARRATOR].add([self.first_name, 'hides', f'at {self.current_area}'])
+
+        self.check_bag(**context)
+        wounds = self.wounds
+        if BLEEDING in wounds:
+            context[NARRATOR].add([self.first_name, 'stops', self.his, 'wounds', 'from bleeding'])
+            self.status.remove(BLEEDING)
+        elif len(wounds):
+            pick_wound = choice(wounds)
+            context[NARRATOR].add([self.first_name, 'patches', self.his, pick_wound])
+            self.status.remove(pick_wound)
+        else:
             self.add_health(max(self.energy, random()) * (1 - self.health))
             self.add_energy(max(self.sleep, random()) * (1 - self.energy))
+            context[NARRATOR].add([self.first_name, 'rests', f'at {self.current_area}'])
+
+        if self.current_area == START_AREA:
             if self.has_food and self.hunger > 0:
                 self.dine(**context)
-            context[NARRATOR].add([self.first_name, 'rests', f'at {self.current_area}'])
-        else:
-            self.stealth += random() * (1 - self.stealth)
-            self.check_bag(**context)
-            self.add_health(max(0, min(self.energy, random())) * (1 - self.health))
-            self.add_energy(max(0, min(self.sleep, random())) * (1 - self.energy))
-            context[NARRATOR].add([self.first_name, 'hides and rests', f'at {self.current_area}'])
 
     def go_to_sleep(self, **context):
         if self.energy < 0.2:
@@ -523,7 +558,10 @@ class Player(Positionable):
         self.consume_nutriments(food.value)
 
     def damage(self, **context):
-        return self.weapon.damage_mult * random() / 2
+        mult = 1
+        if ARM_WOUND in self.status:
+            mult -= 0.2
+        return mult * self.weapon.damage_mult * random() / 2
 
     def be_damaged(self, damage, attacker_name=None, **context) -> bool:
         if not self.is_alive:
@@ -534,6 +572,7 @@ class Player(Positionable):
             possible_wounds = [w for w in [ARM_WOUND, LEG_WOUND, BELLY_WOUND, HEAD_WOUND] if w not in self.status]
             wound = choice(possible_wounds)
             self.status.append(wound)
+            self.status.append(BLEEDING)
             if attacker_name is None:
                 context[NARRATOR].stock([
                     self.first_name, 'suffers', 'an' if wound[0] in ['a', 'e', 'i', 'o', 'u', 'y'] else 'a', wound])
@@ -577,11 +616,11 @@ class Strategy:
 
 hide_strat = Strategy(
     'hide',
-    lambda x, **c: (1 - x.health / 2) * (1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x),
+    lambda x, **c: (len(x.wounds) + 1) * (1 - x.health / 2) * (1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x),
     lambda x, **c: x.hide(**c))
 flee_strat = Strategy(
     'flee',
-    lambda x, **c: (x.energy > 0.3) * (1 + sum([
+    lambda x, **c: (x.energy > x.move_cost) * (1 + sum([
         n.weapon.damage_mult * n.health > x.weapon.damage_mult * x.health for n in c[MAP].neighbors(x)
     ])) * (c[MAP].neighbors_count(x) - 1 > max(x.courage, 1 - x.wisdom) * 10) + 0.1,
     lambda x, **c: x.flee(**c))
@@ -598,7 +637,7 @@ fight_strat = Strategy(
     lambda x, **c: x.attack_at_random(**c))
 loot_strat = Strategy(
     'loot',
-    lambda x, **c: (x.energy - 0.3) * (2 if x.weapon.damage_mult == 1 else 0.2) *
+    lambda x, **c: (x.energy - x.move_cost) * (2 if x.weapon.damage_mult == 1 else 0.2) *
                    x.estimate(c[MAP].loot[x.current_area], **c),
     lambda x, **c: x.loot(**c))
 loot_bag_strat = Strategy(
