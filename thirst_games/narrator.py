@@ -11,7 +11,11 @@ def format_list(names: List[str]):
     unique_names.sort()
     amount_by_name = {name: names.count(name) for name in unique_names}
     counted_names = [
-        ('' if amount_by_name[name] == 1 else str(amount_by_name[name]) + ' ') + name for name in unique_names
+        (
+            '' if amount_by_name[name] == 1 else str(amount_by_name[name]) + ' '
+        ) + name + (
+            's' if amount_by_name[name] > 1 and name[-1] not in ['s', ']'] else ''
+        ) for name in unique_names
     ]
     names = counted_names
 

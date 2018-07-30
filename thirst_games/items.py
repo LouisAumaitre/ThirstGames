@@ -1,3 +1,6 @@
+from thirst_games.narrator import format_list
+
+
 class Item:
     def __init__(self, name):
         self.name = name
@@ -31,4 +34,13 @@ class Bag(Item):
         self.content = content
 
     def __str__(self):
-        return self.name + str([str(e) for e in self.content]).replace('\'', '')
+        return f'{self.name}[{format_list([str(e) for e in self.content])}]'
+
+
+class Bottle(Item):
+    def __init__(self, fill: float):
+        Item.__init__(self, 'bottle')
+        self.fill = fill
+
+    def __str__(self):
+        return f'{self.name}({int(self.fill * 100)}%)'

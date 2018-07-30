@@ -103,7 +103,7 @@ class Game:
             bag = str([str(e) for e in p._equipment]).replace('\'', '')
             print(f'- {p.name:<{l_name}} {int(p.health * 100):>3}/{int(p.max_health * 100):>3}hp '
                   f'{int(p.energy * 100):>3}nrg '
-                  f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm '
+                  f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm {int(p.water * 100):>3}wtr '
                   f'{p.weapon.name:<10} {p.current_area:<10} '
                   f'{bag} - {format_list(p.status)}')
 

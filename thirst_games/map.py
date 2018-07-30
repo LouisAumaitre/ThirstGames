@@ -2,7 +2,7 @@ from typing import List, Dict, Union
 
 from random import random, choice, randint
 
-from thirst_games.items import Weapon, Item, Food, Bag
+from thirst_games.items import Weapon, Item, Food, Bag, Bottle
 
 START_AREA = 'the cornucopia'
 
@@ -31,11 +31,13 @@ def get_area(area: Union[str, Positionable]) -> str:
 def random_bag() -> Bag:
     elements = []
     for i in range(1 + randint(0, 2) + randint(0, 2)):
-        elements.append(Food('rations', 0.5 + random() / 2))
+        elements.append(Food(choice(['ration', 'food can', 'energy bar']), 0.5 + random() / 2))
     if random() > 0.3:
         elements.append(Item('rope'))
     if random() > 0.2:
         elements.append(Item('bandages'))
+    if random() > 0.2:
+        elements.append(Bottle(float(random() > 0.5)))
     if random() > 0.8:
         for i in range(randint(1, 3)):
             elements.append(Item('explosive'))

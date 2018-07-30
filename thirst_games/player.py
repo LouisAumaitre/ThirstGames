@@ -3,7 +3,7 @@ from random import random, choice
 from typing import Dict, List, Union, Optional
 
 from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER
-from thirst_games.items import HANDS, Weapon, Item, Food, Bag
+from thirst_games.items import HANDS, Weapon, Item, Food, Bag, Bottle
 from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
 from thirst_games.traps import can_build_any_trap, build_any_trap
@@ -32,6 +32,7 @@ class Player(Positionable):
         self._energy = 1
         self._sleep = 1
         self._stomach = 1
+        self._water = 2
         self.stealth = 0
         self.wisdom = 0.9
         self._equipment: List[Item] = []
@@ -124,6 +125,14 @@ class Player(Positionable):
         return self._stomach
 
     @property
+    def thirst(self):
+        return max(1 - self._water, 0)
+
+    @property
+    def water(self):
+        return self._water
+
+    @property
     def move_cost(self):
         cost = 0.3
         if LEG_WOUND in self.status:
@@ -198,9 +207,14 @@ class Player(Positionable):
             #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
     def upkeep(self, **context):
+        self._water -= 0.3
+        self.drink()
         energy_upkeep = -random() * 0.1  # loses energy while being awake
         sleep_upkeep = max(random(), random()) * 0.1
         food_upkeep = max(random(), random()) * 0.2
+        if self.thirst > 1:
+            self.status.append('thirsty')
+            energy_upkeep *= self.thirst
         if SLEEPING in self.status:
             self.status.remove(SLEEPING)
             sleep_upkeep = 0
@@ -323,6 +337,7 @@ class Player(Positionable):
             context[NARRATOR].add([self.first_name, 'hides', f'at {self.current_area}'])
 
         self.check_bag(**context)
+        self.fill_bottles(**context)
         wounds = self.wounds
         if BLEEDING in wounds:
             self.patch_bleeding(**context)
@@ -403,6 +418,7 @@ class Player(Positionable):
 
     def craft(self, **context):
         self.check_bag(**context)
+        self.fill_bottles(**context)
         self.craft_weapon(**context)
 
     def craft_weapon(self, **context):
@@ -424,6 +440,7 @@ class Player(Positionable):
 # EQUIPMENT
     def loot(self, **context):
         self.check_bag(**context)
+        self.fill_bottles(**context)
         item = context[MAP].pick_item(self.current_area)
         if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
             context[NARRATOR].add([
@@ -559,9 +576,48 @@ class Player(Positionable):
             else:
                 self.get_item(item, **context)
 
+    @property
+    def bottles(self):
+        return [i for i in self.equipment if isinstance(i, Bottle)]
+
+    def fill_bottles(self, **context):
+        self.drink()
+        if self.current_area == 'the river':
+            total_water = self.water + sum(b.fill for b in self.bottles)
+            self._water = 1
+            for b in self.bottles:
+                b.fill = 1
+            new_total_water = self.water + sum(b.fill for b in self.bottles)
+            if new_total_water > total_water + 1:
+                if len(self.bottles):
+                    context[NARRATOR].add([
+                        self.name, 'fills', self.his, 'bottles' if len(self.bottles) > 1 else 'bottle',
+                        f'at {self.current_area}'])
+                else:
+                    context[NARRATOR].add([self.name, 'drinks', f'at {self.current_area}'])
+        else:
+            water = random()
+            amount = min(self.thirst, water)
+            self._water += amount
+            water -= amount
+            for b in self.bottles:
+                amount = min(1 - b.fill, water)
+                b.fill += amount
+                water -= amount
+
+    def drink(self):
+        if self.thirst:
+            for b in self.bottles:
+                amount = min(self.thirst, b.fill)
+                self._water += amount
+                b.fill -= amount
+            if self.water and 'thirsty' in self.status:
+                self.status.remove('thirsty')
+
 # EATING
     def forage(self, **context):
         food: Food = context[MAP].get_forage(self)
+        self.fill_bottles()
         if food is None:
             context[NARRATOR].add([self.name, 'searches for food', 'but does not find anything edible'])
             return
@@ -580,6 +636,7 @@ class Player(Positionable):
 
     def dine(self, **context):
         self.check_bag(**context)
+        self.fill_bottles(**context)
         if not self.has_food:
             context[NARRATOR].add([self.name, 'does not have', 'anything to eat'])
         else:
