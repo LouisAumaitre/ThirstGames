@@ -65,10 +65,6 @@ class Player(Positionable):
         return stuff
 
     @property
-    def courage(self):
-        return self.health * self.energy + self._rage
-
-    @property
     def is_alive(self):
         return self.health > 0
 
@@ -136,6 +132,12 @@ class Player(Positionable):
         if BLEEDING in self.status:
             wounds.append(BLEEDING)
         return wounds
+
+    def courage(self, **context):
+        courage = self.health * self.energy + self._rage
+        if MAP in context:
+            courage = max([courage, self.estimate(context[MAP].loot[self.current_area], **context)])
+        return courage
 
     def dangerosity(self, **context):
         power = self.health * self.damage(**context)
@@ -256,7 +258,7 @@ class Player(Positionable):
 
     def flee(self, panic=False, **context):
         self.status.append(FLEEING)
-        if panic and random() > self.courage + 0.5:
+        if panic and random() > self.courage(**context) + 0.5:
             self.drop_weapon(True, **context)
         min_player_per_area = min([len(area) for key, area in context[MAP].areas.items() if key != START_AREA])
         # can't flee to or hide at the cornucopea
@@ -279,7 +281,9 @@ class Player(Positionable):
         if out is None:
             context[NARRATOR].replace('hides and rests', 'rests')
         else:
-            context[NARRATOR].add([self.first_name, 'searches for players', f'at {out}'])
+            targets = [p.first_name for p in context[PLAYERS] if p != self]
+            players = 'players' if len(targets) > 1 else targets[0]
+            context[NARRATOR].add([self.first_name, 'searches for', players, f'at {out}'])
             self.check_for_ambush(**context)
 
     def go_to(self, area, **context):
@@ -407,8 +411,8 @@ class Player(Positionable):
             context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
             self.get_item(item, **context)
 
-    def estimate_of_cornucopea_power(self, **context) -> float:
-        neighbors = context[MAP].neighbors(self, START_AREA)
+    def estimate_of_power(self, area, **context) -> float:
+        neighbors = context[MAP].neighbors(self, area)
         if not len(neighbors):
             return 0
         seen_neighbors = [p for p in neighbors if random() * self.wisdom > p.stealth]
@@ -606,7 +610,7 @@ class Player(Positionable):
                 context[NARRATOR].apply_stock()
                 verb = 'fights'
                 area = ''
-                if random() > other_player.courage and other_player.can_flee(**context):
+                if random() > other_player.courage(**context) and other_player.can_flee(**context):
                     other_stuff = [other_player.weapon]
                     other_player.flee(True, **context)
                     other_stuff = other_stuff if other_player.weapon == HANDS else []
@@ -618,7 +622,7 @@ class Player(Positionable):
                     break
                 context[NARRATOR].add([other_player.first_name, 'fights back', other_weapon])
                 context[NARRATOR].apply_stock()
-                if random() > self.courage and self.can_flee(**context):
+                if random() > self.courage(**context) and self.can_flee(**context):
                     self_stuff = [self.weapon]
                     self.flee(True, **context)
                     self_stuff = self_stuff if self.weapon == HANDS else []
@@ -631,8 +635,12 @@ class Player(Positionable):
         other_player.pillage(self_stuff, **context)
 
     def hit(self, target, mult=1, **context) -> bool:
-        self.add_energy(-0.1)
-        hit_chance = mult if mult > 1 else 0.6
+        if self.energy < 0.1:
+            mult /= 2
+            self._rage = -1
+        else:
+            self.add_energy(-0.1, **context)
+        hit_chance = mult if mult > 1 else 0.6 * mult
         if ARM_WOUND in self.status:
             hit_chance -= 0.2
         if random() < hit_chance:
@@ -714,13 +722,13 @@ class Strategy:
 
 hide_strat = Strategy(
     'hide',
-    lambda x, **c: (len(x.wounds) + 1) * (1 - x.health / 2) * (1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x),
+    lambda x, **c: (len(x.wounds) + 1) * (1 - x.health / 2) * (
+        1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x) + 0.1,
     lambda x, **c: x.hide(**c))
 flee_strat = Strategy(
     'flee',
-    lambda x, **c: (x.energy > x.move_cost) * (1 + sum([
-        n.weapon.damage_mult * n.health > x.weapon.damage_mult * x.health for n in c[MAP].neighbors(x)
-    ])) * (c[MAP].neighbors_count(x) - 1 > max(x.courage, 1 - x.wisdom) * 10) + 0.1,
+    lambda x, **c: (x.energy > x.move_cost) * (
+        x.estimate_of_power(x.current_area, **c) / c[MAP].neighbors_count(x) - x.dangerosity(**c)) + 0.1,
     lambda x, **c: x.flee(**c))
 attack_strat = Strategy(
     'attack',
@@ -751,7 +759,7 @@ loot_cornucopea_strat = Strategy(
     'loot cornucopea',
     lambda x, **c: (x.energy - x.move_cost) * max(x.hunger, 3 - x.weapon.damage_mult) *
                    x.estimate(c[MAP].loot[START_AREA], **c) * (x.current_area != START_AREA) *
-                   (x.dangerosity(**c) >= x.estimate_of_cornucopea_power(**c)),
+                   (x.dangerosity(**c) >= x.estimate_of_power(START_AREA, **c)),
     lambda x, **c: x.loot_cornucopea(**c))
 loot_bag_strat = Strategy(
     'loot bag',
