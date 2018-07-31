@@ -185,6 +185,10 @@ class Carrier(Body):
         else:
             return 0
 
+    @property
+    def has_weapon(self):
+        return self.weapon != HANDS
+
     def get_weapon(self, weapon, **context):
         if weapon.damage_mult > self.weapon.damage_mult:
             if self.weapon.small and self.bag is not None:

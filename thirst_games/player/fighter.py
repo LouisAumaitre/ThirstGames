@@ -3,7 +3,7 @@ from random import random
 
 from thirst_games.constants import MAP, SLEEPING, FLEEING, PANIC, NARRATOR, PLAYERS, AMBUSH, TRAPPED, TIME, STARTER, \
     ARM_WOUND
-from thirst_games.items import Weapon, PoisonVial, HANDS
+from thirst_games.items import Weapon, PoisonVial
 from thirst_games.map import START_AREA
 from thirst_games.narrator import format_list
 from thirst_games.player.body import Body
@@ -160,7 +160,7 @@ class Fighter(Carrier):
         else:
             self.pursue(**context)
 
-    def fight(self, other_player, **context):
+    def fight(self, other_player: Carrier, **context):
         self.busy = True
         other_player.busy = True
 
@@ -196,7 +196,7 @@ class Fighter(Carrier):
                 if random() > other_player.courage(**context) and other_player.can_flee(**context):
                     other_stuff = [other_player.weapon]
                     other_player.flee(True, **context)
-                    other_stuff = other_stuff if other_player.weapon == HANDS else []
+                    other_stuff = other_stuff if not other_player.has_weapon else []
                     break
                 if other_player.hit(self, **context):
                     context[NARRATOR].add(['and'])
@@ -208,7 +208,7 @@ class Fighter(Carrier):
                 if random() > self.courage(**context) and self.can_flee(**context):
                     self_stuff = [self.weapon]
                     self.flee(True, **context)
-                    self_stuff = self_stuff if self.weapon == HANDS else []
+                    self_stuff = self_stuff if not self.has_weapon else []
                     break
                 if context[TIME] == STARTER and round > 3:
                     break
