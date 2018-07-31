@@ -37,6 +37,7 @@ class Trap:
         if player is self.owner:
             name = f'{player.his} own {self.name}'
         context[MAP].traps[player.current_area].remove(self)
+        player.reveal()
         self._apply(name, player, **context)
 
     @classmethod

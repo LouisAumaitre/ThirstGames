@@ -11,43 +11,21 @@ from thirst_games.items import HANDS, Weapon, Item, Food, Bag, Bottle, PoisonVia
 from thirst_games.map import START_AREA
 from thirst_games.narrator import format_list
 from thirst_games.player.body import Body
+from thirst_games.player.carrier import Carrier
 from thirst_games.traps import can_build_any_trap, build_any_trap
 from thirst_games.weapons import weapon_bleed_proba
 
 
-class Player(Body):
+class Player(Carrier):
     def __init__(self, first_name: str, district: int, his='their'):
-        Body.__init__(self, first_name, his)
+        Carrier.__init__(self, first_name, his)
         self.district = district
         self.relationships: Dict[Player, Relationship] = {}
         self.busy = False
         self.wisdom = 0.9
         self._waiting = 0
-        self._equipment: List[Item] = []
         self.strategy = None
         self.weapon = HANDS
-
-    @property
-    def bag(self):
-        bags = [e for e in self._equipment if isinstance(e, Bag)]
-        if not len(bags):
-            return None
-        return bags[0]
-
-    @property
-    def equipment(self):
-        bags = [e for e in self._equipment if isinstance(e, Bag)]
-        return [*[e for e in self._equipment if not isinstance(e, Bag)], *[e for b in bags for e in b.content]]
-
-    def has_item(self, item_name):
-        return item_name in [i.name for i in self.equipment]
-
-    @property
-    def drops(self):
-        stuff = copy(self._equipment)
-        if self.weapon != HANDS:
-            stuff.append(self.weapon)
-        return stuff
 
     def courage(self, **context):
         courage = self.health * self.energy + self._rage
@@ -85,11 +63,6 @@ class Player(Body):
             #     context[NARRATOR].new([
             #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
-    def upkeep(self, **context):
-        Body.upkeep(self, **context)
-        if self.has_item(KNIFE) or self.has_item(SWORD) or self.has_item(HATCHET) or self.has_item(AXE):
-            self.free_from_trap(**context)
-
     def act(self, **context):
         if FLEEING in self.status:
             self.status.remove(FLEEING)
@@ -103,34 +76,6 @@ class Player(Body):
                 self.strategy.apply(self, **context)
         context[NARRATOR].cut()
         self.strategy = None
-
-    def check_bag(self, **context):
-        if 'unchecked bag' in self.status:
-            self.status.remove('unchecked bag')
-            bags = [e for e in self._equipment if isinstance(e, Bag)]
-            if not len(bags):
-                return
-            stuff = [e.name for bag in bags for e in bag.content]
-            if len(stuff):
-                context[NARRATOR].new([
-                    self.first_name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
-                    'finds', format_list(stuff)])
-                context[NARRATOR].cut()
-            else:
-                context[NARRATOR].new([
-                    self.first_name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
-                    'finds', 'they are' if len(bags) > 1 else 'it is', 'empty'])
-                context[NARRATOR].cut()
-            for i in range(1, len(bags)):
-                extra_bag = bags[i]
-                self._equipment.remove(extra_bag)
-                bags[0].content.extend(extra_bag.content)
-            bag_weapons = [
-                i for i in bags[0].content if isinstance(i, Weapon) and i.damage_mult > self.weapon.damage_mult]
-            bag_weapons.sort(key=lambda x: -x.damage_mult)
-            if len(bag_weapons):
-                bags[0].content.remove(bag_weapons[0])
-                self.get_weapon(bag_weapons[0], **context)
 
     def flee(self, panic=False, **context):
         self.status.append(FLEEING)
@@ -207,44 +152,6 @@ class Player(Body):
         if self.current_area == START_AREA:
             if self.has_food and self.hunger > 0:
                 self.dine(**context)
-
-    def patch_wound(self, wounds, **context):
-        self.disinfect(**context)
-        tool = 'bandages' if self.has_item('bandages') else choice(['moss', 'cloth'])
-        if tool != 'bandages':
-            self._max_health *= 0.95
-            # TODO: infection
-        else:
-            self.remove_item('bandages')
-        pick_wound = choice(wounds)
-        context[NARRATOR].add([self.first_name, 'patches', self.his, pick_wound, 'using', tool])
-        self.status.remove(pick_wound)
-
-    def patch_bleeding(self, **context):
-        self.disinfect(**context)
-        tool = 'bandages' if self.has_item('bandages') else choice(['moss', 'cloth'])
-        if tool != 'bandages':
-            self._max_health *= 0.95
-        else:
-            self.remove_item('bandages')
-        context[NARRATOR].add([self.first_name, 'stops', self.his, 'wounds', 'from bleeding', 'using', tool])
-        self.status.remove(BLEEDING)
-
-    def disinfect(self, **context):
-        if self.has_item('antiseptic'):
-            self.remove_item('antiseptic')
-            context[NARRATOR].add([self.first_name, 'disinfects', 'using', 'anticeptic'])
-            return
-        if context[MAP].has_water(self):
-            self._max_health *= 0.99
-            context[NARRATOR].add([self.first_name, 'cleans', 'using', f'{self.current_area}\'s water'])
-            return
-        if sum([b.fill for b in self.bottles]) > 0.2:
-            self.use_water(0.2)
-            self._max_health *= 0.99
-            context[NARRATOR].add([self.first_name, 'cleans', 'using', 'water'])
-            return
-        self._max_health *= 0.95
 
     def go_to_sleep(self, **context):
         if self.energy < 0.2:
@@ -461,7 +368,7 @@ class Player(Body):
         return [i for i in self.equipment if isinstance(i, Bottle)]
 
     def fill_bottles(self, **context):
-        self.drink()
+        self.water_upkeep()
         if context[MAP].has_water(self):
             total_water = self.water + sum(b.fill for b in self.bottles)
             self._water = max(1.5, self.water)
@@ -485,7 +392,7 @@ class Player(Body):
                 b.fill += amount
                 water -= amount
 
-    def drink(self):
+    def water_upkeep(self):
         if self.thirst:
             for b in self.bottles:
                 amount = min(self.thirst, b.fill)
@@ -676,11 +583,6 @@ class Player(Body):
         for e in self._equipment:
             context[MAP].add_loot(e, self.current_area)
         context[DEATH](self, **context)
-
-    def free_from_trap(self, **context):
-        if TRAPPED in self.status:
-            self.status.remove(TRAPPED)
-            context[NARRATOR].new([self.first_name, 'frees', f'{self.him}self', 'from', 'the trap'])
 
 
 class Relationship:
