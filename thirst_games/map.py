@@ -3,7 +3,8 @@ from typing import List, Dict, Union
 from random import random, choice, randint
 
 from thirst_games.constants import KNIFE, HATCHET, TRIDENT, AXE, SWORD, MACE
-from thirst_games.items import Weapon, Item, Food, Bag, Bottle
+from thirst_games.items import Weapon, Item, Food, Bag, Bottle, PoisonVial
+from thirst_games.poison import Poison
 
 START_AREA = 'the cornucopia'
 
@@ -47,6 +48,8 @@ def random_bag() -> Bag:
         elements.append(Item('wire'))
     if random() > 0.6:
         elements.append(Item('antidote'))
+    if random() > 0.9:
+        elements.append(PoisonVial(Poison('poison', randint(3, 6), random() * 0.2 + 0.1)))
     if random() > 0.2:
         elements.append(Bottle(float(random() > 0.5)))
     if random() > 0.8:

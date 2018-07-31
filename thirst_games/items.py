@@ -20,6 +20,12 @@ class Weapon(Item):
         Item.__init__(self, name)
         self.damage_mult = damage_mult
         self.small = name in ['hatchet', 'knife']
+        self.poison: Poison = None
+
+    def __str__(self):
+        if self.poison is not None:
+            return f'{self.name}({self.poison})'
+        return self.name
 
 
 HANDS = Weapon('bare hands', 1)
@@ -54,3 +60,12 @@ class Bottle(Item):
 
     def __str__(self):
         return f'{self.name}({int(self.fill * 100)}%)'
+
+
+class PoisonVial(Item):
+    def __init__(self, poison: Poison):
+        Item.__init__(self, poison.name + ' vial')
+        self.poison = poison
+
+    def __str__(self):
+        return f'{self.name}({self.poison.name})'

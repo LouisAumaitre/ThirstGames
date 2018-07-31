@@ -5,13 +5,13 @@ from typing import Dict, List, Union, Optional
 from thirst_games.constants import (
     MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER, TRAPPED,
     HEAD_WOUND, LEG_WOUND, BLEEDING, FLEEING, ARM_WOUND, AMBUSH, BELLY_WOUND,
-    KNIFE, HATCHET, AXE, SWORD, THIRSTY)
-from thirst_games.items import HANDS, Weapon, Item, Food, Bag, Bottle
+    KNIFE, HATCHET, AXE, SWORD, THIRSTY, DAY)
+from thirst_games.items import HANDS, Weapon, Item, Food, Bag, Bottle, PoisonVial
 from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
 from thirst_games.poison import Poison
 from thirst_games.traps import can_build_any_trap, build_any_trap
-from thirst_games.weapons import get_weapon_wound, get_weapon_blood
+from thirst_games.weapons import get_weapon_wound, get_weapon_blood, weapon_bleed_proba
 
 
 class Player(Positionable):
@@ -46,7 +46,7 @@ class Player(Positionable):
 
     def remove_poison(self, poison, **context):
         poison.amount = 0
-        context[NARRATOR].add([self.first_name, 'is', 'no longer affected by the', poison.name])
+        context[NARRATOR].add([self.first_name, 'is', 'no longer affected by', poison.long_name])
 
     @property
     def name(self):
@@ -462,6 +462,7 @@ class Player(Positionable):
         self.check_bag(**context)
         self.consume_antidote(**context)
         self.fill_bottles(**context)
+        self.poison_weapon(**context)
 
     def craft_weapon(self, **context):
         crafting_tool = self.has_crafting_tool
@@ -603,6 +604,8 @@ class Player(Positionable):
             return
         looted = []
         for item in stuff:
+            if item not in context[MAP].loot[self.current_area]:
+                continue
             if isinstance(item, Weapon):
                 if item.damage_mult > self.weapon.damage_mult:
                     looted.append(item)
@@ -618,6 +621,14 @@ class Player(Positionable):
                 self.get_weapon(item, **context)
             else:
                 self.get_item(item, **context)
+
+    def poison_weapon(self, **context):
+        if self.has_item('poison vial') and weapon_bleed_proba.get(self.weapon.name, 0) > 0:
+            vial = [p_v for p_v in self.equipment if isinstance(p_v, PoisonVial)][0]
+            self.remove_item(vial)
+            self.weapon.poison = vial.poison
+            context[NARRATOR].add([self.first_name, 'puts', vial.poison.name, 'on', self.his, self.weapon.name])
+            vial.poison.long_name = f'{self.first_name}\'s {vial.poison.name}'
 
     @property
     def bottles(self):
@@ -730,7 +741,6 @@ class Player(Positionable):
             poisons = copy(self.active_poisons)
             poisons.sort(key=lambda p: -p.damage * p.amount)
             self.remove_poison(poisons[0], **context)
-            context[MAP].test = True
 
 # FIGHTING
     def attack_at_random(self, **context):
@@ -814,6 +824,13 @@ class Player(Positionable):
             hit_chance -= 0.2
         if random() < hit_chance:
             self._rage += 0.1
+            if self.weapon.poison is not None and self.weapon.poison not in target.active_poisons:
+                if random() > 0.3:
+                    target._poisons.append(copy(self.weapon.poison))
+                    context[MAP].test = f'{self.name} on {context[DAY]}'
+                self.weapon.poison.amount -= 1
+                if self.weapon.poison.amount == 0:
+                    self.weapon.poison = None
             return target.be_damaged(
                 self.damage(**context) * mult, weapon=self.weapon.name, attacker_name=self.first_name, **context)
         else:  # Miss

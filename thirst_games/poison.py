@@ -4,6 +4,7 @@ from thirst_games.constants import NARRATOR
 class Poison:
     def __init__(self, name, amount, damage):
         self.name = name
+        self.long_name = 'the ' + name
         self.amount = amount
         self.damage = damage
 
