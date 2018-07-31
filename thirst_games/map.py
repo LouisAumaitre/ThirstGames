@@ -38,10 +38,15 @@ def random_bag() -> Bag:
     if random() > 0.2:
         for i in range(randint(1, 4)):
             elements.append(Item('bandages'))
+    if random() > 0.2:
+        for i in range(randint(1, 4)):
+            elements.append(Item('antiseptic'))
     if random() > 0.7:
         elements.append(Item('net'))
     if random() > 0.7:
         elements.append(Item('wire'))
+    if random() > 0.7:
+        elements.append(Item('antidote'))
     if random() > 0.2:
         elements.append(Bottle(float(random() > 0.5)))
     if random() > 0.8:
@@ -177,3 +182,9 @@ class Map:
         if area is None:
             area = element.current_area
         return [p for p in self.areas[area] if p != element]
+
+    def has_water(self, element: Union[str, Positionable]) -> bool:
+        area = get_area(element)
+        if area == 'the river':
+            return True
+        return False

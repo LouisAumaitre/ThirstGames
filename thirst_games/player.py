@@ -286,7 +286,6 @@ class Player(Positionable):
         best_area = best_areas[0]
         if 'thirsty' in self.status and 'the river' in best_areas:
             best_area = 'the river'
-            context[MAP].test = True
         out = self.go_to(best_area, **context, **{PANIC: True})
         if out is not None:
             context[NARRATOR].add([self.first_name, f'flees to {out}'])
@@ -347,7 +346,7 @@ class Player(Positionable):
         if BLEEDING in wounds:
             self.patch_bleeding(**context)
         elif len(wounds):
-            self.patch_wound(context, wounds)
+            self.patch_wound(wounds, **context)
         else:
             self.add_health(max(self.energy, random()) * (self.max_health - self.health))
             self.add_energy(max(self.sleep, random()) * (1 - self.energy))
@@ -357,7 +356,8 @@ class Player(Positionable):
             if self.has_food and self.hunger > 0:
                 self.dine(**context)
 
-    def patch_wound(self, context, wounds):
+    def patch_wound(self, wounds, **context):
+        self.disinfect(**context)
         tool = 'bandages' if self.has_item('bandages') else choice(['moss', 'cloth'])
         if tool != 'bandages':
             self._max_health *= 0.95
@@ -369,6 +369,7 @@ class Player(Positionable):
         self.status.remove(pick_wound)
 
     def patch_bleeding(self, **context):
+        self.disinfect(**context)
         tool = 'bandages' if self.has_item('bandages') else choice(['moss', 'cloth'])
         if tool != 'bandages':
             self._max_health *= 0.95
@@ -376,6 +377,22 @@ class Player(Positionable):
             self.remove_item('bandages')
         context[NARRATOR].add([self.first_name, 'stops', self.his, 'wounds', 'from bleeding', 'using', tool])
         self.status.remove(BLEEDING)
+
+    def disinfect(self, **context):
+        if self.has_item('antiseptic'):
+            self.remove_item('antiseptic')
+            context[NARRATOR].add([self.first_name, 'disinfects', 'using', 'anticeptic'])
+            return
+        if context[MAP].has_water(self):
+            self._max_health *= 0.99
+            context[NARRATOR].add([self.first_name, 'cleans', 'using', f'{self.current_area}\'s water'])
+            return
+        if sum([b.fill for b in self.bottles]) > 0.2:
+            self.use_water(0.2)
+            self._max_health *= 0.99
+            context[NARRATOR].add([self.first_name, 'cleans', 'using', 'water'])
+            return
+        self._max_health *= 0.95
 
     def go_to_sleep(self, **context):
         if self.energy < 0.2:
@@ -593,9 +610,9 @@ class Player(Positionable):
 
     def fill_bottles(self, **context):
         self.drink()
-        if self.current_area == 'the river':
+        if context[MAP].has_water(self):
             total_water = self.water + sum(b.fill for b in self.bottles)
-            self._water = 1
+            self._water = max(1.5, self.water)
             for b in self.bottles:
                 b.fill = 1
             new_total_water = self.water + sum(b.fill for b in self.bottles)
@@ -624,6 +641,13 @@ class Player(Positionable):
                 b.fill -= amount
             if self.water and 'thirsty' in self.status:
                 self.status.remove('thirsty')
+
+    def use_water(self, amount) -> int:
+        for b in self.bottles:
+            _amount = min(amount, b.fill)
+            amount -= _amount
+            b.fill -= _amount
+        return amount
 
 # EATING
 
@@ -654,13 +678,17 @@ class Player(Positionable):
         else:
             foods = [e for e in self.equipment if isinstance(e, Food)]
             foods.sort(key=lambda x: x.value)
+            diner = []
             while self.hunger > 0 and len(foods):
                 meal = foods.pop()
                 self.remove_item(meal)
-                self.eat(meal, quantifier=self.his, **context)
+                diner.append(meal.name)
+                self.eat(meal, verbose=False, **context)
+            context[NARRATOR].add([self.name, 'eats', self.his, format_list(diner), f'at {self.current_area}'])
 
-    def eat(self, food: Food, quantifier, **context):
-        context[NARRATOR].add([self.name, 'eats', quantifier, food.name, f'at {self.current_area}'])
+    def eat(self, food: Food, quantifier='', verbose=True, **context):
+        if verbose:
+            context[NARRATOR].add([self.name, 'eats', quantifier, food.name, f'at {self.current_area}'])
         self.consume_nutriments(food.value)
 
 # FIGHTING
