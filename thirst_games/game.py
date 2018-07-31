@@ -101,12 +101,16 @@ class Game:
         l_name = max([len(p.name) for p in self.alive_players])
         for p in self.alive_players:
             bag = str([str(e) for e in p._equipment]).replace('\'', '')
+            max_l = 180
+            if len(bag) > max_l:
+                bag = bag[:max_l-3] + '...'
             print(f'- {p.name:<{l_name}} {int(p.health * 100):>3}/{int(p.max_health * 100):>3}hp '
                   f'{int(p.energy * 100):>3}nrg '
                   f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm {int(p.water * 100):>3}wtr '
-                  f'{str(p.weapon):<10} {p.current_area:<10} '
-                  f'{bag} - {format_list(p.status)}'
+                  f'{str(p.weapon):<20} {p.current_area:<10} '
+                  f'- {format_list(p.status)}'
                   f' - {format_list([str(po) for po in p.active_poisons])}')
+            print(f'           {bag}')
 
 
 def death(dead_player, **context):

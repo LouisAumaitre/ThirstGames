@@ -1,4 +1,4 @@
-from thirst_games.constants import NARRATOR
+from thirst_games.constants import NARRATOR, MAP, DAY
 
 
 class Poison:
@@ -13,8 +13,10 @@ class Poison:
             player.remove_poison(self, **context)
             return
         self.amount -= 1
-        if player.add_health(-self.damage, **context):
-            context[NARRATOR].new([player.first_name, 'succumbs', 'to the', self.name])
+        live = player.is_alive
+        player.add_health(-self.damage, **context)
+        if live and not player.is_alive:
+            context[NARRATOR].new([player.first_name, 'succumbs', 'to', self.long_name])
 
     def __str__(self):
         return f'{self.name}({int(self.damage * 100)}x{self.amount})'

@@ -623,7 +623,8 @@ class Player(Positionable):
                 self.get_item(item, **context)
 
     def poison_weapon(self, **context):
-        if self.has_item('poison vial') and weapon_bleed_proba.get(self.weapon.name, 0) > 0:
+        if self.has_item(
+                'poison vial') and weapon_bleed_proba.get(self.weapon.name, 0) > 0 and self.weapon.poison is None:
             vial = [p_v for p_v in self.equipment if isinstance(p_v, PoisonVial)][0]
             self.remove_item(vial)
             self.weapon.poison = vial.poison
@@ -827,7 +828,6 @@ class Player(Positionable):
             if self.weapon.poison is not None and self.weapon.poison not in target.active_poisons:
                 if random() > 0.3:
                     target._poisons.append(copy(self.weapon.poison))
-                    context[MAP].test = f'{self.name} on {context[DAY]}'
                 self.weapon.poison.amount -= 1
                 if self.weapon.poison.amount == 0:
                     self.weapon.poison = None
