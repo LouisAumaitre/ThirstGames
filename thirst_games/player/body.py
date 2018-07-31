@@ -2,7 +2,7 @@ from random import random, choice
 from typing import List
 
 from thirst_games.constants import NARRATOR, HEAD_WOUND, BELLY_WOUND, LEG_WOUND, BLEEDING, SLEEPING, THIRSTY, TRAPPED, \
-    MAP, PANIC, TIME, NIGHT, AMBUSH, DEATH
+    MAP, PANIC, TIME, NIGHT, AMBUSH, DEATH, FLEEING
 from thirst_games.map import Positionable, START_AREA
 from thirst_games.poison import Poison
 from thirst_games.weapons import get_weapon_wound, get_weapon_blood
@@ -178,7 +178,7 @@ class Body(Positionable):
         if AMBUSH in self.status:
             self.status.remove(AMBUSH)
 
-    def patch_wound(self, wounds, **context):
+    def patch_wound(self, wounds: List[str], **context):
         raise NotImplementedError
 
     def patch_bleeding(self, **context):
@@ -192,6 +192,10 @@ class Body(Positionable):
         self.add_sleep(1, **context)
         context[NARRATOR].add([self.first_name, 'sleeps', f'at {self.current_area}'])
         self.status.append(SLEEPING)
+
+    def stop_running(self):
+        if FLEEING in self.status:
+            self.status.remove(FLEEING)
 
     @property
     def active_poisons(self) -> List[Poison]:

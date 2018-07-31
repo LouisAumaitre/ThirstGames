@@ -83,7 +83,7 @@ class Carrier(Body):
                 bags[0].content.remove(bag_weapons[0])
                 self.get_weapon(bag_weapons[0], **context)
 
-    def patch_wound(self, wounds, **context):
+    def patch_wound(self, wounds: List[str], **context):
         self.disinfect(**context)
         tool = 'bandages' if self.has_item('bandages') else choice(['moss', 'cloth'])
         if tool != 'bandages':
