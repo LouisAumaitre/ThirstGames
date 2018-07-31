@@ -2,21 +2,15 @@ from copy import copy
 from random import random, choice
 from typing import Dict, List, Union, Optional
 
-from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER, TRAPPED
+from thirst_games.constants import (
+    MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER, TRAPPED,
+    HEAD_WOUND, LEG_WOUND, BLEEDING, FLEEING, ARM_WOUND, AMBUSH, BELLY_WOUND,
+    KNIFE, HATCHET, AXE, SWORD, THIRSTY)
 from thirst_games.items import HANDS, Weapon, Item, Food, Bag, Bottle
 from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
 from thirst_games.traps import can_build_any_trap, build_any_trap
 from thirst_games.weapons import get_weapon_wound, get_weapon_blood
-
-FLEEING = 'fleeing'
-AMBUSH = 'ambush'
-
-ARM_WOUND = 'arm wound'
-LEG_WOUND = 'leg wound'
-BELLY_WOUND = 'belly wound'
-HEAD_WOUND = 'head wound'
-BLEEDING = 'bleeding'
 
 
 class Player(Positionable):
@@ -208,7 +202,7 @@ class Player(Positionable):
             #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
     def upkeep(self, **context):
-        if self.has_item('knife') or self.has_item('sword') or self.has_item('hatchet') or self.has_item('axe'):
+        if self.has_item(KNIFE) or self.has_item(SWORD) or self.has_item(HATCHET) or self.has_item(AXE):
             self.free_from_trap(**context)
         self._water -= 0.3
         self.drink()
@@ -216,7 +210,7 @@ class Player(Positionable):
         sleep_upkeep = max(random(), random()) * 0.1
         food_upkeep = max(random(), random()) * 0.2
         if self.thirst > 1:
-            self.status.append('thirsty')
+            self.status.append(THIRSTY)
             energy_upkeep *= self.thirst
         if SLEEPING in self.status:
             self.status.remove(SLEEPING)
@@ -284,7 +278,7 @@ class Player(Positionable):
         if panic and random() > self.courage(**context) + 0.5:
             self.drop_weapon(True, **context)
         min_player_per_area = min([len(area) for key, area in context[MAP].areas.items() if key != START_AREA])
-        # can't flee to or hide at the cornucopea
+        # can't flee to or hide at the cornucopia
         best_areas = [
             key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area and key != START_AREA
         ]
@@ -292,6 +286,7 @@ class Player(Positionable):
         best_area = best_areas[0]
         if 'thirsty' in self.status and 'the river' in best_areas:
             best_area = 'the river'
+            context[MAP].test = True
         out = self.go_to(best_area, **context, **{PANIC: True})
         if out is not None:
             context[NARRATOR].add([self.first_name, f'flees to {out}'])
@@ -304,6 +299,7 @@ class Player(Positionable):
         best_area = best_areas[0]
         if 'thirsty' in self.status and 'the river' in best_areas:
             best_area = 'the river'
+            context[MAP].test = True
         out = self.go_to(best_area, **context)
         if out is None:
             context[NARRATOR].replace('hides and rests', 'rests')
@@ -422,9 +418,9 @@ class Player(Positionable):
 # CRAFTING
     @property
     def has_crafting_tool(self):
-        if self.weapon.name in ['knife', 'hatchet']:
+        if self.weapon.name in [KNIFE, HATCHET]:
             return self.weapon
-        tools = [i for i in self.equipment if i.name in ['knife', 'hatchet']]
+        tools = [i for i in self.equipment if i.name in [KNIFE, HATCHET]]
         if len(tools):
             return tools[0]
         return None

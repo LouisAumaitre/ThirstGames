@@ -2,6 +2,7 @@ from typing import List, Dict, Union
 
 from random import random, choice, randint
 
+from thirst_games.constants import KNIFE, HATCHET, TRIDENT, AXE, SWORD, MACE
 from thirst_games.items import Weapon, Item, Food, Bag, Bottle
 
 START_AREA = 'the cornucopia'
@@ -47,9 +48,9 @@ def random_bag() -> Bag:
         for i in range(randint(1, 3)):
             elements.append(Item('explosive'))
     if random() > 1/3:
-        elements.append(Weapon('hatchet', 1 + random()))
+        elements.append(Weapon(HATCHET, 1 + random()))
     elif random() > 0.5:
-        elements.append(Weapon('knife', 1 + random()))
+        elements.append(Weapon(KNIFE, 1 + random()))
     return Bag(elements)
 
 
@@ -82,14 +83,14 @@ class Map:
 
         self.loot: Dict[str, List[Item]] = {area_name: [] for area_name in self.areas.keys()}
         self.loot[START_AREA] = [
-            Weapon('sword', 2.5 + random()),
-            Weapon('sword', 2.5 + random()),
-            Weapon('trident', 2 + random()),
-            Weapon('axe', 2.5 + random()),
-            Weapon('knife', 1 + random()),
-            Weapon('knife', 1 + random()),
-            Weapon('knife', 1 + random()),
-            Weapon('knife', 1 + random()),
+            Weapon(SWORD, 2.5 + random()),
+            Weapon(SWORD, 2.5 + random()),
+            Weapon(MACE, 2 + random()),
+            Weapon(AXE, 2.5 + random()),
+            Weapon(KNIFE, 1 + random()),
+            Weapon(KNIFE, 1 + random()),
+            Weapon(KNIFE, 1 + random()),
+            Weapon(KNIFE, 1 + random()),
         ]
         self.traps = {area_name: [] for area_name in self.areas.keys()}
         for i in range(5):
