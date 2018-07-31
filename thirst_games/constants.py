@@ -12,5 +12,5 @@ NIGHT = 'night'
 DAY = 'day'
 
 PANIC = 'panic'
-
+TRAPPED = 'trapped'
 SLEEPING = 'sleeping'

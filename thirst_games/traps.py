@@ -2,7 +2,7 @@ from typing import Type
 
 from random import random
 
-from thirst_games.constants import NARRATOR, PANIC, MAP
+from thirst_games.constants import NARRATOR, PANIC, MAP, TRAPPED
 from thirst_games.map import START_AREA
 
 
@@ -36,8 +36,8 @@ class Trap:
         name = self.long_name
         if player is self.owner:
             name = f'{player.his} own {self.name}'
-        self._apply(name, player, **context)
         context[MAP].traps[player.current_area].remove(self)
+        self._apply(name, player, **context)
 
     @classmethod
     def can_be_built(cls, player, **context) -> bool:
@@ -91,7 +91,8 @@ class NetTrap(Trap):
 
     def _apply(self, name, player, **context):
         context[NARRATOR].new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
-        player.status.append('trapped')
+        player.status.append(TRAPPED)
+        take_advantage_of_trap(self, context, player)
 
 
 class WireTrap(Trap):
@@ -102,9 +103,20 @@ class WireTrap(Trap):
 
     def _apply(self, name, player, **context):
         context[NARRATOR].new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
-        if random() > 0.1:
+        if random() > 0.5:
             player.status.append('leg wound')
-        context[NARRATOR].add([player.first_name, 'wounds', player.his, 'leg'])
+            context[NARRATOR].add([player.first_name, 'wounds', player.his, 'leg'])
+        else:
+            player.status.append(TRAPPED)
+            take_advantage_of_trap(self, context, player)
+
+
+def take_advantage_of_trap(trap, context, player):
+    if trap.owner.current_area == player.current_area and not trap.owner.busy:
+        # can attack
+        if trap.owner.dangerosity(**context) > player.dangerosity(**context):
+            context[NARRATOR].cut()
+            trap.owner.fight(player, **context)
 
 
 def build_trap(player, trap_class: Type[Trap], **context):

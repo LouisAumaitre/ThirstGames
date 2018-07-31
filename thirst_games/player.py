@@ -2,7 +2,7 @@ from copy import copy
 from random import random, choice
 from typing import Dict, List, Union, Optional
 
-from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER
+from thirst_games.constants import MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER, TRAPPED
 from thirst_games.items import HANDS, Weapon, Item, Food, Bag, Bottle
 from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
@@ -25,6 +25,7 @@ class Player(Positionable):
         self.district = district
         self.his = his
         self.him = 'him' if his == 'his' else ('her' if his == 'her' else 'them')
+        self.he = 'he' if his == 'his' else ('her' if his == 'her' else 'them')
         self.relationships: Dict[Player, Relationship] = {}
         self.busy = False
         self._health = 1
@@ -274,6 +275,8 @@ class Player(Positionable):
                 self.get_weapon(bag_weapons[0], **context)
 
     def can_flee(self, **context):
+        if TRAPPED in self.status:
+            return False
         return self.energy > self.move_cost or self.current_area != START_AREA
 
     def flee(self, panic=False, **context):
@@ -287,6 +290,8 @@ class Player(Positionable):
         ]
         best_areas.sort(key=lambda x: -len(context[MAP].loot[x]))
         best_area = best_areas[0]
+        if 'thirsty' in self.status and 'the river' in best_areas:
+            best_area = 'the river'
         out = self.go_to(best_area, **context, **{PANIC: True})
         if out is not None:
             context[NARRATOR].add([self.first_name, f'flees to {out}'])
@@ -297,6 +302,8 @@ class Player(Positionable):
         best_areas = [key for key, value in context[MAP].areas.items() if len(value) == max_player_per_area]
         best_areas.sort(key=lambda x: -len(context[MAP].loot[x]))
         best_area = best_areas[0]
+        if 'thirsty' in self.status and 'the river' in best_areas:
+            best_area = 'the river'
         out = self.go_to(best_area, **context)
         if out is None:
             context[NARRATOR].replace('hides and rests', 'rests')
@@ -623,9 +630,10 @@ class Player(Positionable):
                 self.status.remove('thirsty')
 
 # EATING
+
     def forage(self, **context):
         food: Food = context[MAP].get_forage(self)
-        self.fill_bottles()
+        self.fill_bottles(**context)
         if food is None:
             context[NARRATOR].add([self.name, 'searches for food', 'but does not find anything edible'])
             return
@@ -683,9 +691,12 @@ class Player(Positionable):
         other_stuff = []
         area = f'at {self.current_area}'
         surprise_mult = 2 if SLEEPING in other_player.status else (
-            1.5 if random() + self.stealth > other_player.wisdom else 1)
+            2 if TRAPPED in other_player.status else (
+                1.5 if random() + self.stealth > other_player.wisdom else 1
+            ))
         surprise = f'in {other_player.his} sleep' if SLEEPING in other_player.status else (
-            'by surprise' if surprise_mult > 1 else '')
+            f'while {other_player.he} is trapped' if TRAPPED in other_player.status else (
+                'by surprise' if surprise_mult > 1 else ''))
         self.reveal()
         other_player.reveal()
         round = 1
@@ -749,6 +760,8 @@ class Player(Positionable):
         mult = 1
         if ARM_WOUND in self.status:
             mult -= 0.2
+        if TRAPPED in self.status:
+            mult *= 0.5
         return mult * self.weapon.damage_mult * random() / 2
 
     def be_damaged(self, damage, weapon='default', attacker_name=None, **context) -> bool:
@@ -795,10 +808,9 @@ class Player(Positionable):
         context[DEATH](self, **context)
 
     def free_from_trap(self, **context):
-        if 'trapped' in self.status:
-            self.status.remove('trapped')
+        if TRAPPED in self.status:
+            self.status.remove(TRAPPED)
             context[NARRATOR].new([self.first_name, 'frees', f'{self.him}self', 'from', 'the trap'])
-            context[MAP].test = True
 
 
 class Relationship:
@@ -891,7 +903,7 @@ trap_strat = Strategy(
     lambda x, **c: build_any_trap(x, **c))
 free_trap_strat = Strategy(
     'free from trap',
-    lambda x, **c: 1000 * ('trapped' in x.status),
+    lambda x, **c: 1000 * (TRAPPED in x.status),
     lambda x, **c: x.free_from_trap(**c))
 
 start_strategies = [

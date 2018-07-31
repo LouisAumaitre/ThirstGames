@@ -35,7 +35,7 @@ def random_bag() -> Bag:
     if random() > 0.3:
         elements.append(Item('rope'))
     if random() > 0.2:
-        for i in range(randint(2, 5)):
+        for i in range(randint(1, 4)):
             elements.append(Item('bandages'))
     if random() > 0.7:
         elements.append(Item('net'))
