@@ -105,7 +105,8 @@ class Game:
                   f'{int(p.energy * 100):>3}nrg '
                   f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm {int(p.water * 100):>3}wtr '
                   f'{p.weapon.name:<10} {p.current_area:<10} '
-                  f'{bag} - {format_list(p.status)}')
+                  f'{bag} - {format_list(p.status)}'
+                  f' - {format_list([str(po) for po in p.active_poisons])}')
 
 
 def death(dead_player, **context):

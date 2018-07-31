@@ -9,6 +9,7 @@ from thirst_games.constants import (
 from thirst_games.items import HANDS, Weapon, Item, Food, Bag, Bottle
 from thirst_games.map import START_AREA, Positionable
 from thirst_games.narrator import format_list
+from thirst_games.poison import Poison
 from thirst_games.traps import can_build_any_trap, build_any_trap
 from thirst_games.weapons import get_weapon_wound, get_weapon_blood
 
@@ -34,9 +35,18 @@ class Player(Positionable):
         self.status = []
         self._rage = 0
         self._waiting = 0
+        self._poisons: List[Poison] = []
 
         self.strategy = None
         self.weapon = HANDS
+
+    @property
+    def active_poisons(self) -> List[Poison]:
+        return [p for p in self._poisons if p.amount > 0]
+
+    def remove_poison(self, poison, **context):
+        poison.amount = 0
+        context[NARRATOR].add([self.first_name, 'is', 'no longer affected by the', poison.name])
 
     @property
     def name(self):
@@ -202,8 +212,6 @@ class Player(Positionable):
             #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
     def upkeep(self, **context):
-        if self.has_item(KNIFE) or self.has_item(SWORD) or self.has_item(HATCHET) or self.has_item(AXE):
-            self.free_from_trap(**context)
         self._water -= 0.3
         self.drink()
         energy_upkeep = -random() * 0.1  # loses energy while being awake
@@ -226,7 +234,11 @@ class Player(Positionable):
         if BLEEDING in self.status:
             if self.be_damaged(max(0.05, self.health/5), **context):
                 context[NARRATOR].add([self.first_name, 'bleeds', 'to death'])
+        for poison in self.active_poisons:
+            poison.upkeep(self, **context)
         self._rage = 0
+        if self.has_item(KNIFE) or self.has_item(SWORD) or self.has_item(HATCHET) or self.has_item(AXE):
+            self.free_from_trap(**context)
 
     def act(self, **context):
         if FLEEING in self.status:
@@ -253,10 +265,12 @@ class Player(Positionable):
                 context[NARRATOR].new([
                     self.first_name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
                     'finds', format_list(stuff)])
+                context[NARRATOR].cut()
             else:
                 context[NARRATOR].new([
                     self.first_name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
                     'finds', 'they are' if len(bags) > 1 else 'it is', 'empty'])
+                context[NARRATOR].cut()
             for i in range(1, len(bags)):
                 extra_bag = bags[i]
                 self._equipment.remove(extra_bag)
@@ -298,7 +312,6 @@ class Player(Positionable):
         best_area = best_areas[0]
         if 'thirsty' in self.status and 'the river' in best_areas:
             best_area = 'the river'
-            context[MAP].test = True
         out = self.go_to(best_area, **context)
         if out is None:
             context[NARRATOR].replace('hides and rests', 'rests')
@@ -340,8 +353,7 @@ class Player(Positionable):
             self.stealth += random() * (1 - self.stealth)
             context[NARRATOR].add([self.first_name, 'hides', f'at {self.current_area}'])
 
-        self.check_bag(**context)
-        self.fill_bottles(**context)
+        self.take_a_break(context)
         wounds = self.wounds
         if BLEEDING in wounds:
             self.patch_bleeding(**context)
@@ -443,9 +455,13 @@ class Player(Positionable):
         return None
 
     def craft(self, **context):
-        self.check_bag(**context)
-        self.fill_bottles(**context)
+        self.take_a_break(context)
         self.craft_weapon(**context)
+
+    def take_a_break(self, context):
+        self.check_bag(**context)
+        self.consume_antidote(**context)
+        self.fill_bottles(**context)
 
     def craft_weapon(self, **context):
         crafting_tool = self.has_crafting_tool
@@ -465,8 +481,7 @@ class Player(Positionable):
 
 # EQUIPMENT
     def loot(self, **context):
-        self.check_bag(**context)
-        self.fill_bottles(**context)
+        self.take_a_break(context)
         item = context[MAP].pick_item(self.current_area)
         if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
             context[NARRATOR].add([
@@ -658,38 +673,64 @@ class Player(Positionable):
             context[NARRATOR].add([self.name, 'searches for food', 'but does not find anything edible'])
             return
         else:
+            poison = False
             if food.value <= self.hunger:
                 context[NARRATOR].add([self.name, 'finds'])
-                self.eat(food, quantifier='some', **context)
+                poison = self.eat(food, quantifier='some', **context) == 'poison'
             else:
                 context[NARRATOR].add([self.name, 'finds', 'some', food.name, f'at {self.current_area}'])
                 food.value *= 2
-            self.get_item(food, **context)  # some extras / all of it
+            if not poison:
+                self.get_item(food, **context)  # some extras / all of it
+            else:
+                self.consume_antidote(**context)
 
     @property
     def has_food(self):
         return len([e for e in self.equipment if isinstance(e, Food)]) > 0
 
     def dine(self, **context):
-        self.check_bag(**context)
-        self.fill_bottles(**context)
+        self.take_a_break(context)
         if not self.has_food:
             context[NARRATOR].add([self.name, 'does not have', 'anything to eat'])
         else:
             foods = [e for e in self.equipment if isinstance(e, Food)]
             foods.sort(key=lambda x: x.value)
             diner = []
+            poison = None
             while self.hunger > 0 and len(foods):
                 meal = foods.pop()
                 self.remove_item(meal)
                 diner.append(meal.name)
-                self.eat(meal, verbose=False, **context)
+                if self.eat(meal, verbose=False, **context) == 'poison':
+                    poison = meal
+                    break
             context[NARRATOR].add([self.name, 'eats', self.his, format_list(diner), f'at {self.current_area}'])
+            if poison is not None:
+                context[NARRATOR].new([f'the {poison.name}', 'is', 'poisonous!'])
+                context[NARRATOR].cut()
+                self.consume_antidote(**context)
 
     def eat(self, food: Food, quantifier='', verbose=True, **context):
         if verbose:
             context[NARRATOR].add([self.name, 'eats', quantifier, food.name, f'at {self.current_area}'])
         self.consume_nutriments(food.value)
+        if food.is_poisonous:
+            self._poisons.append(copy(food.poison))
+            while food in self.equipment:
+                self.remove_item(food)
+            if verbose:
+                context[NARRATOR].new([f'The {food.name}', 'are' if food.name[-1] == 's' else 'is', 'poisonous!'])
+                context[NARRATOR].cut()
+            return 'poison'
+
+    def consume_antidote(self, **context):
+        if len(self.active_poisons) and self.has_item('antidote'):
+            context[NARRATOR].new([self.first_name, 'uses', self.his, 'antidote'])
+            poisons = copy(self.active_poisons)
+            poisons.sort(key=lambda p: -p.damage * p.amount)
+            self.remove_poison(poisons[0], **context)
+            context[MAP].test = True
 
 # FIGHTING
     def attack_at_random(self, **context):
