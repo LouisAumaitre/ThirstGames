@@ -142,7 +142,7 @@ class Body(Positionable):
             return False
         return self.energy > self.move_cost or self.current_area != START_AREA
 
-    def take_a_break(self, context):
+    def take_a_break(self, **context):
         raise NotImplementedError
 
     def rest(self, **context):
@@ -150,7 +150,7 @@ class Body(Positionable):
             self.stealth += random() * (1 - self.stealth)
             context[NARRATOR].add([self.first_name, 'hides', f'at {self.current_area}'])
 
-        self.take_a_break(context)
+        self.take_a_break(**context)
         wounds = self.wounds
         if BLEEDING in wounds:
             self.patch_bleeding(**context)
@@ -200,6 +200,9 @@ class Body(Positionable):
     def remove_poison(self, poison, **context):
         poison.amount = 0
         context[NARRATOR].add([self.first_name, 'is', 'no longer affected by', poison.long_name])
+
+    def add_poison(self, poison, **context):
+        self._poisons.append(poison)
 
     def check_for_ambush_and_traps(self, **context):
         traps = context[MAP].traps[self.current_area]

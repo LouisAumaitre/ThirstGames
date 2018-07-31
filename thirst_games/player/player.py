@@ -1,13 +1,12 @@
 from copy import copy
-from random import random, choice
-from typing import Dict, List, Union, Optional
+from random import random
+from typing import Dict, List, Union
 
 from thirst_games.constants import (
-    MAP, PLAYERS, DEATH, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER, TRAPPED,
-    BLEEDING, FLEEING, ARM_WOUND, AMBUSH,
-    KNIFE, HATCHET, AXE, SWORD,
+    MAP, PLAYERS, TIME, NARRATOR, PANIC, SLEEPING, NIGHT, STARTER, TRAPPED,
+    FLEEING, ARM_WOUND, AMBUSH,
 )
-from thirst_games.items import HANDS, Weapon, Item, Food, Bag, Bottle, PoisonVial
+from thirst_games.items import HANDS, Weapon, Item, PoisonVial
 from thirst_games.map import START_AREA
 from thirst_games.narrator import format_list
 from thirst_games.player.body import Body
@@ -25,7 +24,6 @@ class Player(Carrier):
         self.wisdom = 0.9
         self._waiting = 0
         self.strategy = None
-        self.weapon = HANDS
 
     def courage(self, **context):
         courage = self.health * self.energy + self._rage
@@ -121,47 +119,6 @@ class Player(Carrier):
             self._energy -= self.move_cost
             self.hide(**context)
 
-    def hide(self, **context):
-        if context.get(PANIC, False):
-            context[NARRATOR].add([self.first_name, 'hides', f'at {self.current_area}'])
-            return
-        if self.sleep < 0.1 \
-                or (context[TIME] == NIGHT and context[MAP].neighbors_count == 1 and len(self.wounds) == 0) \
-                or (context[MAP].neighbors_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
-                or (context[TIME] == NIGHT and self.sleep < 0.3 and len(self.wounds) == 0):
-            self.go_to_sleep(**context)
-            return
-        return self.rest(**context)
-
-    def rest(self, **context):
-        if self.current_area != START_AREA:
-            self.stealth += random() * (1 - self.stealth)
-            context[NARRATOR].add([self.first_name, 'hides', f'at {self.current_area}'])
-
-        self.take_a_break(context)
-        wounds = self.wounds
-        if BLEEDING in wounds:
-            self.patch_bleeding(**context)
-        elif len(wounds):
-            self.patch_wound(wounds, **context)
-        else:
-            self.add_health(max(self.energy, random()) * (self.max_health - self.health))
-            self.add_energy(max(self.sleep, random()) * (1 - self.energy))
-            context[NARRATOR].add([self.first_name, 'rests', f'at {self.current_area}'])
-
-        if self.current_area == START_AREA:
-            if self.has_food and self.hunger > 0:
-                self.dine(**context)
-
-    def go_to_sleep(self, **context):
-        if self.energy < 0.2:
-            context[NARRATOR].add([self.first_name, 'is exhausted'])
-        self.add_health(self.energy * (1 - self.health), **context)
-        self.add_energy(self.sleep * (1 - self.energy), **context)
-        self.add_sleep(1, **context)
-        context[NARRATOR].add([self.first_name, 'sleeps', f'at {self.current_area}'])
-        self.status.append(SLEEPING)
-
     def set_up_ambush(self, **context):
         self.stealth += (random() / 2 + 0.5) * (1 - self.stealth)
         if AMBUSH not in self.status:
@@ -176,55 +133,9 @@ class Player(Carrier):
                 self.status.remove(AMBUSH)
                 self.pursue(**context)
 
-# CRAFTING
-    @property
-    def has_crafting_tool(self):
-        if self.weapon.name in [KNIFE, HATCHET]:
-            return self.weapon
-        tools = [i for i in self.equipment if i.name in [KNIFE, HATCHET]]
-        if len(tools):
-            return tools[0]
-        return None
-
-    def craft(self, **context):
-        self.take_a_break(context)
-        self.craft_weapon(**context)
-
-    def take_a_break(self, context):
-        self.check_bag(**context)
-        self.consume_antidote(**context)
-        self.fill_bottles(**context)
+    def take_a_break(self, **context):
+        Carrier.take_a_break(self, **context)
         self.poison_weapon(**context)
-
-    def craft_weapon(self, **context):
-        crafting_tool = self.has_crafting_tool
-        with_tool = '' if crafting_tool is None else f'with {self.his} {crafting_tool.name}'
-        name = choice(['spear', 'club'])
-        weapon = Weapon(name, 1 + random() + (random() if crafting_tool is not None else 0))
-        if weapon.damage_mult > self.weapon.damage_mult:
-            description = weapon.long_name
-            if weapon.name == self.weapon.name:
-                self.weapon.long_name = f'{self.first_name}\'s old {self.weapon.name}'
-                description = f'a better {weapon.name}'
-            context[NARRATOR].add([self.first_name, 'crafts', description, with_tool, f'at {self.current_area}'])
-            self.get_weapon(weapon, **context)
-        else:
-            context[NARRATOR].add([
-                self.first_name, 'tries to craft a better weapon', f'at {self.current_area}'])
-
-# EQUIPMENT
-    def loot(self, **context):
-        self.take_a_break(context)
-        item = context[MAP].pick_item(self.current_area)
-        if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
-            context[NARRATOR].add([
-                self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
-            return
-        if isinstance(item, Weapon):
-            self.loot_weapon(item, **context)
-        else:
-            context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
-            self.get_item(item, **context)
 
     def estimate_of_power(self, area, **context) -> float:
         neighbors = context[MAP].neighbors(self, area)
@@ -233,7 +144,7 @@ class Player(Carrier):
         seen_neighbors = [p for p in neighbors if random() * self.wisdom > p.stealth]
         return sum([p.dangerosity(**context) for p in seen_neighbors])
 
-    def loot_cornucopea(self, **context):
+    def loot_cornucopia(self, **context):
         out = self.go_to(START_AREA, **context)
         if out is not None:
             context[NARRATOR].add([self.first_name, f'goes to {out}'])
@@ -252,29 +163,6 @@ class Player(Carrier):
         else:
             self.loot(**context)
 
-    def loot_weapon(self, weapon: Optional[Weapon]=None, **context):
-        if weapon is None:
-            weapon = context[MAP].pick_weapon(self.current_area)
-        if weapon is None or (weapon.damage_mult <= self.weapon.damage_mult and (
-                    not weapon.small or context[TIME] == STARTER or self.bag is None)):
-            context[NARRATOR].add([
-                self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
-            return
-        if weapon.name == self.weapon.name:
-            self.weapon.long_name.replace('\'s', '\'s old')
-            context[NARRATOR].add([
-                self.first_name, 'picks up', f'a better {weapon.name}', f'at {self.current_area}'])
-        else:
-            context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name, f'at {self.current_area}'])
-        self.get_weapon(weapon, **context)
-
-    def loot_bag(self, **context):
-        item = context[MAP].pick_bag(self.current_area)
-        if item is None:
-            return self.loot(**context)
-        context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
-        self.get_item(item, **context)
-
     def estimate(self, item: Union[Item, List[Item]], **content) -> float:
         if isinstance(item, Item):
             if isinstance(item, Weapon):
@@ -285,49 +173,6 @@ class Player(Carrier):
             return max([self.estimate(i) for i in list(item)])
         else:
             return 0
-
-    def get_weapon(self, weapon, **context):
-        if weapon.damage_mult > self.weapon.damage_mult:
-            if self.weapon.small and self.bag is not None:
-                self.bag.content.append(self.weapon)
-            else:
-                self.drop_weapon(verbose=False, **context)
-            self.weapon = weapon
-            self.weapon.long_name = f'{self.first_name}\'s {weapon.name}'
-        elif weapon.small and self.bag is not None:
-            self.bag.content.append(weapon)
-
-    def drop_weapon(self, verbose=True, **context):
-        if self.weapon != HANDS:
-            if verbose:
-                context[NARRATOR].add([
-                    self.first_name, 'drops', f'{self.his} {self.weapon.name}', f'at {self.current_area}'])
-            context[MAP].add_loot(self.weapon, self.current_area)
-        self.weapon = HANDS
-
-    def get_item(self, item, **context):
-        if isinstance(item, Bag):
-            item.long_name = f'{self.first_name}\'s {item.name}'
-            if 'unchecked bag' not in self.status:
-                self.status.append('unchecked bag')
-            self._equipment.append(item)
-        else:
-            if self.bag is not None:
-                self.bag.content.append(item)
-            else:
-                self._equipment.append(item)
-
-    def remove_item(self, item, **context):
-        if isinstance(item, str):
-            item = [i for i in self.equipment if i.name == item][0]
-        if item in self._equipment:
-            self._equipment.remove(item)
-            return
-        for b in [e for e in self._equipment if isinstance(e, Bag)]:
-            if item in b.content:
-                b.content.remove(item)
-                return
-        raise KeyError(f'no {item.name} in {self.name}\'s stash')
 
     def pillage(self, stuff, **context):
         if len([p for p in context[PLAYERS] if p.is_alive]) == 1:
@@ -363,119 +208,6 @@ class Player(Carrier):
             context[NARRATOR].add([self.first_name, 'puts', vial.poison.name, 'on', self.his, self.weapon.name])
             vial.poison.long_name = f'{self.first_name}\'s {vial.poison.name}'
 
-    @property
-    def bottles(self):
-        return [i for i in self.equipment if isinstance(i, Bottle)]
-
-    def fill_bottles(self, **context):
-        self.water_upkeep()
-        if context[MAP].has_water(self):
-            total_water = self.water + sum(b.fill for b in self.bottles)
-            self._water = max(1.5, self.water)
-            for b in self.bottles:
-                b.fill = 1
-            new_total_water = self.water + sum(b.fill for b in self.bottles)
-            if new_total_water > total_water + 1:
-                if len(self.bottles):
-                    context[NARRATOR].add([
-                        self.name, 'fills', self.his, 'bottles' if len(self.bottles) > 1 else 'bottle',
-                        f'at {self.current_area}'])
-                else:
-                    context[NARRATOR].add([self.name, 'drinks', f'at {self.current_area}'])
-        else:
-            water = random()
-            amount = min(self.thirst, water)
-            self._water += amount
-            water -= amount
-            for b in self.bottles:
-                amount = min(1 - b.fill, water)
-                b.fill += amount
-                water -= amount
-
-    def water_upkeep(self):
-        if self.thirst:
-            for b in self.bottles:
-                amount = min(self.thirst, b.fill)
-                self._water += amount
-                b.fill -= amount
-            if self.water and 'thirsty' in self.status:
-                self.status.remove('thirsty')
-
-    def use_water(self, amount) -> int:
-        for b in self.bottles:
-            _amount = min(amount, b.fill)
-            amount -= _amount
-            b.fill -= _amount
-        return amount
-
-# EATING
-
-    def forage(self, **context):
-        food: Food = context[MAP].get_forage(self)
-        self.fill_bottles(**context)
-        if food is None:
-            context[NARRATOR].add([self.name, 'searches for food', 'but does not find anything edible'])
-            return
-        else:
-            poison = False
-            if food.value <= self.hunger:
-                context[NARRATOR].add([self.name, 'finds'])
-                poison = self.eat(food, quantifier='some', **context) == 'poison'
-            else:
-                context[NARRATOR].add([self.name, 'finds', 'some', food.name, f'at {self.current_area}'])
-                food.value *= 2
-            if not poison:
-                self.get_item(food, **context)  # some extras / all of it
-            else:
-                self.consume_antidote(**context)
-
-    @property
-    def has_food(self):
-        return len([e for e in self.equipment if isinstance(e, Food)]) > 0
-
-    def dine(self, **context):
-        self.take_a_break(context)
-        if not self.has_food:
-            context[NARRATOR].add([self.name, 'does not have', 'anything to eat'])
-        else:
-            foods = [e for e in self.equipment if isinstance(e, Food)]
-            foods.sort(key=lambda x: x.value)
-            diner = []
-            poison = None
-            while self.hunger > 0 and len(foods):
-                meal = foods.pop()
-                self.remove_item(meal)
-                diner.append(meal.name)
-                if self.eat(meal, verbose=False, **context) == 'poison':
-                    poison = meal
-                    break
-            context[NARRATOR].add([self.name, 'eats', self.his, format_list(diner), f'at {self.current_area}'])
-            if poison is not None:
-                context[NARRATOR].new([f'the {poison.name}', 'is', 'poisonous!'])
-                context[NARRATOR].cut()
-                self.consume_antidote(**context)
-
-    def eat(self, food: Food, quantifier='', verbose=True, **context):
-        if verbose:
-            context[NARRATOR].add([self.name, 'eats', quantifier, food.name, f'at {self.current_area}'])
-        self.consume_nutriments(food.value)
-        if food.is_poisonous:
-            self._poisons.append(copy(food.poison))
-            while food in self.equipment:
-                self.remove_item(food)
-            if verbose:
-                context[NARRATOR].new([f'The {food.name}', 'are' if food.name[-1] == 's' else 'is', 'poisonous!'])
-                context[NARRATOR].cut()
-            return 'poison'
-
-    def consume_antidote(self, **context):
-        if len(self.active_poisons) and self.has_item('antidote'):
-            context[NARRATOR].new([self.first_name, 'uses', self.his, 'antidote'])
-            poisons = copy(self.active_poisons)
-            poisons.sort(key=lambda p: -p.damage * p.amount)
-            self.remove_poison(poisons[0], **context)
-
-# FIGHTING
     def attack_at_random(self, **context):
         preys = [p for p in context[MAP].areas[self.current_area] if random() * self.wisdom > p.stealth and p != self]
         preys.sort(key=lambda x: x.health * x.damage(**context))
@@ -546,7 +278,7 @@ class Player(Carrier):
         self.pillage(other_stuff, **context)
         other_player.pillage(self_stuff, **context)
 
-    def hit(self, target, mult=1, **context) -> bool:
+    def hit(self, target: Body, mult=1, **context) -> bool:
         if self.energy < 0.1:
             mult /= 2
             self._rage = -1
@@ -559,7 +291,7 @@ class Player(Carrier):
             self._rage += 0.1
             if self.weapon.poison is not None and self.weapon.poison not in target.active_poisons:
                 if random() > 0.3:
-                    target._poisons.append(copy(self.weapon.poison))
+                    target.add_poison(copy(self.weapon.poison), **context)
                 self.weapon.poison.amount -= 1
                 if self.weapon.poison.amount == 0:
                     self.weapon.poison = None
@@ -577,12 +309,6 @@ class Player(Carrier):
         if TRAPPED in self.status:
             mult *= 0.5
         return mult * self.weapon.damage_mult * random() / 2
-
-    def die(self, **context):
-        self.drop_weapon(False, **context)
-        for e in self._equipment:
-            context[MAP].add_loot(e, self.current_area)
-        context[DEATH](self, **context)
 
 
 class Relationship:
@@ -638,12 +364,12 @@ loot_strat = Strategy(
     lambda x, **c: (x.energy - x.move_cost) * (2 if x.weapon.damage_mult == 1 else 0.2) *
                    x.estimate(c[MAP].loot[x.current_area], **c),
     lambda x, **c: x.loot(**c))
-loot_cornucopea_strat = Strategy(
-    'loot cornucopea',
+loot_cornucopia_strat = Strategy(
+    'loot cornucopia',
     lambda x, **c: (x.energy - x.move_cost) * max(x.hunger, 3 - x.weapon.damage_mult) *
                    x.estimate(c[MAP].loot[START_AREA], **c) * (x.current_area != START_AREA) *
                    (x.dangerosity(**c) >= x.estimate_of_power(START_AREA, **c)),
-    lambda x, **c: x.loot_cornucopea(**c))
+    lambda x, **c: x.loot_cornucopia(**c))
 loot_bag_strat = Strategy(
     'loot bag',
     lambda x, **c: x.weapon.damage_mult * c[MAP].has_bags(x) * (x.bag is None),
@@ -684,10 +410,10 @@ start_strategies = [
 
 morning_strategies = [
     hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
-    hunt_player_strat, ambush_strat, loot_cornucopea_strat, trap_strat, free_trap_strat,
+    hunt_player_strat, ambush_strat, loot_cornucopia_strat, trap_strat, free_trap_strat,
 ]
 
 night_strategies = [
     hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat, ambush_strat,
-    loot_cornucopea_strat, trap_strat, free_trap_strat,
+    loot_cornucopia_strat, trap_strat, free_trap_strat,
 ]

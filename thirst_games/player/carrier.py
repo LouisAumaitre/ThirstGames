@@ -133,14 +133,13 @@ class Carrier(Body):
         if self.has_item(KNIFE) or self.has_item(SWORD) or self.has_item(HATCHET) or self.has_item(AXE):
             self.free_from_trap(**context)
 
-    def take_a_break(self, context):
+    def take_a_break(self, **context):
         self.check_bag(**context)
         self.consume_antidote(**context)
         self.fill_bottles(**context)
-        # self.poison_weapon(**context)
 
     def loot(self, **context):
-        self.take_a_break(context)
+        self.take_a_break(**context)
         item = context[MAP].pick_item(self.current_area)
         if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
             context[NARRATOR].add([
@@ -229,6 +228,26 @@ class Carrier(Body):
                 return
         raise KeyError(f'no {item.name} in {self.name}\'s stash')
 
+    def craft(self, **context):
+        self.take_a_break(**context)
+        self.craft_weapon(**context)
+
+    def craft_weapon(self, **context):
+        crafting_tool = self.has_crafting_tool
+        with_tool = '' if crafting_tool is None else f'with {self.his} {crafting_tool.name}'
+        name = choice(['spear', 'club'])
+        weapon = Weapon(name, 1 + random() + (random() if crafting_tool is not None else 0))
+        if weapon.damage_mult > self.weapon.damage_mult:
+            description = weapon.long_name
+            if weapon.name == self.weapon.name:
+                self.weapon.long_name = f'{self.first_name}\'s old {self.weapon.name}'
+                description = f'a better {weapon.name}'
+            context[NARRATOR].add([self.first_name, 'crafts', description, with_tool, f'at {self.current_area}'])
+            self.get_weapon(weapon, **context)
+        else:
+            context[NARRATOR].add([
+                self.first_name, 'tries to craft a better weapon', f'at {self.current_area}'])
+
     def fill_bottles(self, **context):
         self.water_upkeep()
         if context[MAP].has_water(self):
@@ -289,7 +308,7 @@ class Carrier(Body):
                 self.consume_antidote(**context)
 
     def dine(self, **context):
-        self.take_a_break(context)
+        self.take_a_break(**context)
         if not self.has_food:
             context[NARRATOR].add([self.name, 'does not have', 'anything to eat'])
         else:

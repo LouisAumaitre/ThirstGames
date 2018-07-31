@@ -99,7 +99,7 @@ class Narrator:
                 sentence.remove(tool[0])
 
             # avoid repetition of place
-            place = [e for e in sentence if e.startswith('at')]
+            place = [e for e in sentence if e.startswith('at') and len(e) > 6]
             if place and place[0] in self.current_sentence:
                 sentence.remove(place[0])
 
