@@ -1,5 +1,5 @@
 from thirst_games.game import Game
-from thirst_games.player import Player
+from thirst_games.player.player import Player
 
 game = Game([
     # Player('Tutur', 1, 'his'),
