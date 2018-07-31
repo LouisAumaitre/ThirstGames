@@ -77,7 +77,8 @@ class Narrator:
                 line_str += self.switch(phrase) + ' '
             if line_str[-2] not in ['=', '-', '.', '!']:
                 line_str = line_str[:-1] + '.'
-            line_str.replace('!,', '!')
+            if len(line_str.split('misses')) > 2:
+                continue
             print(line_str)
 
     def _add(self, sentence):
@@ -117,7 +118,7 @@ class Narrator:
         self._add(sentence)
 
     def comma(self):
-        if len(self.current_sentence):
+        if len(self.current_sentence) and self.current_sentence[-1][-1] not in ['!', '.', ',']:
             self.current_sentence.append(',')
 
     def cut(self):
