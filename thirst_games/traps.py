@@ -91,7 +91,7 @@ class NetTrap(Trap):
 
     def _apply(self, name, player, **context):
         context[NARRATOR].new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
-        # TODO
+        player.status.append('trapped')
 
 
 class WireTrap(Trap):

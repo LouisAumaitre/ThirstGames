@@ -207,6 +207,8 @@ class Player(Positionable):
             #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
     def upkeep(self, **context):
+        if self.has_item('knife') or self.has_item('sword') or self.has_item('hatchet') or self.has_item('axe'):
+            self.free_from_trap(**context)
         self._water -= 0.3
         self.drink()
         energy_upkeep = -random() * 0.1  # loses energy while being awake
@@ -357,6 +359,8 @@ class Player(Positionable):
         if tool != 'bandages':
             self._max_health *= 0.95
             # TODO: infection
+        else:
+            self.remove_item('bandages')
         pick_wound = choice(wounds)
         context[NARRATOR].add([self.first_name, 'patches', self.his, pick_wound, 'using', tool])
         self.status.remove(pick_wound)
@@ -365,6 +369,8 @@ class Player(Positionable):
         tool = 'bandages' if self.has_item('bandages') else choice(['moss', 'cloth'])
         if tool != 'bandages':
             self._max_health *= 0.95
+        else:
+            self.remove_item('bandages')
         context[NARRATOR].add([self.first_name, 'stops', self.his, 'wounds', 'from bleeding', 'using', tool])
         self.status.remove(BLEEDING)
 
@@ -544,6 +550,8 @@ class Player(Positionable):
                 self._equipment.append(item)
 
     def remove_item(self, item, **context):
+        if isinstance(item, str):
+            item = [i for i in self.equipment if i.name == item][0]
         if item in self._equipment:
             self._equipment.remove(item)
             return
@@ -786,6 +794,12 @@ class Player(Positionable):
             context[MAP].add_loot(e, self.current_area)
         context[DEATH](self, **context)
 
+    def free_from_trap(self, **context):
+        if 'trapped' in self.status:
+            self.status.remove('trapped')
+            context[NARRATOR].new([self.first_name, 'frees', f'{self.him}self', 'from', 'the trap'])
+            context[MAP].test = True
+
 
 class Relationship:
     def __init__(self):
@@ -875,6 +889,10 @@ trap_strat = Strategy(
     'build trap',
     lambda x, **c: (x.energy - 0.2) * (c[MAP].neighbors_count(x) < 2) * (can_build_any_trap(x, **c)),
     lambda x, **c: build_any_trap(x, **c))
+free_trap_strat = Strategy(
+    'free from trap',
+    lambda x, **c: 1000 * ('trapped' in x.status),
+    lambda x, **c: x.free_from_trap(**c))
 
 start_strategies = [
     flee_strat, fight_strat, loot_bag_strat, loot_weapon_strat,
@@ -882,10 +900,10 @@ start_strategies = [
 
 morning_strategies = [
     hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
-    hunt_player_strat, ambush_strat, loot_cornucopea_strat, trap_strat,
+    hunt_player_strat, ambush_strat, loot_cornucopea_strat, trap_strat, free_trap_strat,
 ]
 
 night_strategies = [
     hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat, ambush_strat,
-    loot_cornucopea_strat, trap_strat,
+    loot_cornucopea_strat, trap_strat, free_trap_strat,
 ]
