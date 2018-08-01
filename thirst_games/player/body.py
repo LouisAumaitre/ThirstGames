@@ -20,10 +20,10 @@ class Body(Positionable):
         self._sleep = 1
         self._stomach = 1
         self._water = 2
-        self.stealth = 0
-        self.status = []
         self._rage = 0
         self._poisons: List[Poison] = []
+        self.stealth = 0
+        self.status = []
 
     @property
     def name(self):
@@ -153,9 +153,9 @@ class Body(Positionable):
         self.take_a_break(**context)
         wounds = self.wounds
         if BLEEDING in wounds:
-            self.patch_bleeding(**context)
+            self.patch(BLEEDING, **context)
         elif len(wounds):
-            self.patch_wound(wounds, **context)
+            self.patch(choice(wounds), **context)
         else:
             self.add_health(max(self.energy, random()) * (self.max_health - self.health))
             self.add_energy(max(self.sleep, random()) * (1 - self.energy))
@@ -178,10 +178,7 @@ class Body(Positionable):
         if AMBUSH in self.status:
             self.status.remove(AMBUSH)
 
-    def patch_wound(self, wounds: List[str], **context):
-        raise NotImplementedError
-
-    def patch_bleeding(self, **context):
+    def patch(self, wound: str, **context):
         raise NotImplementedError
 
     def go_to_sleep(self, **context):

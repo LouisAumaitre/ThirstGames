@@ -83,43 +83,39 @@ class Carrier(Body):
                 bags[0].content.remove(bag_weapons[0])
                 self.get_weapon(bag_weapons[0], **context)
 
-    def patch_wound(self, wounds: List[str], **context):
-        self.disinfect(**context)
-        tool = 'bandages' if self.has_item('bandages') else choice(['moss', 'cloth'])
-        if tool != 'bandages':
-            self._max_health *= 0.95
-            # TODO: infection
-        else:
-            self.remove_item('bandages')
-        pick_wound = choice(wounds)
-        context[NARRATOR].add([self.first_name, 'patches', self.his, pick_wound, 'using', tool])
-        self.status.remove(pick_wound)
-
-    def patch_bleeding(self, **context):
-        self.disinfect(**context)
-        tool = 'bandages' if self.has_item('bandages') else choice(['moss', 'cloth'])
-        if tool != 'bandages':
-            self._max_health *= 0.95
-        else:
-            self.remove_item('bandages')
-        context[NARRATOR].add([self.first_name, 'stops', self.his, 'wounds', 'from bleeding', 'using', tool])
-        self.status.remove(BLEEDING)
-
-    def disinfect(self, **context):
+    def patch(self, wound: str, **context):
+        verbs = []
+        tools = []
         if self.has_item('antiseptic'):
             self.remove_item('antiseptic')
-            context[NARRATOR].add([self.first_name, 'disinfects', 'using', 'anticeptic'])
-            return
-        if context[MAP].has_water(self):
+            verbs = ['disinfects']
+            tools = ['anticeptic']
+        elif context[MAP].has_water(self):
             self._max_health *= 0.99
-            context[NARRATOR].add([self.first_name, 'cleans', 'using', f'{self.current_area}\'s water'])
-            return
-        if sum([b.fill for b in self.bottles]) > 0.2:
+            verbs = ['cleans']
+            tools = [f'{self.current_area}\'s water']
+        elif sum([b.fill for b in self.bottles]) > 0.2:
             self.use_water(0.2)
             self._max_health *= 0.99
-            context[NARRATOR].add([self.first_name, 'cleans', 'using', 'water'])
-            return
-        self._max_health *= 0.95
+            verbs = ['cleans']
+            tools = ['water']
+        else:
+            self._max_health *= 0.95
+
+        verbs.append('stops' if wound == BLEEDING else 'patches')
+        verb_part_2 = 'from bleeding' if wound == BLEEDING else ''
+        if self.has_item('bandages'):
+            self.remove_item('bandages')
+            tools.append('bandages')
+        else:
+            self._max_health *= 0.95
+            tools.append(choice(['moss', 'cloth']))
+
+        wound_name = 'wounds' if wound == BLEEDING else wound
+        context[NARRATOR].add([
+            self.first_name, format_list(verbs), self.his, wound_name, verb_part_2, 'using', format_list(tools)])
+
+        self.status.remove(wound)
 
     def rest(self, **context):
         Body.rest(self, **context)

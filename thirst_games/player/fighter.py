@@ -1,8 +1,10 @@
 from copy import copy
 from random import random
 
-from thirst_games.constants import MAP, SLEEPING, FLEEING, PANIC, NARRATOR, PLAYERS, AMBUSH, TRAPPED, TIME, STARTER, \
+from thirst_games.constants import (
+    MAP, SLEEPING, FLEEING, PANIC, NARRATOR, PLAYERS, AMBUSH, TRAPPED, TIME, STARTER,
     ARM_WOUND
+)
 from thirst_games.items import Weapon, PoisonVial
 from thirst_games.map import START_AREA
 from thirst_games.narrator import format_list

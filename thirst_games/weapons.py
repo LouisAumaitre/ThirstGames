@@ -25,6 +25,7 @@ weapon_wound_proba = {
     'bare hands': [('arm', 0.2), ('leg', 0.2)],
     CLUB: [('head', 0.4), ('arm', 0.1), ('leg', 0.05)],
     MACE: [('head', 0.5), ('arm', 0.2), ('leg', 0.05)],
+    'fire': [('burn', 0.9)],
     'default': [('arm', 0.2), ('leg', 0.2)],
 }
 

@@ -24,6 +24,7 @@ ARM_WOUND = 'arm wound'
 LEG_WOUND = 'leg wound'
 BELLY_WOUND = 'belly wound'
 HEAD_WOUND = 'head wound'
+BURN_WOUND = 'burn wound'
 BLEEDING = 'bleeding'
 
 AXE = 'axe'
