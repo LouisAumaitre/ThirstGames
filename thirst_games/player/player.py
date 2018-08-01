@@ -123,13 +123,12 @@ hunt_player_strat = Strategy(
     lambda x, **c: x.attack_at_random(**c))
 fight_strat = Strategy(
     'fight',
-    lambda x, **c: (x.health if len(c[PLAYERS]) > c[MAP].neighbors_count(x) else 1) * sum([
-        x.dangerosity(**c) > n.dangerosity(**c) * 1.1 for n in c[MAP].neighbors(x)
-    ]),
+    lambda x, **c: x.health * sum([x.dangerosity(**c) > n.dangerosity(**c) * 1.2 for n in c[MAP].neighbors(x)]),
     lambda x, **c: x.attack_at_random(**c))
-blood_bath_strat = Strategy(
-    'fight',
-    lambda x, **c: x.health * sum([x.dangerosity(**c) > n.dangerosity(**c) * 1.1 for n in c[MAP].neighbors(x)]),
+duel_strat = Strategy(
+    'duel',
+    lambda x, **c: (len(c[PLAYERS]) == 2) * sum(
+        [x.dangerosity(**c) > n.dangerosity(**c) * 1.2 for n in c[MAP].neighbors(x)]),
     lambda x, **c: x.attack_at_random(**c))
 loot_strat = Strategy(
     'loot',
@@ -177,12 +176,12 @@ free_trap_strat = Strategy(
     lambda x, **c: x.free_from_trap(**c))
 
 start_strategies = [
-    flee_strat, blood_bath_strat, loot_bag_strat, loot_weapon_strat,
+    flee_strat, fight_strat, loot_bag_strat, loot_weapon_strat,
 ]
 
 morning_strategies = [
     hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
-    hunt_player_strat, ambush_strat, loot_cornucopia_strat, trap_strat, free_trap_strat,
+    hunt_player_strat, ambush_strat, loot_cornucopia_strat, trap_strat, free_trap_strat, duel_strat,
 ]
 
 night_strategies = [
