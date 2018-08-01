@@ -41,7 +41,7 @@ def random_bag() -> Bag:
             elements.append(Item('bandages'))
     if random() > 0.2:
         for i in range(randint(1, 4)):
-            elements.append(Item('antiseptic'))
+            elements.append(Item('iodine'))
     if random() > 0.7:
         elements.append(Item('net'))
     if random() > 0.7:

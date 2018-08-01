@@ -86,10 +86,10 @@ class Carrier(Body):
     def patch(self, wound: str, **context):
         verbs = []
         tools = []
-        if self.has_item('antiseptic'):
-            self.remove_item('antiseptic')
+        if self.has_item('iodine'):
+            self.remove_item('iodine')
             verbs = ['disinfects']
-            tools = ['anticeptic']
+            tools = ['iodine']
         elif context[MAP].has_water(self):
             self._max_health *= 0.99
             verbs = ['cleans']
@@ -183,7 +183,7 @@ class Carrier(Body):
                 return self.hunger
             elif isinstance(item, Bottle):
                 return self.thirst * item.fill
-            elif item.name == 'bandages' or item.name == 'antiseptic':
+            elif item.name == 'bandages' or item.name == 'iodine':
                 return 1 if self.wounds else 0.1
             else:
                 return 0.1
