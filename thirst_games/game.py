@@ -14,7 +14,7 @@ from thirst_games.player.player import Player
 class Game:
     def __init__(self, players: List[Player]):
         self.players = players
-        self.map = Map(len(players) // 4 + 1)
+        self.map = Map(len(players))
         self.narrator = Narrator()
         self._event_gauge = 0
         self._players_at_last_event = 0

@@ -62,8 +62,27 @@ def random_bag() -> Bag:
     return Bag(elements)
 
 
+def random_weapon() -> Weapon:
+    potential_weapons = {
+        (SWORD, 2.5): 1,
+        (AXE, 2.5): 1,
+        (MACE, 2): 0.5,
+        (TRIDENT, 2.5): 0.1,
+        (KNIFE, 1): 3,
+    }
+    total = sum(potential_weapons.values())
+    potential_weapons = {key: value / total for key, value in potential_weapons.items()}
+    pick = random()
+    for key, value in potential_weapons.items():
+        if pick < value:
+            name, power = key
+            return Weapon(name, power + random())
+        pick -= value
+    raise ValueError
+
+
 class Map:
-    def __init__(self, size=5):
+    def __init__(self, player_amount):
         self.nature = {
             START_AREA: {
                 'food': []
@@ -86,20 +105,13 @@ class Map:
         possible_parts_names = list(self.nature.keys())
         possible_parts_names.remove(START_AREA)
         possible_parts_names.sort(key=lambda x: random())
+        size = player_amount // 4 + 1
         self.areas = {area_name: [] for area_name in possible_parts_names[0:size-1]}
         self.areas[START_AREA] = []
 
         self.loot: Dict[str, List[Item]] = {area_name: [] for area_name in self.areas.keys()}
-        self.loot[START_AREA] = [
-            Weapon(SWORD, 2.5 + random()),
-            Weapon(SWORD, 2.5 + random()),
-            Weapon(MACE, 2 + random()),
-            Weapon(AXE, 2.5 + random()),
-            Weapon(KNIFE, 1 + random()),
-            Weapon(KNIFE, 1 + random()),
-            Weapon(KNIFE, 1 + random()),
-            Weapon(KNIFE, 1 + random()),
-        ]
+        for i in range(player_amount // 2):
+            self.loot[START_AREA].append(random_weapon())
         self.traps = {area_name: [] for area_name in self.areas.keys()}
         for i in range(5):
             self.loot[START_AREA].append(random_bag())
