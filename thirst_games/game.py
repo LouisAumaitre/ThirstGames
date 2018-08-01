@@ -55,6 +55,7 @@ class Game:
                 ])
                 self.launch(**{TIME: STARTER, DAY: day})
         self.narrator.tell(filters=[f'at {START_AREA}'])
+        self._players_at_last_event = len(self.alive_players)
         while len(self.alive_players) > 1 and day < 10:
             if day != 1:
                 self.launch(**{TIME: MORNING, DAY: day})
@@ -126,12 +127,12 @@ class Game:
     def check_for_event(self, **context):
         if context[TIME] == STARTER:
             return False
-        # context[NARRATOR].new([
-        #     'event gauge:', self._event_gauge, '+', len(self.alive_players), '-', self._players_at_last_event, '+',
-        #     self._time_since_last_event])
+        context[NARRATOR].new([
+            'event gauge:', self._event_gauge, '+', len(self.alive_players), '-', self._players_at_last_event, '+',
+            self._time_since_last_event])
         self._event_gauge += len(self.alive_players) - self._players_at_last_event + self._time_since_last_event
-        self._time_since_last_event += 1
-        # context[NARRATOR].add(['=', self._event_gauge])
+        self._time_since_last_event += 2
+        context[NARRATOR].add(['=', self._event_gauge])
         return self._event_gauge > 0
 
     def trigger_event(self, **context):

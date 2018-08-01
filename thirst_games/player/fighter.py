@@ -98,8 +98,14 @@ class Fighter(Carrier):
         neighbors = context[MAP].neighbors(self, area)
         if not len(neighbors):
             return 0
-        seen_neighbors = [p for p in neighbors if random() * self.wisdom > p.stealth]
+        seen_neighbors = [p for p in neighbors if self.can_see(p)]
         return sum([p.dangerosity(**context) for p in seen_neighbors])
+
+    def can_see(self, other: Carrier):
+        stealth_mult = 1
+        if other.current_area != self.current_area:
+            stealth_mult *= 1.5
+        return (random() * 0.5 + 0.5) * self.wisdom > other.stealth * stealth_mult
 
     def pillage(self, stuff, **context):
         if len([p for p in context[PLAYERS] if p.is_alive]) == 1:

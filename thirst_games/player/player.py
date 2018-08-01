@@ -37,7 +37,7 @@ class Player(Fighter):
                 strats = morning_strategies
             strats.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
             self.strategy = strats[0]
-            if context[TIME] == STARTER:
+            if context['day'] == 1:
                 context[NARRATOR].new([
                     self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
@@ -69,7 +69,7 @@ class Player(Fighter):
         if not len(neighbors):
             self.loot(**context)
             return
-        seen_neighbors = [p for p in neighbors if random() * self.wisdom > p.stealth]
+        seen_neighbors = [p for p in neighbors if self.can_see(p)]
         if sum([p.dangerosity(**context) for p in seen_neighbors]) > self.dangerosity(**context):
             context[NARRATOR].add([self.first_name, 'sees', format_list([p.first_name for p in neighbors])])
             self.flee(**context)
@@ -137,9 +137,10 @@ loot_strat = Strategy(
     lambda x, **c: x.loot(**c))
 loot_cornucopia_strat = Strategy(
     'loot cornucopia',
-    lambda x, **c: (x.energy - x.move_cost) * max(x.hunger, 3 - x.weapon.damage_mult) *
-                   x.estimate(c[MAP].loot[START_AREA], **c) * (x.current_area != START_AREA) *
-                   (x.dangerosity(**c) >= x.estimate_of_power(START_AREA, **c)),
+    lambda x, **c: (x.energy - x.move_cost) *
+                   x.estimate(c[MAP].loot[START_AREA], **c) *
+                   (x.current_area != START_AREA) *
+                   (x.dangerosity(**c) - x.estimate_of_power(START_AREA, **c)),
     lambda x, **c: x.loot_cornucopia(**c))
 loot_bag_strat = Strategy(
     'loot bag',
