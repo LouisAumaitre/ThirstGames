@@ -103,9 +103,11 @@ class Fighter(Carrier):
 
     def can_see(self, other: Carrier):
         stealth_mult = 1
+        random_mult = (random() * 0.5 + 0.5)
         if other.current_area != self.current_area:
-            stealth_mult *= 1.5
-        return (random() * 0.5 + 0.5) * self.wisdom > other.stealth * stealth_mult
+            stealth_mult *= 2
+            random_mult = 1
+        return random_mult * self.wisdom > other.stealth * stealth_mult
 
     def pillage(self, stuff, **context):
         if len([p for p in context[PLAYERS] if p.is_alive]) == 1:
@@ -142,7 +144,7 @@ class Fighter(Carrier):
             vial.poison.long_name = f'{self.first_name}\'s {vial.poison.name}'
 
     def attack_at_random(self, **context):
-        preys = [p for p in context[MAP].areas[self.current_area] if random() * self.wisdom > p.stealth and p != self]
+        preys = [p for p in context[MAP].areas[self.current_area] if self.can_see(p) and p != self]
         preys.sort(key=lambda x: x.health * x.damage(**context))
         if len(preys):
             self.fight(preys[0], **context)
@@ -153,7 +155,8 @@ class Fighter(Carrier):
         self.busy = True
         other_player.busy = True
 
-        verb = 'catches and attacks' if FLEEING in other_player.status else 'attacks'
+        verb = 'catches and attacks' if FLEEING in other_player.status else (
+            'finds and attacks' if other_player.stealth else 'attacks')
         if FLEEING in other_player.status:
             other_player.status.remove(FLEEING)
         weapon = f'with {self.his} {self.weapon.name}'
@@ -163,7 +166,7 @@ class Fighter(Carrier):
         area = f'at {self.current_area}'
         surprise_mult = 2 if SLEEPING in other_player.status else (
             2 if TRAPPED in other_player.status else (
-                1.5 if random() + self.stealth > other_player.wisdom else 1
+                1.5 if not other_player.can_see(self) else 1
             ))
         surprise = f'in {other_player.his} sleep' if SLEEPING in other_player.status else (
             f'while {other_player.he} is trapped' if TRAPPED in other_player.status else (

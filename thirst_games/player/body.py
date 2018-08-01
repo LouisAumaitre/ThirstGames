@@ -140,7 +140,7 @@ class Body(Positionable):
     def can_flee(self, **context):
         if TRAPPED in self.status:
             return False
-        return self.energy > self.move_cost or self.current_area != START_AREA
+        return self.energy + self.health > self.move_cost or self.current_area != START_AREA
 
     def take_a_break(self, **context):
         raise NotImplementedError

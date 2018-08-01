@@ -16,6 +16,7 @@ class Player(Fighter):
         self.district = district
         self.relationships: Dict[Player, Relationship] = {}
         self.strategy = None
+        self._destination = None
 
     def relationship(self, other_player):
         if other_player not in self.relationships:
@@ -37,9 +38,9 @@ class Player(Fighter):
                 strats = morning_strategies
             strats.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
             self.strategy = strats[0]
-            if context['day'] == 1:
-                context[NARRATOR].new([
-                    self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
+            # if context['day'] == 1:
+            #     context[NARRATOR].new([
+            #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
     def act(self, **context):
         self.stop_running()
@@ -59,10 +60,29 @@ class Player(Fighter):
         other_player.relationship(self).allied = False
         Fighter.fight(self, other_player, **context)
 
-    def loot_cornucopia(self, **context):
-        out = self.go_to(START_AREA, **context)
+    def should_go_get_drop(self, **context):
+        areas_by_value = {
+            area: self.dangerosity(**context) +
+                  self.estimate(context[MAP].loot[area], **context) -
+                  self.estimate_of_power(area, **context)
+            for area in context[MAP].areas.keys()
+        }
+        filtered = [key for key, value in areas_by_value.items() if value > 0]
+        if not len(filtered):
+            self._destination = self.current_area
+            return 0
+        filtered.sort(key=lambda x: -areas_by_value[x])
+        self._destination = filtered[0]
+        # sp = ' '
+        # context[MAP].test += f' {self.name}->{self._destination.split(sp)[-1]} '
+        return areas_by_value[self._destination]
+
+    def go_get_drop(self, **context):
+        out = self.go_to(self._destination, **context)
         if out is not None:
-            context[NARRATOR].add([self.first_name, f'goes to {START_AREA} to get loot'])
+            context[NARRATOR].add([self.first_name, f'goes to {out} to get loot'])
+        else:
+            context[NARRATOR].cut()
         if self.check_for_ambush_and_traps(**context):
             return
         neighbors = context[MAP].neighbors(self)
@@ -70,7 +90,7 @@ class Player(Fighter):
             self.loot(**context)
             return
         seen_neighbors = [p for p in neighbors if self.can_see(p)]
-        if sum([p.dangerosity(**context) for p in seen_neighbors]) > self.dangerosity(**context):
+        if self.estimate_of_power(self.current_area, **context) > self.dangerosity(**context):
             context[NARRATOR].add([self.first_name, 'sees', format_list([p.first_name for p in neighbors])])
             self.flee(**context)
         elif len(seen_neighbors):
@@ -138,13 +158,7 @@ loot_strat = Strategy(
     lambda x, **c: (x.energy - x.move_cost) * (2 if x.weapon.damage_mult == 1 else 0.2) *
                    x.estimate(c[MAP].loot[x.current_area], **c),
     lambda x, **c: x.loot(**c))
-loot_cornucopia_strat = Strategy(
-    'loot cornucopia',
-    lambda x, **c: (x.energy - x.move_cost) *
-                   x.estimate(c[MAP].loot[START_AREA], **c) *
-                   (x.current_area != START_AREA) *
-                   (x.dangerosity(**c) - x.estimate_of_power(START_AREA, **c)),
-    lambda x, **c: x.loot_cornucopia(**c))
+go_get_drop = Strategy('go get loot', lambda x, **c: x.should_go_get_drop(**c), lambda x, **c: x.go_get_drop(**c))
 loot_bag_strat = Strategy(
     'loot bag',
     lambda x, **c: x.weapon.damage_mult * c[MAP].has_bags(x) * (x.bag is None),
@@ -185,10 +199,10 @@ start_strategies = [
 
 morning_strategies = [
     hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
-    hunt_player_strat, ambush_strat, loot_cornucopia_strat, trap_strat, free_trap_strat, duel_strat,
+    hunt_player_strat, ambush_strat, go_get_drop, trap_strat, free_trap_strat, duel_strat,
 ]
 
 night_strategies = [
     hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat, ambush_strat,
-    loot_cornucopia_strat, trap_strat, free_trap_strat,
+    go_get_drop, trap_strat, free_trap_strat,
 ]

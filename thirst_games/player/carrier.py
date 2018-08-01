@@ -173,7 +173,7 @@ class Carrier(Body):
         context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
         self.get_item(item, **context)
 
-    def estimate(self, item: Union[Item, List[Item]], **content) -> float:
+    def estimate(self, item: Union[Item, List[Item]], **context) -> float:
         if isinstance(item, Item):
             if isinstance(item, Weapon):
                 return item.damage_mult - self.weapon.damage_mult

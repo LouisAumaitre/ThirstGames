@@ -46,19 +46,34 @@ class WildFire(Event):
 
     @classmethod
     def can_happen(cls, **context) -> bool:
-        return True
+        # needs a place with players and no water
+        return len([
+            key for key, value in context[MAP].areas.items() if not context[MAP].has_water(key) and len(value)
+        ]) > 0
 
 
 class DropEvent(Event):
     def __init__(self, **context):
-        Event.__init__(self, 'drop', [START_AREA])
+        possible_areas = [
+            key for key, value in context[MAP].areas.items() if not len(value)
+        ]
+        if START_AREA in possible_areas:
+            area = START_AREA
+        else:
+            area = choice(possible_areas)
+        Event.__init__(self, 'drop', [area])
 
     def trigger(self, **context):
+        area = self.areas[0]
         nb_bags = randint(1, len(context[PLAYERS]) - 1)
         for i in range(nb_bags):
-            context[MAP].add_loot(random_bag(), START_AREA)
-        context[NARRATOR].new([nb_bags, 'bags', 'have been dropped', f'at {START_AREA}'])
+            context[MAP].add_loot(random_bag(), area)
+        verb = 'have' if nb_bags > 1 else 'has'
+        context[NARRATOR].new([nb_bags, 'bag' + ('s' if nb_bags > 1 else ''), verb, 'been dropped', f'at {area}'])
 
     @classmethod
     def can_happen(cls, **context) -> bool:
-        return context[MAP].neighbors_count(START_AREA) == 0
+        # needs an empty area
+        return len([
+            key for key, value in context[MAP].areas.items() if not len(value)
+        ]) > 0
