@@ -27,7 +27,7 @@ class Fighter(Carrier):
         return courage
 
     def dangerosity(self, **context):
-        power = self.health * self.damage(**context)
+        power = self.health * self._damage(**context)
         if SLEEPING in self.status:
             power *= 0.1
         return power
@@ -100,25 +100,6 @@ class Fighter(Carrier):
             return 0
         seen_neighbors = [p for p in neighbors if random() * self.wisdom > p.stealth]
         return sum([p.dangerosity(**context) for p in seen_neighbors])
-
-    def loot_cornucopia(self, **context):
-        out = self.go_to(START_AREA, **context)
-        if out is not None:
-            context[NARRATOR].add([self.first_name, f'goes to {out}'])
-        if self.check_for_ambush_and_traps(**context):
-            return
-        neighbors = context[MAP].neighbors(self)
-        if not len(neighbors):
-            self.loot(**context)
-            return
-        seen_neighbors = [p for p in neighbors if random() * self.wisdom > p.stealth]
-        if sum([p.dangerosity(**context) for p in seen_neighbors]) > self.dangerosity(**context):
-            context[NARRATOR].add([self.first_name, 'sees', format_list([p.first_name for p in neighbors])])
-            self.flee(**context)
-        elif len(seen_neighbors):
-            self.attack_at_random(**context)
-        else:
-            self.loot(**context)
 
     def pillage(self, stuff, **context):
         if len([p for p in context[PLAYERS] if p.is_alive]) == 1:
@@ -233,7 +214,8 @@ class Fighter(Carrier):
             hit_chance -= 0.2
         if random() < hit_chance:
             self._rage += 0.1
-            if self.weapon.poison is not None and self.weapon.poison not in target.active_poisons:
+            if self.weapon.poison is not None and\
+                            self.weapon.poison.long_name not in [p.long_name for p in target.active_poisons]:
                 if random() > 0.3:
                     target.add_poison(copy(self.weapon.poison), **context)
                 self.weapon.poison.amount -= 1
@@ -246,10 +228,13 @@ class Fighter(Carrier):
             context[NARRATOR].stock([self.first_name, 'misses'])
             return False
 
-    def damage(self, **context):
+    def _damage(self, **context):
         mult = 1
         if ARM_WOUND in self.status:
             mult -= 0.2
         if TRAPPED in self.status:
             mult *= 0.5
-        return mult * self.weapon.damage_mult * random() / 2
+        return mult * self.weapon.damage_mult / 2
+
+    def damage(self, **context):
+        return self._damage(**context) * random()

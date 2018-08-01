@@ -1,8 +1,8 @@
-from random import random, choice
+from random import random, choice, randint
 from typing import List
 
-from thirst_games.constants import MAP, NARRATOR
-from thirst_games.map import Map
+from thirst_games.constants import MAP, NARRATOR, PLAYERS
+from thirst_games.map import Map, START_AREA, random_bag
 
 
 class Event:
@@ -10,9 +10,13 @@ class Event:
         self.name = name
         self.areas = areas
 
+    def trigger(self, **context):
+        raise NotImplementedError
+
 
 class WildFire(Event):
-    def __init__(self, _map: Map):
+    def __init__(self, **context):
+        _map = context[MAP]
         max_p = max([len(place) for place in _map.areas.values()])
         areas = [key for key, value in _map.areas.items() if len(value) == max_p]
         if max_p == 1:
@@ -35,3 +39,14 @@ class WildFire(Event):
                         context[NARRATOR].add(['and', 'the fire', 'kills', p.him])
                     else:
                         context[NARRATOR].apply_stock()
+
+
+class DropEvent(Event):
+    def __init__(self, **context):
+        Event.__init__(self, 'drop', [START_AREA])
+
+    def trigger(self, **context):
+        nb_bags = randint(1, len(context[PLAYERS]) - 1)
+        for i in range(nb_bags):
+            context[MAP].add_loot(random_bag(), START_AREA)
+        context[NARRATOR].new([nb_bags, 'bags', 'have been dropped', f'at {START_AREA}'])

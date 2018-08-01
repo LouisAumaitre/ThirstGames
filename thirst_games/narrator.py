@@ -82,7 +82,7 @@ class Narrator:
             print(line_str)
 
     def _add(self, sentence):
-        if isinstance(sentence, list):
+        if isinstance(sentence, list) and len(sentence):
             sentence = [str(phrase) for phrase in sentence]
             # avoid repetition of subject
             if sentence[0] == self.active_subject:
@@ -112,7 +112,7 @@ class Narrator:
                     self._used_verbs[sentence[1]] = self.active_subject
 
             self.current_sentence.extend(sentence)
-        else:
+        elif isinstance(sentence, str):
             self.current_sentence.append(sentence)
 
     def add(self, sentence):

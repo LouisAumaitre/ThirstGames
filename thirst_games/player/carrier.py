@@ -136,7 +136,10 @@ class Carrier(Body):
 
     def loot(self, **context):
         self.take_a_break(**context)
-        item = context[MAP].pick_item(self.current_area)
+        if context[MAP].neighbors_count(self) == 1:
+            item = context[MAP].pick_best_item(self)
+        else:
+            item = context[MAP].pick_item(self.current_area)
         if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
             context[NARRATOR].add([
                 self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
@@ -153,7 +156,7 @@ class Carrier(Body):
         if weapon is None or (weapon.damage_mult <= self.weapon.damage_mult and (
                     not weapon.small or context[TIME] == STARTER or self.bag is None)):
             context[NARRATOR].add([
-                self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
+                self.first_name, 'tries to find a weapon', f'at {self.current_area}', 'but can\'t find anything good'])
             return
         if weapon.name == self.weapon.name:
             self.weapon.long_name.replace('\'s', '\'s old')
@@ -174,8 +177,16 @@ class Carrier(Body):
         if isinstance(item, Item):
             if isinstance(item, Weapon):
                 return item.damage_mult - self.weapon.damage_mult
+            elif isinstance(item, Bag):
+                return len(item.content) > 0
+            elif isinstance(item, Food):
+                return self.hunger
+            elif isinstance(item, Bottle):
+                return self.thirst * item.fill
+            elif item.name == 'bandages' or item.name == 'antiseptic':
+                return 1 if self.wounds else 0.1
             else:
-                return 0
+                return 0.1
         elif len(item):
             return max([self.estimate(i) for i in list(item)])
         else:

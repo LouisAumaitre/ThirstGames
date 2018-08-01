@@ -154,6 +154,16 @@ class Map:
         self.loot[area].remove(i)
         return i
 
+    def pick_best_item(self, player):
+        area = get_area(player)
+        if not len(self.loot[area]):
+            return None
+        best_value = max([player.estimate(i) for i in self.loot[area]])
+        picks = [i for i in self.loot[area] if player.estimate(i) == best_value]
+        i = choice(picks)
+        self.loot[area].remove(i)
+        return i
+
     def remove_loot(self, item: Item, area: str):
         try:
             self.loot[area].remove(item)

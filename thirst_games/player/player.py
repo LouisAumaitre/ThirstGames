@@ -5,6 +5,7 @@ from thirst_games.constants import (
     MAP, PLAYERS, TIME, NARRATOR, NIGHT, STARTER, TRAPPED,
 )
 from thirst_games.map import START_AREA
+from thirst_games.narrator import format_list
 from thirst_games.player.fighter import Fighter
 from thirst_games.traps import can_build_any_trap, build_any_trap
 
@@ -36,9 +37,9 @@ class Player(Fighter):
                 strats = morning_strategies
             strats.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
             self.strategy = strats[0]
-            # if context[TIME] == STARTER:
-            #     context[NARRATOR].new([
-            #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
+            if context[TIME] == STARTER:
+                context[NARRATOR].new([
+                    self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
     def act(self, **context):
         self.stop_running()
@@ -57,6 +58,25 @@ class Player(Fighter):
         self.relationship(other_player).allied = False
         other_player.relationship(self).allied = False
         Fighter.fight(self, other_player, **context)
+
+    def loot_cornucopia(self, **context):
+        out = self.go_to(START_AREA, **context)
+        if out is not None:
+            context[NARRATOR].add([self.first_name, f'goes to {START_AREA} to get loot'])
+        if self.check_for_ambush_and_traps(**context):
+            return
+        neighbors = context[MAP].neighbors(self)
+        if not len(neighbors):
+            self.loot(**context)
+            return
+        seen_neighbors = [p for p in neighbors if random() * self.wisdom > p.stealth]
+        if sum([p.dangerosity(**context) for p in seen_neighbors]) > self.dangerosity(**context):
+            context[NARRATOR].add([self.first_name, 'sees', format_list([p.first_name for p in neighbors])])
+            self.flee(**context)
+        elif len(seen_neighbors):
+            self.attack_at_random(**context)
+        else:
+            self.loot(**context)
 
 
 class Relationship:
@@ -79,7 +99,7 @@ class Strategy:
 
 hide_strat = Strategy(
     'hide',
-    lambda x, **c: (len(x.wounds) + 1) * (1 - x.health / 2) * (
+    lambda x, **c: (len(x.wounds) + 1) * (x.max_health - x.health / 2) * (
         1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x) + 0.1,
     lambda x, **c: x.hide(**c))
 flee_strat = Strategy(
@@ -104,8 +124,12 @@ hunt_player_strat = Strategy(
 fight_strat = Strategy(
     'fight',
     lambda x, **c: (x.health if len(c[PLAYERS]) > c[MAP].neighbors_count(x) else 1) * sum([
-        x.weapon.damage_mult * x.health > n.weapon.damage_mult * n.health for n in c[MAP].neighbors(x)
+        x.dangerosity(**c) > n.dangerosity(**c) * 1.1 for n in c[MAP].neighbors(x)
     ]),
+    lambda x, **c: x.attack_at_random(**c))
+blood_bath_strat = Strategy(
+    'fight',
+    lambda x, **c: x.health * sum([x.dangerosity(**c) > n.dangerosity(**c) * 1.1 for n in c[MAP].neighbors(x)]),
     lambda x, **c: x.attack_at_random(**c))
 loot_strat = Strategy(
     'loot',
@@ -153,7 +177,7 @@ free_trap_strat = Strategy(
     lambda x, **c: x.free_from_trap(**c))
 
 start_strategies = [
-    flee_strat, fight_strat, loot_bag_strat, loot_weapon_strat,
+    flee_strat, blood_bath_strat, loot_bag_strat, loot_weapon_strat,
 ]
 
 morning_strategies = [
