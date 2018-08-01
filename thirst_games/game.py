@@ -1,17 +1,21 @@
 #!python
+from typing import List
+
 from copy import copy
 from random import random
 
 from thirst_games.constants import MAP, PLAYERS, DEATH, AFTERNOON, TIME, MORNING, DEADS, NARRATOR, NIGHT, STARTER, DAY
 from thirst_games.map import Map, START_AREA
 from thirst_games.narrator import Narrator, format_list
+from thirst_games.player.player import Player
 
 
 class Game:
-    def __init__(self, players: list):
+    def __init__(self, players: List[Player]):
         self.players = players
         self.map = Map()
         self.narrator = Narrator()
+        self._event_gauge = 0
         for p in self.players:
             self.map.add_player(p)
             for p2 in self.players:
@@ -24,6 +28,7 @@ class Game:
 
     def run(self):
         day = 1
+        self._event_gauge = 0
         self.narrator.new(f'== DAY {day} START ==')
         self.narrator.new(['All players start at', START_AREA])
         while len(self.map.areas[START_AREA]) > 1:
@@ -84,6 +89,8 @@ class Game:
         if context[TIME] != STARTER:
             for p in players:
                 p.upkeep(**context)
+        if self.check_for_event(**context):
+            self.trigger_event(**context)
         for i in range(len(players) + 2):
             if i < len(players) and players[i].is_alive:
                 if context[TIME] != STARTER or players[i].current_area == START_AREA:
@@ -91,9 +98,6 @@ class Game:
             if i - 2 >= 0 and players[i-2].is_alive:
                 if context[TIME] != STARTER or players[i-2].current_area == START_AREA:
                     players[i-2].act(**context)
-        # for i in range(len(players)):
-        #     if players[i].strategy is not None:
-        #         print(f'miss {i}/{len(players)} ({players[i].name})')
         for p in players:
             p.busy = False
 
@@ -111,6 +115,19 @@ class Game:
                   f'- {format_list(p.status)}'
                   f' - {format_list([str(po) for po in p.active_poisons])}')
             print(f'           {bag}')
+
+    def check_for_event(self, **context):
+        if context[TIME] == STARTER:
+            return False
+        self._event_gauge += len(self.alive_players) - len(self.players) + context[DAY] + 1
+        return self._event_gauge > 0
+
+    def trigger_event(self, **context):
+        context[NARRATOR].new('EVENT')
+        context[MAP].test = f'{context[MAP].test} {context[DAY]}'
+        for p in self.alive_players:
+            if p.be_damaged(0.5, weapon='sword', attacker_name='event', **context):
+                context[NARRATOR].new(['Event', 'kills', p.name])
 
 
 def death(dead_player, **context):

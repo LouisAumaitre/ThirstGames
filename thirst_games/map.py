@@ -103,7 +103,7 @@ class Map:
         self.traps = {area_name: [] for area_name in self.areas.keys()}
         for i in range(5):
             self.loot[START_AREA].append(random_bag())
-        self.test = False
+        self.test = ''
 
     def forage_potential(self, area):
         foods = self.nature[get_area(area)]['food']
