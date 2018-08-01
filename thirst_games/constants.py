@@ -10,6 +10,7 @@ MORNING = 'morning'
 AFTERNOON = 'afternoon'
 NIGHT = 'night'
 DAY = 'day'
+EVENT = 'event'
 
 PANIC = 'panic'
 TRAPPED = 'trapped'

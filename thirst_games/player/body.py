@@ -2,7 +2,7 @@ from random import random, choice
 from typing import List
 
 from thirst_games.constants import NARRATOR, HEAD_WOUND, BELLY_WOUND, LEG_WOUND, BLEEDING, SLEEPING, THIRSTY, TRAPPED, \
-    MAP, PANIC, TIME, NIGHT, AMBUSH, DEATH, FLEEING
+    MAP, PANIC, TIME, NIGHT, AMBUSH, DEATH, FLEEING, BURN_WOUND
 from thirst_games.map import Positionable, START_AREA
 from thirst_games.poison import Poison
 from thirst_games.weapons import get_weapon_wound, get_weapon_blood
@@ -226,7 +226,8 @@ class Body(Positionable):
             context[NARRATOR].new([self.first_name, 'frees', f'{self.him}self', 'from', 'the trap'])
 
     def upkeep(self, **context):
-        self._water -= 0.3
+        dehydratation = 0.5 if BURN_WOUND in self.status else 0.3
+        self._water -= dehydratation
         self.water_upkeep()
         energy_upkeep = -random() * 0.1  # loses energy while being awake
         sleep_upkeep = max(random(), random()) * 0.1

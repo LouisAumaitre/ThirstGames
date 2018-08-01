@@ -2,9 +2,10 @@
 from typing import List
 
 from copy import copy
-from random import random
+from random import random, choice
 
 from thirst_games.constants import MAP, PLAYERS, DEATH, AFTERNOON, TIME, MORNING, DEADS, NARRATOR, NIGHT, STARTER, DAY
+from thirst_games.event import WildFire
 from thirst_games.map import Map, START_AREA
 from thirst_games.narrator import Narrator, format_list
 from thirst_games.player.player import Player
@@ -16,11 +17,14 @@ class Game:
         self.map = Map()
         self.narrator = Narrator()
         self._event_gauge = 0
+        self._players_at_last_event = 0
+        self._time_since_last_event = 0
         for p in self.players:
             self.map.add_player(p)
             for p2 in self.players:
                 if p != p2 and p.district == p2.district:
                     p.relationship(p2).friendship += 0.5
+        self.event_classes = [WildFire]
 
     @property
     def alive_players(self):
@@ -29,6 +33,8 @@ class Game:
     def run(self):
         day = 1
         self._event_gauge = 0
+        self._players_at_last_event = len(self.alive_players)
+        self._time_since_last_event = 0
         self.narrator.new(f'== DAY {day} START ==')
         self.narrator.new(['All players start at', START_AREA])
         while len(self.map.areas[START_AREA]) > 1:
@@ -119,15 +125,25 @@ class Game:
     def check_for_event(self, **context):
         if context[TIME] == STARTER:
             return False
-        self._event_gauge += len(self.alive_players) - len(self.players) + context[DAY] + 1
+        context[NARRATOR].new([
+            'event gauge:', self._event_gauge, '+', len(self.alive_players), '-', self._players_at_last_event, '+',
+            self._time_since_last_event])
+        self._event_gauge += len(self.alive_players) - self._players_at_last_event + self._time_since_last_event
+        self._time_since_last_event += 1
+        context[NARRATOR].add(['=', self._event_gauge])
         return self._event_gauge > 0
 
     def trigger_event(self, **context):
-        context[NARRATOR].new('EVENT')
-        context[MAP].test = f'{context[MAP].test} {context[DAY]}'
-        for p in self.alive_players:
-            if p.be_damaged(0.5, weapon='sword', attacker_name='event', **context):
-                context[NARRATOR].new(['Event', 'kills', p.name])
+        self._event_gauge = 0
+        event = choice(self.event_classes)(self.map)
+        context[NARRATOR].new(['EVENT:', event.name.upper(), f'at {format_list(event.areas)}'])
+        context[NARRATOR].cut()
+        event.trigger(**context)
+        context[NARRATOR].new(' ')
+        context[NARRATOR].cut()
+        context[MAP].test = f'{context[MAP].test} {event.name}-{context[DAY]}'
+        self._players_at_last_event = len(self.alive_players)
+        self._time_since_last_event = 0
 
 
 def death(dead_player, **context):
