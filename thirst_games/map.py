@@ -63,7 +63,7 @@ def random_bag() -> Bag:
 
 
 class Map:
-    def __init__(self, size=4):
+    def __init__(self, size=5):
         self.nature = {
             START_AREA: {
                 'food': []

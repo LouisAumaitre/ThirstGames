@@ -14,7 +14,7 @@ from thirst_games.player.player import Player
 class Game:
     def __init__(self, players: List[Player]):
         self.players = players
-        self.map = Map()
+        self.map = Map(len(players) // 4 + 1)
         self.narrator = Narrator()
         self._event_gauge = 0
         self._players_at_last_event = 0
@@ -111,6 +111,7 @@ class Game:
     def status(self):
         l_name = max([len(p.name) for p in self.alive_players])
         l_weapon = max([len(str(p.weapon)) for p in self.alive_players])
+        l_area = max([len(p.current_area) for p in self.alive_players])
         for p in self.alive_players:
             bag = str([str(e) for e in p._equipment]).replace('\'', '')
             max_l = 180
@@ -118,26 +119,29 @@ class Game:
                 bag = bag[:max_l-3] + '...'
             print(f'- {p.name:<{l_name}} {int(p.health * 100):>3}/{int(p.max_health * 100):>3}hp '
                   f'{int(p.energy * 100):>3}nrg '
-                  f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm {int(p.water * 100):>3}wtr '
-                  f'{str(p.weapon):<{l_weapon}} {p.current_area:<10} '
-                  f'- {format_list(p.status)}'
-                  f' - {format_list([str(po) for po in p.active_poisons])}')
+                  f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm {int(p.water * 100):>3}wtr  '
+                  f'{str(p.weapon):<{l_weapon}}  {p.current_area.upper():<{l_area}}  '
+                  f'{format_list(p.status)}  '
+                  f'{format_list([str(po) for po in p.active_poisons])}')
             print(f'           {bag}')
 
     def check_for_event(self, **context):
         if context[TIME] == STARTER:
             return False
-        context[NARRATOR].new([
-            'event gauge:', self._event_gauge, '+', len(self.alive_players), '-', self._players_at_last_event, '+',
-            self._time_since_last_event])
+        # context[NARRATOR].new([
+        #     'event gauge:', self._event_gauge, '+', len(self.alive_players), '-', self._players_at_last_event, '+',
+        #     self._time_since_last_event])
         self._event_gauge += len(self.alive_players) - self._players_at_last_event + self._time_since_last_event
         self._time_since_last_event += 2
-        context[NARRATOR].add(['=', self._event_gauge])
+        # context[NARRATOR].add(['=', self._event_gauge])
         return self._event_gauge > 0
 
     def trigger_event(self, **context):
+        possible_events = [cls for cls in self.event_classes if cls.can_happen(**context)]
+        if not len(possible_events):
+            return
         self._event_gauge = 0
-        event = choice(self.event_classes)(**context)
+        event = choice(possible_events)(**context)
         context[NARRATOR].new(['EVENT:', event.name.upper(), f'at {format_list(event.areas)}'])
         context[NARRATOR].cut()
         event.trigger(**context)

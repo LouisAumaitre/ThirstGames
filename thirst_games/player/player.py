@@ -99,8 +99,11 @@ class Strategy:
 
 hide_strat = Strategy(
     'hide',
-    lambda x, **c: (len(x.wounds) + 1) * (x.max_health - x.health / 2) * (
-        1 - min(x.energy, x.sleep)) / c[MAP].neighbors_count(x) + 0.1,
+    lambda x, **c: (len(x.wounds) + 1) *
+                   (x.current_area != START_AREA or x.health > x.max_health / 2) *
+                   (x.max_health - x.health / 2) *
+                   (1 - min(x.energy, x.sleep)) /
+                   c[MAP].neighbors_count(x) + 0.1,
     lambda x, **c: x.hide(**c))
 flee_strat = Strategy(
     'flee',

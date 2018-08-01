@@ -13,12 +13,16 @@ class Event:
     def trigger(self, **context):
         raise NotImplementedError
 
+    @classmethod
+    def can_happen(cls, **context) -> bool:
+        raise NotImplementedError
+
 
 class WildFire(Event):
     def __init__(self, **context):
         _map = context[MAP]
-        max_p = max([len(place) for place in _map.areas.values()])
-        areas = [key for key, value in _map.areas.items() if len(value) == max_p]
+        max_p = max([len(place) for key, place in _map.areas.items() if not _map.has_water(key)])
+        areas = [key for key, value in _map.areas.items() if len(value) == max_p and not _map.has_water(key)]
         if max_p == 1:
             areas = [choice(areas)]
         Event.__init__(self, 'wildfire', areas)
@@ -40,6 +44,10 @@ class WildFire(Event):
                     else:
                         context[NARRATOR].apply_stock()
 
+    @classmethod
+    def can_happen(cls, **context) -> bool:
+        return True
+
 
 class DropEvent(Event):
     def __init__(self, **context):
@@ -50,3 +58,7 @@ class DropEvent(Event):
         for i in range(nb_bags):
             context[MAP].add_loot(random_bag(), START_AREA)
         context[NARRATOR].new([nb_bags, 'bags', 'have been dropped', f'at {START_AREA}'])
+
+    @classmethod
+    def can_happen(cls, **context) -> bool:
+        return context[MAP].neighbors_count(START_AREA) == 0
