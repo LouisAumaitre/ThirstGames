@@ -86,15 +86,12 @@ class Player(Fighter):
             Narrator().cut()
         if self.check_for_ambush_and_traps(**context):
             return
-        neighbors = self.map.players(self)
-        if not len(neighbors):
-            self.loot(**context)
-            return
-        seen_neighbors = [p for p in neighbors if self.can_see(p)]
-        if self.estimate_of_power(self.current_area, **context) > self.dangerosity(**context):
-            Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in neighbors])])
+        danger = self.estimate_of_power(self.current_area, **context)
+        seen_neighbors = [p for p in self.map.players(self) if self.can_see(p) and p != self]
+        if danger > self.dangerosity(**context):
+            Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in seen_neighbors])])
             self.flee(**context)
-        elif len(seen_neighbors):
+        elif danger > 0:
             self.attack_at_random(**context)
         else:
             self.loot(**context)

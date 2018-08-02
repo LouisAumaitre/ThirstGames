@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 
 from copy import copy
 from random import random
@@ -45,8 +45,10 @@ class Fighter(Carrier):
             best_areas = [a for a in best_areas if a.has_water]
         best_areas.sort(key=lambda x: -len(self.map.loot(x)))
         best_area = best_areas[0]
-        out = self.go_to(best_area, **context, **{PANIC: True})
-        if out is not self.current_area:
+        out = self.go_to(best_area, **context)
+        if out is None:
+            self.hide(**context, **{PANIC: panic})
+        else:
             Narrator().add([self.first_name, f'flees {out.to}'])
             self.check_for_ambush_and_traps(**context)
 
@@ -58,7 +60,8 @@ class Fighter(Carrier):
         best_areas.sort(key=lambda x: -len(self.map.loot(x)))
         best_area = best_areas[0]
         out = self.go_to(best_area, **context)
-        if out is self.current_area:
+        if out is None:
+            self.hide(**context)
             Narrator().replace('hides and rests', 'rests')
         else:
             targets = [p.first_name for p in Context().alive_players if p != self]
@@ -66,7 +69,7 @@ class Fighter(Carrier):
             Narrator().add([self.first_name, 'searches for', players, out.at])
             self.check_for_ambush_and_traps(**context)
 
-    def go_to(self, area: Union[str, Area, Positionable], **context) -> Area:
+    def go_to(self, area: Union[str, Area, Positionable], **context) -> Optional[Area]:
         area = self.map.get_area(area)
         if area != self.current_area and self.energy >= self.move_cost:
             self.reveal()
@@ -75,8 +78,7 @@ class Fighter(Carrier):
             return self.map.move_player(self, area)
         else:
             self._energy -= self.move_cost
-            self.hide(**context)
-            return self.current_area
+            return None
 
     def set_up_ambush(self, **context):
         self.stealth += (random() / 2 + 0.5) * (1 - self.stealth)

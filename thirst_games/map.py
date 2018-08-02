@@ -235,13 +235,13 @@ class Map(metaclass=Singleton):
     def remove_player(self, player: Positionable):
         player.current_area.players.remove(player)
 
-    def move_player(self, player, destination: Union[str, Area, Positionable]) -> Area:
+    def move_player(self, player, destination: Union[str, Area, Positionable]) -> Optional[Area]:
         new_area = self.get_area(destination)
         if player.current_area == new_area:
-            return player.current_area
+            return None
         self.remove_player(player)
         self.add_player(player, destination)
-        print(f'move {player.name} to {new_area.name}')
+        # print(f'move {player.name} to {new_area.name}')
         return new_area
 
     def add_trap(self, trap: Positionable, area: Union[str, Area, Positionable]=START_AREA):
