@@ -6,7 +6,7 @@ from random import random, choice
 
 from thirst_games.constants import AFTERNOON, MORNING, NIGHT, STARTER
 from thirst_games.context import Context, AbstractGame
-from thirst_games.event import WildFire, DropEvent, Flood
+from thirst_games.event import WildFire, DropEvent, Flood, AcidGas
 from thirst_games.map import Map, START_AREA
 from thirst_games.narrator import Narrator, format_list
 from thirst_games.player.player import Player
@@ -27,7 +27,7 @@ class Game(AbstractGame, metaclass=Singleton):
             for p2 in self.players:
                 if p != p2 and p.district == p2.district:
                     p.relationship(p2).friendship += 0.5
-        self.event_classes = [WildFire, DropEvent, Flood]
+        self.event_classes = [WildFire, DropEvent, Flood, AcidGas]
         self.day = 0
         self.time = STARTER
         Context().game = self

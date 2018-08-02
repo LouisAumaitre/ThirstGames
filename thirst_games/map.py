@@ -4,6 +4,7 @@ from random import random, choice, randint
 
 from thirst_games.constants import KNIFE, HATCHET, TRIDENT, AXE, SWORD, MACE, START_AREA
 from thirst_games.items import Weapon, Item, Food, Bag, Bottle, PoisonVial
+from thirst_games.narrator import Narrator
 from thirst_games.poison import Poison
 from thirst_games.singleton import Singleton
 
@@ -238,11 +239,11 @@ class Map(metaclass=Singleton):
 
     def move_player(self, player, destination: Union[str, Area, Positionable]) -> Optional[Area]:
         new_area = self.get_area(destination)
+        # Narrator().new([player.current_area.name, '->', player.name, '->', new_area.name])
         if player.current_area == new_area:
             return None
         self.remove_player(player)
         self.add_player(player, destination)
-        # print(f'move {player.name} to {new_area.name}')
         return new_area
 
     def add_trap(self, trap: Positionable, area: Union[str, Area, Positionable]=START_AREA):

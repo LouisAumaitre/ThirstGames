@@ -88,7 +88,7 @@ class Player(Fighter):
         potential_danger = sum([p.dangerosity() for p in seen_neighbors])
         actual_danger = sum([p.dangerosity() for p in free_neighbors])
 
-        told = len(Narrator().current_sentence)
+        Narrator().cut() # TODO: this is a test
         if potential_danger > self.dangerosity() and potential_danger > self.courage():
             Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in seen_neighbors])])
             self.flee()
@@ -107,7 +107,7 @@ class Player(Fighter):
                 self.flee()
         else:  # servez-vous
             self.loot()
-        if len(Narrator().current_sentence) == told:
+        if len(Narrator().current_sentence) == 0:
             Narrator().add([
                 self.name, f'potential_danger={potential_danger}', f'actual_danger={actual_danger}',
                 f'dangerosity={self.dangerosity()}', f'courage={self.courage()}',
@@ -134,11 +134,11 @@ class Strategy:
 
 hide_strat = Strategy(
     'hide',
-    lambda x: (len(x.wounds) + 1) *
-                   (x.current_area != START_AREA or x.health > x.max_health / 2) *
-                   (x.max_health - x.health / 2) *
-                   (1 - min(x.energy, x.sleep)) /
-                   x.map.players_count(x) + 0.1,
+    lambda x: (len(x.wounds) * 2 + 1) *
+              (x.current_area != START_AREA or x.health > x.max_health / 2) *
+              (x.max_health - x.health / 2) *
+              (1 - min(x.energy, x.sleep)) /
+              x.map.players_count(x) + 0.1,
     lambda x: x.hide())
 flee_strat = Strategy(
     'flee',

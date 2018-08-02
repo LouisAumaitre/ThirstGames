@@ -98,6 +98,44 @@ class Flood(Event):
         return len([area for area in Map().areas if area.has_water and len(area.players)]) > 0
 
 
+class AcidGas(Event):
+    def __init__(self):
+        _map = Map()
+        max_p = max([len(area.players) for area in _map.areas])
+        areas = [area for area in _map.areas if len(area.players) == max_p]
+        if max_p == 1:
+            areas = [choice(areas)]
+        Event.__init__(self, 'acid cloud', areas)
+
+    def trigger(self):
+        for area in self.areas:
+            for p in area.players:
+                Narrator().cut()
+                if p.can_flee():
+                    if p.wisdom * random() > 0.6:
+                        Narrator().new([p.first_name, 'sees', 'the cloud', 'coming'])
+                        p.flee(filtered_areas=self.areas)
+                    elif p.be_damaged(0.3):
+                        Narrator().new([p.name, 'fails', 'to escape the acid cloud and dies', area.at])
+                    else:
+                        p.flee(panic=True, drop_verb='loses', filtered_areas=self.areas)
+                        Narrator().apply_stock()
+                else:
+                    Narrator().new([p.name, 'is', 'trapped', area.at])
+                    if p.be_damaged(random() * 0.2 + 0.3, weapon='fire'):
+                        Narrator().add(['and', 'the acid', 'kills', p.him])
+                    else:
+                        Narrator().apply_stock()
+                if not len(Narrator().current_sentence):
+                    Narrator().add([p.name, 'escaped', 'the acid', 'and is', p.current_area.at])
+            area.loot.clear()
+
+    @classmethod
+    def can_happen(cls) -> bool:
+        # needs a place with players and no water
+        return len([area for area in Map().areas if len(area.players)]) > 0
+
+
 class DropEvent(Event):
     def __init__(self):
         possible_areas = [area for area in Map().areas if not len(area.players)]
