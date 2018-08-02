@@ -4,9 +4,7 @@ from copy import copy
 from random import random
 
 from thirst_games.constants import (
-    SLEEPING, FLEEING, AMBUSH, TRAPPED, STARTER,
-    ARM_WOUND,
-    THIRSTY)
+    SLEEPING, FLEEING, AMBUSH, TRAPPED, STARTER, ARM_WOUND, THIRSTY)
 from thirst_games.context import Context
 from thirst_games.items import Weapon, PoisonVial
 from thirst_games.map import Area, Positionable
@@ -24,7 +22,7 @@ class Fighter(Carrier):
         self._waiting = 0
 
     def courage(self):
-        courage = self.health * self.energy + self._rage
+        courage = (self.health / self.max_health) * self.energy + self._rage
         courage = courage + self.estimate(self.map.loot(self)) * courage
         return courage
 

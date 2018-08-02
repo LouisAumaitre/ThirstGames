@@ -1,6 +1,6 @@
 from random import random
 
-from thirst_games.constants import AXE, KNIFE, SWORD, TRIDENT, SPEAR, CLUB, HATCHET, MACE
+from thirst_games.constants import AXE, KNIFE, SWORD, TRIDENT, SPEAR, CLUB, HATCHET, MACE, MACHETE
 
 weapon_kill_word = {
     AXE: ['decapitates'],
@@ -18,6 +18,7 @@ for key, value in weapon_kill_word.items():
 weapon_wound_proba = {
     AXE: [('arm', 0.4), ('leg', 0.1)],
     SWORD: [('arm', 0.3), ('leg', 0.2), ('belly', 0.2)],
+    MACHETE: [('arm', 0.25), ('leg', 0.1), ('belly', 0.15)],
     KNIFE: [('arm', 0.2), ('leg', 0.05), ('belly', 0.3)],
     HATCHET: [('arm', 0.2), ('leg', 0.05), ('belly', 0.3)],
     TRIDENT: [('arm', 0.4), ('leg', 0.2), ('belly', 0.2)],

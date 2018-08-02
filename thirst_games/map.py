@@ -1,10 +1,9 @@
-from typing import List, Dict, Union, Optional, Any
+from typing import List, Union, Optional, Any
 
 from random import random, choice, randint
 
-from thirst_games.constants import KNIFE, HATCHET, TRIDENT, AXE, SWORD, MACE, START_AREA
+from thirst_games.constants import KNIFE, HATCHET, TRIDENT, AXE, SWORD, MACE, START_AREA, MACHETE
 from thirst_games.items import Weapon, Item, Food, Bag, Bottle, PoisonVial
-from thirst_games.narrator import Narrator
 from thirst_games.poison import Poison
 from thirst_games.singleton import Singleton
 
@@ -57,6 +56,7 @@ def random_weapon() -> Weapon:
         (MACE, 2): 0.5,
         (TRIDENT, 2.5): 0.1,
         (KNIFE, 1): 3,
+        (MACHETE, 1.5): 2,
     }
     total = sum(potential_weapons.values())
     potential_weapons = {key: value / total for key, value in potential_weapons.items()}

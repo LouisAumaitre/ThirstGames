@@ -1,9 +1,11 @@
 from random import random, choice, randint
 from typing import List
 
+from thirst_games.constants import SWORD, MACE, AXE
 from thirst_games.context import Context
-from thirst_games.map import Map, START_AREA, random_bag, Area
-from thirst_games.narrator import Narrator
+from thirst_games.items import Weapon, Bottle, Item, Food, Bag
+from thirst_games.map import Map, START_AREA, Area
+from thirst_games.narrator import Narrator, format_list
 
 
 class Event:
@@ -146,12 +148,29 @@ class DropEvent(Event):
         Event.__init__(self, 'drop', [area])
 
     def trigger(self):
+        possible_loots = [
+            Food(choice(['ration', 'food can', 'energy bar']), 0.75),
+            Food(choice(['ration', 'food can', 'energy bar']), 0.50),
+            Food(choice(['ration', 'food can', 'energy bar']), 0.25),
+            Item('bandages'), Item('iodine'), Item('antidote'), Bottle(1),
+            Weapon(choice(SWORD, AXE, MACE), 2 + random())
+        ]
+        possible_loots = [i for i in possible_loots if sum(p.estimate(i) for p in Context().alive_players)]
+        possible_loots.sort(key=lambda x: -sum(p.estimate(x) for p in Context().alive_players))
         area = self.areas[0]
         nb_bags = randint(1, len(Context().alive_players) - 1)
+        while nb_bags > len(possible_loots):
+            possible_loots.extend(possible_loots)
+        bags = []
         for i in range(nb_bags):
-            Map().add_loot(random_bag(), area)
+            bags.append(Bag([possible_loots[i], possible_loots[-(i + 1)]]))
+        for bag in bags:
+            Map().add_loot(bag, area)
         verb = 'have' if nb_bags > 1 else 'has'
         Narrator().new([nb_bags, 'bag' + ('s' if nb_bags > 1 else ''), verb, 'been dropped', area.at])
+        Narrator().new([
+            'The bag' + ('s' if nb_bags > 1 else ''), 'contain' + ('s' if nb_bags == 1 else ''),
+            format_list([i.name for b in bags for i in b.content])])
 
     @classmethod
     def can_happen(cls) -> bool:

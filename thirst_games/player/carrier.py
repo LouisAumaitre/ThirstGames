@@ -189,8 +189,10 @@ class Carrier(Body):
                 return self.thirst * item.fill
             elif item.name == 'bandages' or item.name == 'iodine':
                 return 1 if self.wounds else 0.1
+            elif item.name == 'antidote':
+                return 1 if len(self.active_poisons) else 0.1
             else:
-                return 0.1
+                return 0.2
         elif len(item):
             return max([self.estimate(i) for i in list(item)])
         else:
