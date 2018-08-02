@@ -91,21 +91,21 @@ class Game(AbstractGame, metaclass=Singleton):
         self.alive_players.sort(key=lambda x: random())
         self.play()
 
-    def play(self, **context):
+    def play(self):
         Narrator().cut()
         players = copy(self.alive_players)
         if self.time != STARTER:
             for p in players:
-                p.upkeep(**context)
-        if self.check_for_event(**context):
-            self.trigger_event(**context)
+                p.upkeep()
+        if self.check_for_event():
+            self.trigger_event()
         for i in range(len(players) + 2):
             if i < len(players) and players[i].is_alive:
                 if self.time != STARTER or players[i].current_area.is_start:
-                    players[i].think(**context)
+                    players[i].think()
             if i - 2 >= 0 and players[i-2].is_alive:
                 if self.time != STARTER or players[i-2].current_area.is_start:
-                    players[i-2].act(**context)
+                    players[i-2].act()
         for p in players:
             p.busy = False
 
@@ -126,7 +126,7 @@ class Game(AbstractGame, metaclass=Singleton):
                   f'{format_list([str(po) for po in p.active_poisons])}')
             print(f'           {bag}')
 
-    def check_for_event(self, **context):
+    def check_for_event(self):
         if self.time == STARTER:
             return False
         # Narrator().new([
@@ -137,15 +137,15 @@ class Game(AbstractGame, metaclass=Singleton):
         # Narrator().add(['=', self._event_gauge])
         return self._event_gauge > 0
 
-    def trigger_event(self, **context):
-        possible_events = [cls for cls in self.event_classes if cls.can_happen(**context)]
+    def trigger_event(self):
+        possible_events = [cls for cls in self.event_classes if cls.can_happen()]
         if not len(possible_events):
             return
         self._event_gauge = 0
-        event = choice(possible_events)(**context)
+        event = choice(possible_events)()
         Narrator().new(['EVENT:', event.name.upper(), f'at {format_list(event.areas)}'])
         Narrator().cut()
-        event.trigger(**context)
+        event.trigger()
         Narrator().new(' ')
         Narrator().cut()
         Map().test += f' {event.name}-{self.day}'

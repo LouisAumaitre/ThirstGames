@@ -1,8 +1,7 @@
 from random import random
 from typing import Dict
 
-from thirst_games.constants import (
-    NIGHT, STARTER, TRAPPED, START_AREA)
+from thirst_games.constants import (NIGHT, STARTER, TRAPPED, START_AREA)
 from thirst_games.context import Context
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.fighter import Fighter
@@ -39,7 +38,7 @@ class Player(Fighter):
             self.strategy = strats[0]
             # if context['day'] == 1:
             #     Narrator().new([
-            #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
+            #         self.name, f': {[(round(s.pref(self), 2), s.name) for s in strats]}'])
 
     def act(self):
         self.stop_running()
@@ -76,7 +75,7 @@ class Player(Fighter):
         # self.map.test += f' {self.name}->{self._destination.split(sp)[-1]} '
         return areas_by_value[self._destination]
 
-    def go_get_drop(self, **context):
+    def go_get_drop(self):
         out = self.go_to(self._destination)
         if out is not None:
             Narrator().add([self.first_name, f'goes {out.to} to get loot'])
@@ -88,7 +87,7 @@ class Player(Fighter):
         seen_neighbors = [p for p in self.map.players(self) if self.can_see(p) and p != self]
         if danger > self.dangerosity():
             Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in seen_neighbors])])
-            self.flee(**context)
+            self.flee()
         elif danger > 0:
             self.attack_at_random()
         else:

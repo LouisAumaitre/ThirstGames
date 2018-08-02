@@ -118,12 +118,12 @@ class Carrier(Body):
 
         self.status.remove(wound)
 
-    def rest(self, **context):
+    def rest(self):
         Body.rest(self)
 
         if self.current_area == START_AREA:
             if self.has_food and self.hunger > 0:
-                self.dine(**context)
+                self.dine()
 
     def upkeep(self):
         Body.upkeep(self)

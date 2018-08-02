@@ -8,13 +8,13 @@ class Poison:
         self.amount = amount
         self.damage = damage
 
-    def upkeep(self, player, **context):
+    def upkeep(self, player):
         if self.amount == 0:
-            player.remove_poison(self, **context)
+            player.remove_poison(self)
             return
         self.amount -= 1
         live = player.is_alive
-        player.add_health(-self.damage, **context)
+        player.add_health(-self.damage)
         if live and not player.is_alive:
             Narrator().new([player.first_name, 'succumbs', 'to', self.long_name])
 

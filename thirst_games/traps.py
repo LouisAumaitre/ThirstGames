@@ -104,7 +104,7 @@ class WireTrap(Trap):
     requires_tools = False
     name = 'wire trap'
 
-    def _apply(self, name, player, **context):
+    def _apply(self, name, player):
         Narrator().new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
         if random() > 0.5:
             player.status.append('leg wound')
