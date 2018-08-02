@@ -1,6 +1,7 @@
 from random import choice
 from typing import List, Optional, Tuple
 
+from thirst_games.singleton import Singleton
 from thirst_games.weapons import weapon_kill_word
 
 
@@ -29,7 +30,7 @@ def format_list(names: List[str]):
     return out
 
 
-class Narrator:
+class Narrator(metaclass=Singleton):
     def __init__(self):
         self.current_sentence: List[str] = []
         self.active_subject = None

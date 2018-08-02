@@ -123,9 +123,8 @@ class Positionable:
 
 class Map(metaclass=Singleton):
 
-    def __init__(self):
-        print('INIT ARENA')
-        player_amount = 24
+    def __init__(self, player_amount=24):
+        print(f'INIT ARENA FOR {player_amount} PLAYERS')
         possible_parts_names = list(_nature.keys())
         possible_parts_names.remove(START_AREA)
         possible_parts_names.sort(key=lambda x: random())

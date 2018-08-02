@@ -9,7 +9,7 @@ from thirst_games.constants import (
     THIRSTY)
 from thirst_games.items import Weapon, PoisonVial
 from thirst_games.map import START_AREA, Area, Positionable
-from thirst_games.narrator import format_list
+from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.body import Body
 from thirst_games.player.carrier import Carrier
 from thirst_games.weapons import weapon_bleed_proba
@@ -46,7 +46,7 @@ class Fighter(Carrier):
         best_area = best_areas[0]
         out = self.go_to(best_area, **context, **{PANIC: True})
         if out is not self.current_area:
-            context[NARRATOR].add([self.first_name, f'flees {out.to}'])
+            Narrator().add([self.first_name, f'flees {out.to}'])
             self.check_for_ambush_and_traps(**context)
 
     def pursue(self, **context):
@@ -58,11 +58,11 @@ class Fighter(Carrier):
         best_area = best_areas[0]
         out = self.go_to(best_area, **context)
         if out is self.current_area:
-            context[NARRATOR].replace('hides and rests', 'rests')
+            Narrator().replace('hides and rests', 'rests')
         else:
             targets = [p.first_name for p in context[PLAYERS] if p != self]
             players = 'players' if len(targets) > 1 else targets[0]
-            context[NARRATOR].add([self.first_name, 'searches for', players, out.at])
+            Narrator().add([self.first_name, 'searches for', players, out.at])
             self.check_for_ambush_and_traps(**context)
 
     def go_to(self, area: Union[str, Area, Positionable], **context) -> Area:
@@ -81,13 +81,13 @@ class Fighter(Carrier):
         self.stealth += (random() / 2 + 0.5) * (1 - self.stealth)
         if AMBUSH not in self.status:
             self.status.append(AMBUSH)
-            context[NARRATOR].add([self.first_name, 'sets up', 'an ambush', self.current_area.at])
+            Narrator().add([self.first_name, 'sets up', 'an ambush', self.current_area.at])
         else:
             self._waiting += 1
             if self._waiting < 2:
-                context[NARRATOR].add([self.first_name, 'keeps', 'hiding', self.current_area.at])
+                Narrator().add([self.first_name, 'keeps', 'hiding', self.current_area.at])
             else:
-                context[NARRATOR].add([self.first_name, 'gets', 'tired of hiding', self.current_area.at])
+                Narrator().add([self.first_name, 'gets', 'tired of hiding', self.current_area.at])
                 self.status.remove(AMBUSH)
                 self.pursue(**context)
 
@@ -128,7 +128,7 @@ class Fighter(Carrier):
                 self.map.remove_loot(item, self.current_area)
         if not len(looted):
             return
-        context[NARRATOR].add([self.first_name, 'loots', format_list([e.long_name for e in looted])])
+        Narrator().add([self.first_name, 'loots', format_list([e.long_name for e in looted])])
         for item in looted:
             if isinstance(item, Weapon):
                 self.get_weapon(item, **context)
@@ -141,7 +141,7 @@ class Fighter(Carrier):
             vial = [p_v for p_v in self.equipment if isinstance(p_v, PoisonVial)][0]
             self.remove_item(vial)
             self.weapon.poison = vial.poison
-            context[NARRATOR].add([self.first_name, 'puts', vial.poison.name, 'on', self.his, self.weapon.name])
+            Narrator().add([self.first_name, 'puts', vial.poison.name, 'on', self.his, self.weapon.name])
             vial.poison.long_name = f'{self.first_name}\'s {vial.poison.name}'
 
     def attack_at_random(self, **context):
@@ -177,13 +177,13 @@ class Fighter(Carrier):
         round = 1
 
         if self.hit(other_player, surprise_mult, **context):
-            context[NARRATOR].add([
+            Narrator().add([
                 self.first_name, 'kills', other_player.first_name, surprise, area, weapon])
             other_stuff = other_player.drops
         else:
             while True:
-                context[NARRATOR].new([self.first_name, verb, other_player.first_name, area, weapon])
-                context[NARRATOR].apply_stock()
+                Narrator().new([self.first_name, verb, other_player.first_name, area, weapon])
+                Narrator().apply_stock()
                 verb = 'fights'
                 area = ''
                 if random() > other_player.courage(**context) and other_player.can_flee(**context):
@@ -192,12 +192,12 @@ class Fighter(Carrier):
                     other_stuff = other_stuff if not other_player.has_weapon else []
                     break
                 if other_player.hit(self, **context):
-                    context[NARRATOR].add(['and'])
-                    context[NARRATOR].add([other_player.first_name, 'kills', self.him, 'in self-defense', other_weapon])
+                    Narrator().add(['and'])
+                    Narrator().add([other_player.first_name, 'kills', self.him, 'in self-defense', other_weapon])
                     self_stuff = self.drops
                     break
-                context[NARRATOR].add([other_player.first_name, 'fights back', other_weapon])
-                context[NARRATOR].apply_stock()
+                Narrator().add([other_player.first_name, 'fights back', other_weapon])
+                Narrator().apply_stock()
                 if random() > self.courage(**context) and self.can_flee(**context):
                     self_stuff = [self.weapon]
                     self.flee(True, **context)
@@ -207,7 +207,7 @@ class Fighter(Carrier):
                     break
                 round += 1
                 if self.hit(other_player, **context):
-                    context[NARRATOR].new([self.first_name, verb, 'and', 'kills', other_player.first_name, weapon])
+                    Narrator().new([self.first_name, verb, 'and', 'kills', other_player.first_name, weapon])
                     other_stuff = other_player.drops
                     break
         self.pillage(other_stuff, **context)
@@ -235,7 +235,7 @@ class Fighter(Carrier):
                 self.damage(**context) * mult, weapon=self.weapon.name, attacker_name=self.first_name, **context)
         else:  # Miss
             self._rage -= 0.1
-            context[NARRATOR].stock([self.first_name, 'misses'])
+            Narrator().stock([self.first_name, 'misses'])
             return False
 
     def _damage(self, **context):

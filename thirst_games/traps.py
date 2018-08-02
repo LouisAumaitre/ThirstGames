@@ -4,6 +4,7 @@ from random import random
 
 from thirst_games.constants import NARRATOR, PANIC, MAP, TRAPPED
 from thirst_games.map import START_AREA, Positionable, Map
+from thirst_games.narrator import Narrator
 
 
 class Trap(Positionable):
@@ -25,7 +26,7 @@ class Trap(Positionable):
         if player in self.knowing:
             return False
         if random() * player.wisdom > self.stealth:
-            context[NARRATOR].add([player.first_name, 'notices', self.long_name])
+            Narrator().add([player.first_name, 'notices', self.long_name])
             self.knowing.append(player)
             return False
         return random() > 0.5
@@ -61,12 +62,12 @@ class StakeTrap(Trap):
 
     def _apply(self, name, player, **context):
         if player.be_damaged(random(), 'trident', **context):
-            context[NARRATOR].new([player.first_name, 'impales', f'{player.him}self', 'on', f'{name}!'])
+            Narrator().new([player.first_name, 'impales', f'{player.him}self', 'on', f'{name}!'])
         else:
-            context[NARRATOR].new([player.first_name, 'falls', f'into', f'{name}!'])
-            if not context[NARRATOR].has_stock:
-                context[NARRATOR].add([player.first_name, 'is', 'lightly wounded'])
-            context[NARRATOR].apply_stock()
+            Narrator().new([player.first_name, 'falls', f'into', f'{name}!'])
+            if not Narrator().has_stock:
+                Narrator().add([player.first_name, 'is', 'lightly wounded'])
+            Narrator().apply_stock()
 
 
 class ExplosiveTrap(Trap):
@@ -77,12 +78,12 @@ class ExplosiveTrap(Trap):
 
     def _apply(self, name, player, **context):
         if player.be_damaged(random() * 5, 'fire', **context):
-            context[NARRATOR].new([player.first_name, 'blows up', 'on', f'{name}!'])
+            Narrator().new([player.first_name, 'blows up', 'on', f'{name}!'])
         else:
-            context[NARRATOR].new([player.first_name, 'steps', 'on', f'{name}!'])
-            if not context[NARRATOR].has_stock:
-                context[NARRATOR].add([player.first_name, 'is', 'wounded'])
-            context[NARRATOR].apply_stock()
+            Narrator().new([player.first_name, 'steps', 'on', f'{name}!'])
+            if not Narrator().has_stock:
+                Narrator().add([player.first_name, 'is', 'wounded'])
+            Narrator().apply_stock()
 
 
 class NetTrap(Trap):
@@ -92,7 +93,7 @@ class NetTrap(Trap):
     name = 'net trap'
 
     def _apply(self, name, player, **context):
-        context[NARRATOR].new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
+        Narrator().new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
         player.status.append(TRAPPED)
         take_advantage_of_trap(self, context, player)
 
@@ -104,10 +105,10 @@ class WireTrap(Trap):
     name = 'wire trap'
 
     def _apply(self, name, player, **context):
-        context[NARRATOR].new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
+        Narrator().new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
         if random() > 0.5:
             player.status.append('leg wound')
-            context[NARRATOR].add([player.first_name, 'wounds', player.his, 'leg'])
+            Narrator().add([player.first_name, 'wounds', player.his, 'leg'])
         else:
             player.status.append(TRAPPED)
             take_advantage_of_trap(self, context, player)
@@ -117,7 +118,7 @@ def take_advantage_of_trap(trap, context, player):
     if trap.owner.current_area == player.current_area and not trap.owner.busy:
         # can attack
         if trap.owner.dangerosity(**context) > player.dangerosity(**context):
-            context[NARRATOR].cut()
+            Narrator().cut()
             trap.owner.fight(player, **context)
 
 
@@ -129,7 +130,7 @@ def build_trap(player, trap_class: Type[Trap], **context):
         item = [i for i in player.equipment if i.name == ingredient][0]
         player.remove_item(item)
     trap = trap_class(player, random() / 2 + 0.5)
-    context[NARRATOR].add([player.first_name, 'builds', 'a', trap.name, f'at {player.current_area}'])
+    Narrator().add([player.first_name, 'builds', 'a', trap.name, f'at {player.current_area}'])
 
 
 def can_build_any_trap(player, **context) -> bool:

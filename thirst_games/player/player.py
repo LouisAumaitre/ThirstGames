@@ -2,9 +2,9 @@ from random import random
 from typing import Dict
 
 from thirst_games.constants import (
-    PLAYERS, TIME, NARRATOR, NIGHT, STARTER, TRAPPED,
+    PLAYERS, TIME, NIGHT, STARTER, TRAPPED,
     START_AREA)
-from thirst_games.narrator import format_list
+from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.fighter import Fighter
 from thirst_games.traps import can_build_any_trap, build_any_trap
 
@@ -38,12 +38,12 @@ class Player(Fighter):
             strats.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
             self.strategy = strats[0]
             # if context['day'] == 1:
-            #     context[NARRATOR].new([
+            #     Narrator().new([
             #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
     def act(self, **context):
         self.stop_running()
-        context[NARRATOR].cut()
+        Narrator().cut()
         if not self.busy:
             if context[TIME] == STARTER \
                     and self.current_area.name == START_AREA \
@@ -53,7 +53,7 @@ class Player(Fighter):
                     s.apply(self, **context)
             else:
                 self.strategy.apply(self, **context)
-        context[NARRATOR].cut()
+        Narrator().cut()
         self.strategy = None
 
     def fight(self, other_player, **context):
@@ -81,9 +81,9 @@ class Player(Fighter):
     def go_get_drop(self, **context):
         out = self.go_to(self._destination, **context)
         if out is not None:
-            context[NARRATOR].add([self.first_name, f'goes {out.to} to get loot'])
+            Narrator().add([self.first_name, f'goes {out.to} to get loot'])
         else:
-            context[NARRATOR].cut()
+            Narrator().cut()
         if self.check_for_ambush_and_traps(**context):
             return
         neighbors = self.map.players(self)
@@ -92,7 +92,7 @@ class Player(Fighter):
             return
         seen_neighbors = [p for p in neighbors if self.can_see(p)]
         if self.estimate_of_power(self.current_area, **context) > self.dangerosity(**context):
-            context[NARRATOR].add([self.first_name, 'sees', format_list([p.first_name for p in neighbors])])
+            Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in neighbors])])
             self.flee(**context)
         elif len(seen_neighbors):
             self.attack_at_random(**context)

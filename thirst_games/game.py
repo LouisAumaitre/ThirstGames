@@ -4,17 +4,18 @@ from typing import List
 from copy import copy
 from random import random, choice
 
-from thirst_games.constants import MAP, PLAYERS, DEATH, AFTERNOON, TIME, MORNING, DEADS, NARRATOR, NIGHT, STARTER, DAY
+from thirst_games.constants import PLAYERS, DEATH, AFTERNOON, TIME, MORNING, DEADS, NARRATOR, NIGHT, STARTER, DAY
 from thirst_games.event import WildFire, DropEvent
 from thirst_games.map import Map, START_AREA
 from thirst_games.narrator import Narrator, format_list
 from thirst_games.player.player import Player
+from thirst_games.singleton import Singleton
 
 
-class Game:
+class Game(metaclass=Singleton):
     def __init__(self, players: List[Player]):
         self.players = players
-        self.map = Map()
+        self.map = Map(len(players))
         self.narrator = Narrator()
         self._event_gauge = 0
         self._players_at_last_event = 0
@@ -83,7 +84,6 @@ class Game:
         context = {
             PLAYERS: players,
             DEATH: death,
-            NARRATOR: self.narrator,
             DEADS: [],
             **kwargs
         }
@@ -127,12 +127,12 @@ class Game:
     def check_for_event(self, **context):
         if context[TIME] == STARTER:
             return False
-        # context[NARRATOR].new([
+        # Narrator().new([
         #     'event gauge:', self._event_gauge, '+', len(self.alive_players), '-', self._players_at_last_event, '+',
         #     self._time_since_last_event])
         self._event_gauge += len(self.alive_players) - self._players_at_last_event + self._time_since_last_event
         self._time_since_last_event += 2
-        # context[NARRATOR].add(['=', self._event_gauge])
+        # Narrator().add(['=', self._event_gauge])
         return self._event_gauge > 0
 
     def trigger_event(self, **context):
@@ -141,11 +141,11 @@ class Game:
             return
         self._event_gauge = 0
         event = choice(possible_events)(**context)
-        context[NARRATOR].new(['EVENT:', event.name.upper(), f'at {format_list(event.areas)}'])
-        context[NARRATOR].cut()
+        Narrator().new(['EVENT:', event.name.upper(), f'at {format_list(event.areas)}'])
+        Narrator().cut()
         event.trigger(**context)
-        context[NARRATOR].new(' ')
-        context[NARRATOR].cut()
+        Narrator().new(' ')
+        Narrator().cut()
         Map().test += f' {event.name}-{context[DAY]}'
         self._players_at_last_event = len(self.alive_players)
         self._time_since_last_event = 0
@@ -156,7 +156,7 @@ def death(dead_player, **context):
         context[PLAYERS].remove(dead_player)
         Map().remove_player(dead_player)
     except ValueError as e:
-        context[NARRATOR].tell()
+        Narrator().tell()
         raise ValueError(
             f'{dead_player.first_name} has {dead_player.health}hp, is_alive={dead_player.is_alive}, '
             f'is_in_players={dead_player in context[PLAYERS]}'

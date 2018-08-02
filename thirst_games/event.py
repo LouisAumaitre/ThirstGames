@@ -3,6 +3,7 @@ from typing import List
 
 from thirst_games.constants import MAP, NARRATOR, PLAYERS
 from thirst_games.map import Map, START_AREA, random_bag, Area
+from thirst_games.narrator import Narrator
 
 
 class Event:
@@ -30,19 +31,19 @@ class WildFire(Event):
     def trigger(self, **context):
         for area in self.areas:
             for p in area.players:
-                context[NARRATOR].cut()
+                Narrator().cut()
                 if p.can_flee():
                     if p.be_damaged(0.3, weapon='fire', **context):
-                        context[NARRATOR].new([p.name, 'fails', 'to escape the fire and dies', f'at {area}'])
+                        Narrator().new([p.name, 'fails', 'to escape the fire and dies', f'at {area}'])
                     else:
                         p.flee(**context)
-                        context[NARRATOR].apply_stock()
+                        Narrator().apply_stock()
                 else:
-                    context[NARRATOR].new([p.name, 'is', 'trapped', f'at {area}'])
+                    Narrator().new([p.name, 'is', 'trapped', f'at {area}'])
                     if p.be_damaged(random() * 0.2 + 0.3, weapon='fire', **context):
-                        context[NARRATOR].add(['and', 'the fire', 'kills', p.him])
+                        Narrator().add(['and', 'the fire', 'kills', p.him])
                     else:
-                        context[NARRATOR].apply_stock()
+                        Narrator().apply_stock()
 
     @classmethod
     def can_happen(cls, **context) -> bool:
@@ -65,7 +66,7 @@ class DropEvent(Event):
         for i in range(nb_bags):
             Map().add_loot(random_bag(), area)
         verb = 'have' if nb_bags > 1 else 'has'
-        context[NARRATOR].new([nb_bags, 'bag' + ('s' if nb_bags > 1 else ''), verb, 'been dropped', f'at {area}'])
+        Narrator().new([nb_bags, 'bag' + ('s' if nb_bags > 1 else ''), verb, 'been dropped', f'at {area}'])
 
     @classmethod
     def can_happen(cls, **context) -> bool:
