@@ -6,7 +6,7 @@ from thirst_games.constants import (
     ARM_WOUND
 )
 from thirst_games.items import Weapon, PoisonVial
-from thirst_games.map import START_AREA
+from thirst_games.map import START_AREA, Area
 from thirst_games.narrator import format_list
 from thirst_games.player.body import Body
 from thirst_games.player.carrier import Carrier
@@ -23,7 +23,7 @@ class Fighter(Carrier):
     def courage(self, **context):
         courage = self.health * self.energy + self._rage
         if MAP in context:
-            courage = max([courage, self.estimate(context[MAP].loot[self.current_area], **context)])
+            courage = max([courage, self.estimate(context[MAP].loot(self), **context)])
         return courage
 
     def dangerosity(self, **context):
@@ -36,12 +36,13 @@ class Fighter(Carrier):
         self.status.append(FLEEING)
         if panic and random() > self.courage(**context) + 0.5:
             self.drop_weapon(True, **context)
-        min_player_per_area = min([len(area) for key, area in context[MAP].areas.items() if key != START_AREA])
+        min_player_per_area = min([len(area.players) for key, area in context[MAP].areas.items() if key != START_AREA])
         # can't flee to or hide at the cornucopia
         best_areas = [
-            key for key, value in context[MAP].areas.items() if len(value) == min_player_per_area and key != START_AREA
+            key for key, value in context[MAP].areas.items()
+            if len(value.players) == min_player_per_area and key != START_AREA
         ]
-        best_areas.sort(key=lambda x: -len(context[MAP].loot[x]))
+        best_areas.sort(key=lambda x: -len(context[MAP].loot(x)))
         best_area = best_areas[0]
         if 'thirsty' in self.status and 'the river' in best_areas:
             best_area = 'the river'
@@ -51,9 +52,9 @@ class Fighter(Carrier):
             self.check_for_ambush_and_traps(**context)
 
     def pursue(self, **context):
-        max_player_per_area = max([len(area) for area in context[MAP].areas.values()])
-        best_areas = [key for key, value in context[MAP].areas.items() if len(value) == max_player_per_area]
-        best_areas.sort(key=lambda x: -len(context[MAP].loot[x]))
+        max_player_per_area = max([len(area.players) for area in context[MAP].areas.values()])
+        best_areas = [key for key, value in context[MAP].areas.items() if len(value.players) == max_player_per_area]
+        best_areas.sort(key=lambda x: -len(context[MAP].loot(x)))
         best_area = best_areas[0]
         if 'thirsty' in self.status and 'the river' in best_areas:
             best_area = 'the river'
@@ -63,10 +64,10 @@ class Fighter(Carrier):
         else:
             targets = [p.first_name for p in context[PLAYERS] if p != self]
             players = 'players' if len(targets) > 1 else targets[0]
-            context[NARRATOR].add([self.first_name, 'searches for', players, f'at {out}'])
+            context[NARRATOR].add([self.first_name, 'searches for', players, out.at])
             self.check_for_ambush_and_traps(**context)
 
-    def go_to(self, area, **context):
+    def go_to(self, area, **context) -> Area:
         if area != self.current_area and self.energy >= self.move_cost:
             self.reveal()
             self._energy -= self.move_cost
@@ -75,18 +76,19 @@ class Fighter(Carrier):
         else:
             self._energy -= self.move_cost
             self.hide(**context)
+            return self.current_area
 
     def set_up_ambush(self, **context):
         self.stealth += (random() / 2 + 0.5) * (1 - self.stealth)
         if AMBUSH not in self.status:
             self.status.append(AMBUSH)
-            context[NARRATOR].add([self.first_name, 'sets up', 'an ambush', f'at {self.current_area}'])
+            context[NARRATOR].add([self.first_name, 'sets up', 'an ambush', self.current_area.at])
         else:
             self._waiting += 1
             if self._waiting < 2:
-                context[NARRATOR].add([self.first_name, 'keeps', 'hiding', f'at {self.current_area}'])
+                context[NARRATOR].add([self.first_name, 'keeps', 'hiding', self.current_area.at])
             else:
-                context[NARRATOR].add([self.first_name, 'gets', 'tired of hiding', f'at {self.current_area}'])
+                context[NARRATOR].add([self.first_name, 'gets', 'tired of hiding', self.current_area.at])
                 self.status.remove(AMBUSH)
                 self.pursue(**context)
 
@@ -95,10 +97,10 @@ class Fighter(Carrier):
         self.poison_weapon(**context)
 
     def estimate_of_power(self, area, **context) -> float:
-        neighbors = context[MAP].neighbors(self, area)
+        neighbors = context[MAP].players(area)
         if not len(neighbors):
             return 0
-        seen_neighbors = [p for p in neighbors if self.can_see(p)]
+        seen_neighbors = [p for p in neighbors if self.can_see(p) and p != self]
         return sum([p.dangerosity(**context) for p in seen_neighbors])
 
     def can_see(self, other: Carrier):
@@ -112,11 +114,11 @@ class Fighter(Carrier):
     def pillage(self, stuff, **context):
         if len([p for p in context[PLAYERS] if p.is_alive]) == 1:
             return
-        if context[MAP].neighbors_count(self) > 1:
+        if context[MAP].players_count(self) > 1:
             return
         looted = []
         for item in stuff:
-            if item not in context[MAP].loot[self.current_area]:
+            if item not in context[MAP].loot(self.current_area):
                 continue
             if isinstance(item, Weapon):
                 if item.damage_mult > self.weapon.damage_mult:
@@ -144,7 +146,7 @@ class Fighter(Carrier):
             vial.poison.long_name = f'{self.first_name}\'s {vial.poison.name}'
 
     def attack_at_random(self, **context):
-        preys = [p for p in context[MAP].areas[self.current_area] if self.can_see(p) and p != self]
+        preys = [p for p in context[MAP].players(self) if self.can_see(p) and p != self]
         preys.sort(key=lambda x: x.health * x.damage(**context))
         if len(preys):
             self.fight(preys[0], **context)
@@ -163,7 +165,7 @@ class Fighter(Carrier):
         self_stuff = []
         other_weapon = f'with {other_player.his} {other_player.weapon.name}'
         other_stuff = []
-        area = f'at {self.current_area}'
+        area = self.current_area.at
         surprise_mult = 2 if SLEEPING in other_player.status else (
             2 if TRAPPED in other_player.status else (
                 1.5 if not other_player.can_see(self) else 1

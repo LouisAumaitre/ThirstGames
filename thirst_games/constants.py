@@ -4,6 +4,8 @@ PLAYERS = 'players'
 DEATH = 'death'
 DEADS = 'deads'
 
+START_AREA = 'cornucopia'
+
 TIME = 'time'
 STARTER = 'starter'
 MORNING = 'morning'

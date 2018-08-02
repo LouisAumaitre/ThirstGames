@@ -37,19 +37,19 @@ class Game:
         self._time_since_last_event = 0
         self.narrator.new(f'== DAY {day} START ==')
         self.narrator.new(['All players start at', START_AREA])
-        while len(self.map.areas[START_AREA]) > 1:
+        while self.map.players_count(START_AREA) > 1:
             self.launch(**{TIME: STARTER, DAY: day})
             self.narrator.new(f'...')
-            if len(self.map.areas[START_AREA]) > 1:
+            if self.map.players_count(START_AREA) > 1:
                 self.narrator.new([
-                    format_list([p.first_name for p in self.alive_players if p.current_area == START_AREA]),
+                    format_list([p.first_name for p in self.alive_players if p.current_area.is_start]),
                     'remain at',
                     START_AREA
                 ])
-            elif len(self.map.areas[START_AREA]) == 1:
+            elif self.map.players_count(START_AREA) == 1:
                 self.narrator.new([
                     'Only',
-                    [p for p in self.alive_players if p.current_area == START_AREA][0].first_name,
+                    [p for p in self.alive_players if p.current_area.is_start][0].first_name,
                     'remain at',
                     START_AREA
                 ])
@@ -100,10 +100,10 @@ class Game:
             self.trigger_event(**context)
         for i in range(len(players) + 2):
             if i < len(players) and players[i].is_alive:
-                if context[TIME] != STARTER or players[i].current_area == START_AREA:
+                if context[TIME] != STARTER or players[i].current_area.is_start:
                     players[i].think(**context)
             if i - 2 >= 0 and players[i-2].is_alive:
-                if context[TIME] != STARTER or players[i-2].current_area == START_AREA:
+                if context[TIME] != STARTER or players[i-2].current_area.is_start:
                     players[i-2].act(**context)
         for p in players:
             p.busy = False
@@ -111,7 +111,7 @@ class Game:
     def status(self):
         l_name = max([len(p.name) for p in self.alive_players])
         l_weapon = max([len(str(p.weapon)) for p in self.alive_players])
-        l_area = max([len(p.current_area) for p in self.alive_players])
+        l_area = max([len(p.current_area.name) for p in self.alive_players])
         for p in self.alive_players:
             bag = str([str(e) for e in p._equipment]).replace('\'', '')
             max_l = 180
@@ -120,7 +120,7 @@ class Game:
             print(f'- {p.name:<{l_name}} {int(p.health * 100):>3}/{int(p.max_health * 100):>3}hp '
                   f'{int(p.energy * 100):>3}nrg '
                   f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm {int(p.water * 100):>3}wtr  '
-                  f'{str(p.weapon):<{l_weapon}}  {p.current_area.upper():<{l_area}}  '
+                  f'{str(p.weapon):<{l_weapon}}  {p.current_area.name.upper():<{l_area}}  '
                   f'{format_list(p.status)}  '
                   f'{format_list([str(po) for po in p.active_poisons])}')
             print(f'           {bag}')

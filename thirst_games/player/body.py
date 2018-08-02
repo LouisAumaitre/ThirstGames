@@ -1,9 +1,11 @@
 from random import random, choice
 from typing import List
 
-from thirst_games.constants import NARRATOR, HEAD_WOUND, BELLY_WOUND, LEG_WOUND, BLEEDING, SLEEPING, THIRSTY, TRAPPED, \
-    MAP, PANIC, TIME, NIGHT, AMBUSH, DEATH, FLEEING, BURN_WOUND
-from thirst_games.map import Positionable, START_AREA
+from thirst_games.constants import (
+    NARRATOR, HEAD_WOUND, BELLY_WOUND, LEG_WOUND, BLEEDING, SLEEPING, THIRSTY, TRAPPED,
+    MAP, PANIC, TIME, NIGHT, AMBUSH, DEATH, FLEEING, BURN_WOUND,
+    START_AREA)
+from thirst_games.map import Positionable
 from thirst_games.poison import Poison
 from thirst_games.weapons import get_weapon_wound, get_weapon_blood
 
@@ -140,15 +142,15 @@ class Body(Positionable):
     def can_flee(self, **context):
         if TRAPPED in self.status:
             return False
-        return self.energy + self.health > self.move_cost or self.current_area != START_AREA
+        return self.energy + self.health > self.move_cost or self.current_area.name != START_AREA
 
     def take_a_break(self, **context):
         raise NotImplementedError
 
     def rest(self, **context):
-        if self.current_area != START_AREA:
+        if self.current_area.name != START_AREA:
             self.stealth += random() * (1 - self.stealth)
-            context[NARRATOR].add([self.first_name, 'hides', f'at {self.current_area}'])
+            context[NARRATOR].add([self.first_name, 'hides', self.current_area.at])
 
         self.take_a_break(**context)
         wounds = self.wounds
@@ -159,15 +161,15 @@ class Body(Positionable):
         else:
             self.add_health(max(self.energy, random()) * (self.max_health - self.health))
             self.add_energy(max(self.sleep, random()) * (1 - self.energy))
-            context[NARRATOR].add([self.first_name, 'rests', f'at {self.current_area}'])
+            context[NARRATOR].add([self.first_name, 'rests', self.current_area.at])
 
     def hide(self, **context):
         if context.get(PANIC, False):
-            context[NARRATOR].add([self.first_name, 'hides', f'at {self.current_area}'])
+            context[NARRATOR].add([self.first_name, 'hides', self.current_area.at])
             return
         if self.sleep < 0.1 \
-                or (context[TIME] == NIGHT and context[MAP].neighbors_count == 1 and len(self.wounds) == 0) \
-                or (context[MAP].neighbors_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
+                or (context[TIME] == NIGHT and context[MAP].players_count == 1 and len(self.wounds) == 0) \
+                or (context[MAP].players_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
                 or (context[TIME] == NIGHT and self.sleep < 0.3 and len(self.wounds) == 0):
             self.go_to_sleep(**context)
             return
@@ -187,7 +189,7 @@ class Body(Positionable):
         self.add_health(self.energy * (1 - self.health), **context)
         self.add_energy(self.sleep * (1 - self.energy), **context)
         self.add_sleep(1, **context)
-        context[NARRATOR].add([self.first_name, 'sleeps', f'at {self.current_area}'])
+        context[NARRATOR].add([self.first_name, 'sleeps', self.current_area.at])
         self.status.append(SLEEPING)
 
     def stop_running(self):
@@ -206,12 +208,12 @@ class Body(Positionable):
         self._poisons.append(poison)
 
     def check_for_ambush_and_traps(self, **context):
-        traps = context[MAP].traps[self.current_area]
+        traps = context[MAP].traps(self)
         for t in traps:
             if t.check(self, **context):
                 t.apply(self, **context)
                 return True
-        ambushers = [p for p in context[MAP].neighbors(self) if AMBUSH in p.status and SLEEPING not in p.status]
+        ambushers = [p for p in context[MAP].players(self) if AMBUSH in p.status and SLEEPING not in p.status]
         if not len(ambushers):
             return False
         ambusher = choice(ambushers)

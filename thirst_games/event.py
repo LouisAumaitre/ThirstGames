@@ -2,11 +2,11 @@ from random import random, choice, randint
 from typing import List
 
 from thirst_games.constants import MAP, NARRATOR, PLAYERS
-from thirst_games.map import Map, START_AREA, random_bag
+from thirst_games.map import Map, START_AREA, random_bag, Area
 
 
 class Event:
-    def __init__(self, name: str, areas: List[str]):
+    def __init__(self, name: str, areas: List[Area]):
         self.name = name
         self.areas = areas
 
@@ -21,15 +21,15 @@ class Event:
 class WildFire(Event):
     def __init__(self, **context):
         _map = context[MAP]
-        max_p = max([len(place) for key, place in _map.areas.items() if not _map.has_water(key)])
-        areas = [key for key, value in _map.areas.items() if len(value) == max_p and not _map.has_water(key)]
+        max_p = max([len(place.players) for place in _map.areas.values() if not place.has_water])
+        areas = [value for value in _map.areas.values() if len(value.players) == max_p and not value.has_water]
         if max_p == 1:
             areas = [choice(areas)]
         Event.__init__(self, 'wildfire', areas)
 
     def trigger(self, **context):
         for area in self.areas:
-            for p in context[MAP].areas[area]:
+            for p in area.players:
                 context[NARRATOR].cut()
                 if p.can_flee():
                     if p.be_damaged(0.3, weapon='fire', **context):
@@ -48,17 +48,17 @@ class WildFire(Event):
     def can_happen(cls, **context) -> bool:
         # needs a place with players and no water
         return len([
-            key for key, value in context[MAP].areas.items() if not context[MAP].has_water(key) and len(value)
+            key for key, value in context[MAP].areas.items() if not value.has_water and len(value.players)
         ]) > 0
 
 
 class DropEvent(Event):
     def __init__(self, **context):
         possible_areas = [
-            key for key, value in context[MAP].areas.items() if not len(value)
+            value for value in context[MAP].areas.values() if not len(value.players)
         ]
         if START_AREA in possible_areas:
-            area = START_AREA
+            area = context[MAP].get_area(START_AREA)
         else:
             area = choice(possible_areas)
         Event.__init__(self, 'drop', [area])
@@ -75,5 +75,5 @@ class DropEvent(Event):
     def can_happen(cls, **context) -> bool:
         # needs an empty area
         return len([
-            key for key, value in context[MAP].areas.items() if not len(value)
+            key for key, value in context[MAP].areas.items() if not len(value.players)
         ]) > 0

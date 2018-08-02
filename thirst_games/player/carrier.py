@@ -136,18 +136,18 @@ class Carrier(Body):
 
     def loot(self, **context):
         self.take_a_break(**context)
-        if context[MAP].neighbors_count(self) == 1:
+        if context[MAP].players_count(self) == 1:
             item = context[MAP].pick_best_item(self)
         else:
             item = context[MAP].pick_item(self.current_area)
         if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
             context[NARRATOR].add([
-                self.first_name, 'tries to loot', f'at {self.current_area}', 'but can\'t find anything useful'])
+                self.first_name, 'tries to loot', self.current_area.at, 'but can\'t find anything useful'])
             return
         if isinstance(item, Weapon):
             self.loot_weapon(item, **context)
         else:
-            context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
+            context[NARRATOR].add([self.first_name, 'picks up', item.long_name, self.current_area.at])
             self.get_item(item, **context)
 
     def loot_weapon(self, weapon: Optional[Weapon]=None, **context):
@@ -156,21 +156,21 @@ class Carrier(Body):
         if weapon is None or (weapon.damage_mult <= self.weapon.damage_mult and (
                     not weapon.small or context[TIME] == STARTER or self.bag is None)):
             context[NARRATOR].add([
-                self.first_name, 'tries to find a weapon', f'at {self.current_area}', 'but can\'t find anything good'])
+                self.first_name, 'tries to find a weapon', self.current_area.at, 'but can\'t find anything good'])
             return
         if weapon.name == self.weapon.name:
             self.weapon.long_name.replace('\'s', '\'s old')
             context[NARRATOR].add([
-                self.first_name, 'picks up', f'a better {weapon.name}', f'at {self.current_area}'])
+                self.first_name, 'picks up', f'a better {weapon.name}', self.current_area.at])
         else:
-            context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name, f'at {self.current_area}'])
+            context[NARRATOR].add([self.first_name, 'picks up', weapon.long_name, self.current_area.at])
         self.get_weapon(weapon, **context)
 
     def loot_bag(self, **context):
         item = context[MAP].pick_bag(self.current_area)
         if item is None:
             return self.loot(**context)
-        context[NARRATOR].add([self.first_name, 'picks up', item.long_name, f'at {self.current_area}'])
+        context[NARRATOR].add([self.first_name, 'picks up', item.long_name, self.current_area.at])
         self.get_item(item, **context)
 
     def estimate(self, item: Union[Item, List[Item]], **context) -> float:
@@ -211,7 +211,7 @@ class Carrier(Body):
         if self.weapon != HANDS:
             if verbose:
                 context[NARRATOR].add([
-                    self.first_name, 'drops', f'{self.his} {self.weapon.name}', f'at {self.current_area}'])
+                    self.first_name, 'drops', f'{self.his} {self.weapon.name}', self.current_area.at])
             context[MAP].add_loot(self.weapon, self.current_area)
         self.weapon = HANDS
 
@@ -253,11 +253,11 @@ class Carrier(Body):
             if weapon.name == self.weapon.name:
                 self.weapon.long_name = f'{self.first_name}\'s old {self.weapon.name}'
                 description = f'a better {weapon.name}'
-            context[NARRATOR].add([self.first_name, 'crafts', description, with_tool, f'at {self.current_area}'])
+            context[NARRATOR].add([self.first_name, 'crafts', description, with_tool, self.current_area.at])
             self.get_weapon(weapon, **context)
         else:
             context[NARRATOR].add([
-                self.first_name, 'tries to craft a better weapon', f'at {self.current_area}'])
+                self.first_name, 'tries to craft a better weapon', self.current_area.at])
 
     def fill_bottles(self, **context):
         self.water_upkeep()
@@ -271,9 +271,9 @@ class Carrier(Body):
                 if len(self.bottles):
                     context[NARRATOR].add([
                         self.name, 'fills', self.his, 'bottles' if len(self.bottles) > 1 else 'bottle',
-                        f'at {self.current_area}'])
+                        self.current_area.at])
                 else:
-                    context[NARRATOR].add([self.name, 'drinks', f'at {self.current_area}'])
+                    context[NARRATOR].add([self.name, 'drinks', self.current_area.at])
         else:
             water = random()
             amount = min(self.thirst, water)
@@ -311,7 +311,7 @@ class Carrier(Body):
                 context[NARRATOR].add([self.name, 'finds'])
                 poison = self.eat(food, quantifier='some', **context) == 'poison'
             else:
-                context[NARRATOR].add([self.name, 'finds', 'some', food.name, f'at {self.current_area}'])
+                context[NARRATOR].add([self.name, 'finds', 'some', food.name, self.current_area.at])
                 food.value *= 2
             if not poison:
                 self.get_item(food, **context)  # some extras / all of it
@@ -334,7 +334,7 @@ class Carrier(Body):
                 if self.eat(meal, verbose=False, **context) == 'poison':
                     poison = meal
                     break
-            context[NARRATOR].add([self.name, 'eats', self.his, format_list(diner), f'at {self.current_area}'])
+            context[NARRATOR].add([self.name, 'eats', self.his, format_list(diner), self.current_area.at])
             if poison is not None:
                 context[NARRATOR].new([f'the {poison.name}', 'is', 'poisonous!'])
                 context[NARRATOR].cut()
@@ -342,7 +342,7 @@ class Carrier(Body):
 
     def eat(self, food: Food, quantifier='', verbose=True, **context):
         if verbose:
-            context[NARRATOR].add([self.name, 'eats', quantifier, food.name, f'at {self.current_area}'])
+            context[NARRATOR].add([self.name, 'eats', quantifier, food.name, self.current_area.at])
         self.consume_nutriments(food.value)
         if food.is_poisonous:
             self._poisons.append(copy(food.poison))
