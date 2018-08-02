@@ -7,7 +7,8 @@ from thirst_games.weapons import weapon_kill_word
 def format_list(names: List[str]):
     if not len(names):
         return ''
-    unique_names = list(set(str(n) for n in names))
+    names = [str(n) for n in names]
+    unique_names = list(set(names))
     unique_names.sort()
     amount_by_name = {name: names.count(name) for name in unique_names}
     counted_names = [

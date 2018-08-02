@@ -1,12 +1,14 @@
+from typing import Union
+
 from copy import copy
 from random import random
 
 from thirst_games.constants import (
     SLEEPING, FLEEING, PANIC, NARRATOR, PLAYERS, AMBUSH, TRAPPED, TIME, STARTER,
-    ARM_WOUND
-)
+    ARM_WOUND,
+    THIRSTY)
 from thirst_games.items import Weapon, PoisonVial
-from thirst_games.map import START_AREA, Area
+from thirst_games.map import START_AREA, Area, Positionable
 from thirst_games.narrator import format_list
 from thirst_games.player.body import Body
 from thirst_games.player.carrier import Carrier
@@ -35,30 +37,27 @@ class Fighter(Carrier):
         self.status.append(FLEEING)
         if panic and random() > self.courage(**context) + 0.5:
             self.drop_weapon(True, **context)
-        min_player_per_area = min([len(area.players) for area in self.map.areas.values() if not area.is_start])
+        min_player_per_area = min([len(area.players) for area in self.map.areas if not area.is_start])
         # can't flee to or hide at the cornucopia
-        best_areas = [
-            key for key, value in self.map.areas.items()
-            if len(value.players) == min_player_per_area and not value.is_start
-        ]
+        best_areas = [area for area in self.map.areas if len(area.players) == min_player_per_area and not area.is_start]
+        if THIRSTY in self.status and len([a for a in best_areas if a.has_water]):
+            best_areas = [a for a in best_areas if a.has_water]
         best_areas.sort(key=lambda x: -len(self.map.loot(x)))
         best_area = best_areas[0]
-        if 'thirsty' in self.status and 'the river' in best_areas:
-            best_area = 'the river'
         out = self.go_to(best_area, **context, **{PANIC: True})
         if out is not self.current_area:
             context[NARRATOR].add([self.first_name, f'flees {out.to}'])
             self.check_for_ambush_and_traps(**context)
 
     def pursue(self, **context):
-        max_player_per_area = max([len(area.players) for area in self.map.areas.values()])
-        best_areas = [key for key, value in self.map.areas.items() if len(value.players) == max_player_per_area]
+        max_player_per_area = max([len(area.players) for area in self.map.areas])
+        best_areas = [area for area in self.map.areas if len(area.players) == max_player_per_area]
+        if THIRSTY in self.status and len([a for a in best_areas if a.has_water]):
+            best_areas = [a for a in best_areas if a.has_water]
         best_areas.sort(key=lambda x: -len(self.map.loot(x)))
         best_area = best_areas[0]
-        if 'thirsty' in self.status and 'the river' in best_areas:
-            best_area = 'the river'
         out = self.go_to(best_area, **context)
-        if out is None:
+        if out is self.current_area:
             context[NARRATOR].replace('hides and rests', 'rests')
         else:
             targets = [p.first_name for p in context[PLAYERS] if p != self]
@@ -66,7 +65,8 @@ class Fighter(Carrier):
             context[NARRATOR].add([self.first_name, 'searches for', players, out.at])
             self.check_for_ambush_and_traps(**context)
 
-    def go_to(self, area, **context) -> Area:
+    def go_to(self, area: Union[str, Area, Positionable], **context) -> Area:
+        area = self.map.get_area(area)
         if area != self.current_area and self.energy >= self.move_cost:
             self.reveal()
             self._energy -= self.move_cost

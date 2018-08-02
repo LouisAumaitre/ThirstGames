@@ -20,9 +20,9 @@ class Event:
 
 class WildFire(Event):
     def __init__(self, **context):
-        _map = context[MAP]
-        max_p = max([len(place.players) for place in _map.areas.values() if not place.has_water])
-        areas = [value for value in _map.areas.values() if len(value.players) == max_p and not value.has_water]
+        _map = Map()
+        max_p = max([len(area.players) for area in _map.areas if not area.has_water])
+        areas = [area for area in _map.areas if len(area.players) == max_p and not area.has_water]
         if max_p == 1:
             areas = [choice(areas)]
         Event.__init__(self, 'wildfire', areas)
@@ -47,16 +47,12 @@ class WildFire(Event):
     @classmethod
     def can_happen(cls, **context) -> bool:
         # needs a place with players and no water
-        return len([
-            key for key, value in Map().areas.items() if not value.has_water and len(value.players)
-        ]) > 0
+        return len([area for area in Map().areas if not area.has_water and len(area.players)]) > 0
 
 
 class DropEvent(Event):
     def __init__(self, **context):
-        possible_areas = [
-            value for value in Map().areas.values() if not len(value.players)
-        ]
+        possible_areas = [area for area in Map().areas if not len(area.players)]
         if START_AREA in possible_areas:
             area = Map().get_area(START_AREA)
         else:
@@ -74,6 +70,4 @@ class DropEvent(Event):
     @classmethod
     def can_happen(cls, **context) -> bool:
         # needs an empty area
-        return len([
-            key for key, value in Map().areas.items() if not len(value.players)
-        ]) > 0
+        return len([area for area in Map().areas if not len(area.players)]) > 0

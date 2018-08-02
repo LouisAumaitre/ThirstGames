@@ -14,7 +14,7 @@ from thirst_games.player.player import Player
 class Game:
     def __init__(self, players: List[Player]):
         self.players = players
-        self.map = Map(len(players))
+        self.map = Map()
         self.narrator = Narrator()
         self._event_gauge = 0
         self._players_at_last_event = 0
@@ -146,7 +146,7 @@ class Game:
         event.trigger(**context)
         context[NARRATOR].new(' ')
         context[NARRATOR].cut()
-        context[MAP].test = f'{context[MAP].test} {event.name}-{context[DAY]}'
+        Map().test += f' {event.name}-{context[DAY]}'
         self._players_at_last_event = len(self.alive_players)
         self._time_since_last_event = 0
 

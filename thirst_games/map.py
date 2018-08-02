@@ -5,6 +5,7 @@ from random import random, choice, randint
 from thirst_games.constants import KNIFE, HATCHET, TRIDENT, AXE, SWORD, MACE, START_AREA
 from thirst_games.items import Weapon, Item, Food, Bag, Bottle, PoisonVial
 from thirst_games.poison import Poison
+from thirst_games.singleton import Singleton
 
 food_values = {
     'roots': 0.3,
@@ -120,39 +121,38 @@ class Positionable:
     map: Any = None
 
 
-class Map:
-    _instance = None
+class Map(metaclass=Singleton):
 
-    def __new__(cls, player_amount=24):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance.__init__(player_amount)
-        return cls._instance
-
-    def __init__(self, player_amount=24):
+    def __init__(self):
+        print('INIT ARENA')
+        player_amount = 24
         possible_parts_names = list(_nature.keys())
         possible_parts_names.remove(START_AREA)
         possible_parts_names.sort(key=lambda x: random())
         size = player_amount // 4 + 1
-        self.areas: Dict[str, Area] = {area_name: Area(area_name) for area_name in possible_parts_names[0:size-1]}
-        self.areas[START_AREA] = Area(START_AREA)
+        self.areas: List[Area] = [Area(area_name) for area_name in possible_parts_names[0:size-1]]
+        start_area = Area(START_AREA)
+        self.areas.append(start_area)
 
         for i in range(player_amount // 2):
-            self.areas[START_AREA].loot.append(random_weapon())
+            start_area.loot.append(random_weapon())
         for i in range(5):
-            self.areas[START_AREA].loot.append(random_bag())
+            start_area.loot.append(random_bag())
 
         self.test = ''
 
     @property
     def area_names(self) -> List[str]:
-        return list(self.areas.keys())
+        return [area.name for area in self.areas]
 
     def get_area(self, area: Union[str, Area, Positionable]) -> Area:
         if isinstance(area, Positionable):
             return area.current_area
         if isinstance(area, str):
-            return self.areas[area]
+            try:
+                return [a for a in self.areas if a.name == area][0]
+            except IndexError as e:
+                raise IndexError(f'no {area} in {self.areas}') from e
         if isinstance(area, Area):
             return area
         raise ValueError(f'{area} is neither a string or a positionable')
@@ -248,7 +248,7 @@ class Map:
         area = self.get_area(area)
         trap.current_area = area
         trap.map = self
-        area.players.append(trap)
+        area.traps.append(trap)
 
     def remove_trap(self, trap: Positionable):
         trap.current_area.traps.remove(trap)
@@ -259,7 +259,7 @@ class Map:
     def players(self, area: Union[str, Area, Positionable]) -> List[Positionable]:
         return self.get_area(area).players
 
-    def traps(self, area: Union[str, Area, Positionable]) -> List[Trap]:
+    def traps(self, area: Union[str, Area, Positionable]) -> List[Positionable]:
         return self.get_area(area).traps
 
     def has_water(self, area: Union[str, Area, Positionable]) -> bool:
