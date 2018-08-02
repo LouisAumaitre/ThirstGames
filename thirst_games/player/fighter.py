@@ -46,6 +46,8 @@ class Fighter(Carrier):
         best_areas.sort(key=lambda x: -len(self.map.loot(x)))
         best_area = best_areas[0]
         out = self.go_to(best_area)
+        if best_area.is_start:
+            raise ValueError(f'min_player={min_player_per_area} best_areas={best_areas} best_area={best_area}')
         if out is None:
             self.hide(panic=panic)
         else:
@@ -224,6 +226,8 @@ class Fighter(Carrier):
         other_player.pillage(self_stuff)
 
     def hit(self, target: Body, mult=1) -> bool:
+        if SLEEPING in target.status:
+            target.status.remove(SLEEPING)
         if self.energy < 0.1:
             mult /= 2
             self._rage = -1

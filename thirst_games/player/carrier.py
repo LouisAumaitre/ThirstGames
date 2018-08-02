@@ -135,8 +135,9 @@ class Carrier(Body):
         self.consume_antidote()
         self.fill_bottles()
 
-    def loot(self):
-        self.take_a_break()
+    def loot(self, take_a_break=True):
+        if take_a_break:
+            self.take_a_break()
         if self.map.players_count(self) == 1:
             item = self.map.pick_best_item(self)
         else:

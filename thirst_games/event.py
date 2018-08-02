@@ -44,6 +44,8 @@ class WildFire(Event):
                         Narrator().add(['and', 'the fire', 'kills', p.him])
                     else:
                         Narrator().apply_stock()
+                if not len(Narrator().current_sentence):
+                    Narrator().add([p.name, 'escaped', 'the fire', 'and is', p.current_area.at])
 
     @classmethod
     def can_happen(cls) -> bool:

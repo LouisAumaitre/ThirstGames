@@ -35,7 +35,7 @@ class Player(Fighter):
                 strats = morning_strategies
             strats.sort(key=lambda x: -x.pref(self) + random() * (1 - self.wisdom))
             self.strategy = strats[0]
-            # if context['day'] == 1:
+            # if self.strategy == go_get_drop:
             #     Narrator().new([
             #         self.name, f': {[(round(s.pref(self), 2), s.name) for s in strats]}'])
 
@@ -73,7 +73,7 @@ class Player(Fighter):
         # sp = ' '
         # self.map.test += f' {self.name}->{self._destination.split(sp)[-1]} '
         return areas_by_value[self.destination] * min([
-            random(), 6 / Context().player_count])
+            random(), 3 / Context().player_count])
 
     def go_get_drop(self):
         out = self.go_to(self.destination)
@@ -83,15 +83,35 @@ class Player(Fighter):
             Narrator().cut()
         if self.check_for_ambush_and_traps():
             return
-        danger = self.estimate_of_power(self.current_area)
-        seen_neighbors = [p for p in self.map.players(self) if self.can_see(p) and p != self]
-        if danger > self.dangerosity():
+        seen_neighbors = [p for p in self.map.potential_players(self) if self.can_see(p) and p != self]
+        free_neighbors = [p for p in seen_neighbors if p.current_area == self.current_area and not p.busy]
+        potential_danger = sum([p.dangerosity() for p in seen_neighbors])
+        actual_danger = sum([p.dangerosity() for p in free_neighbors])
+
+        told = len(Narrator().current_sentence)
+        if potential_danger > self.dangerosity() and potential_danger > self.courage():
             Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in seen_neighbors])])
             self.flee()
-        elif danger > 0:
+        elif actual_danger > self.dangerosity() and actual_danger > self.courage():
+            Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in free_neighbors])])
+            self.flee()
+        elif actual_danger > 0:  # enemy present -> fight them
+            Narrator().cut()
             self.attack_at_random()
-        else:
+        elif potential_danger > 0 and actual_danger == 0:  # enemy busy but incoming
+            if self.dangerosity() > potential_danger:  # attack before the other(s) arrive
+                Narrator().cut()
+                self.attack_at_random()
+            else:  # loot and go/get your load and hit the road
+                self.loot(take_a_break=False)
+                self.flee()
+        else:  # servez-vous
             self.loot()
+        if len(Narrator().current_sentence) == told:
+            Narrator().add([
+                self.name, f'potential_danger={potential_danger}', f'actual_danger={actual_danger}',
+                f'dangerosity={self.dangerosity()}', f'courage={self.courage()}',
+            ])
 
 
 class Relationship:
@@ -170,7 +190,7 @@ dine_strat = Strategy(
     lambda x: x.dine())
 craft_strat_1 = Strategy(
     'craft',
-    lambda x: (x.energy - 0.2) * (2 - x.weapon.damage_mult) * (x.map.players_count(x) < 2),
+    lambda x: (2 - x.weapon.damage_mult) * (1 / x.map.players_count(x)),
     lambda x: x.craft())
 craft_strat_2 = Strategy(
     'craft',
