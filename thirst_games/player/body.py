@@ -7,7 +7,7 @@ from thirst_games.constants import (
     START_AREA)
 from thirst_games.context import Context
 from thirst_games.map import Positionable
-from thirst_games.narrator import Narrator
+from thirst_games.narrator import Narrator, format_list
 from thirst_games.poison import Poison
 from thirst_games.weapons import get_weapon_wound, get_weapon_blood
 
@@ -298,3 +298,7 @@ class Body(Positionable):
 
     def die(self):
         Context().death(self)
+
+    @property
+    def full_status_desc(self):
+        return format_list([*self.status, *[str(p) for p in self._poisons]])
