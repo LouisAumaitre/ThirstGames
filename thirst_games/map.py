@@ -5,7 +5,6 @@ from random import random, choice, randint
 from thirst_games.constants import KNIFE, HATCHET, TRIDENT, AXE, SWORD, MACE, START_AREA
 from thirst_games.items import Weapon, Item, Food, Bag, Bottle, PoisonVial
 from thirst_games.poison import Poison
-from thirst_games.traps import Trap
 
 food_values = {
     'roots': 0.3,
@@ -97,7 +96,7 @@ class Area:
         self.foods: List[str] = _nature[name]['food']
         self.players: List[Positionable] = []
         self.loot: List[Item] = []
-        self.traps: List[Trap] = []
+        self.traps: List[Positionable] = []
 
     @property
     def has_water(self) -> bool:
@@ -122,7 +121,15 @@ class Positionable:
 
 
 class Map:
-    def __init__(self, player_amount):
+    _instance = None
+
+    def __new__(cls, player_amount=24):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.__init__(player_amount)
+        return cls._instance
+
+    def __init__(self, player_amount=24):
         possible_parts_names = list(_nature.keys())
         possible_parts_names.remove(START_AREA)
         possible_parts_names.sort(key=lambda x: random())
@@ -225,19 +232,26 @@ class Map:
         player.current_area = area
         player.map = self
         area.players.append(player)
-        print(f'add {player.name} to {area.name}')
 
-    def remove_player(self, player):
+    def remove_player(self, player: Positionable):
         player.current_area.players.remove(player)
 
     def move_player(self, player, destination: Union[str, Area, Positionable]) -> Area:
         new_area = self.get_area(destination)
-        print(f'move {player.name} to {new_area.name}')
         if player.current_area == new_area:
             return player.current_area
         self.remove_player(player)
         self.add_player(player, destination)
         return new_area
+
+    def add_trap(self, trap: Positionable, area: Union[str, Area, Positionable]=START_AREA):
+        area = self.get_area(area)
+        trap.current_area = area
+        trap.map = self
+        area.players.append(trap)
+
+    def remove_trap(self, trap: Positionable):
+        trap.current_area.traps.remove(trap)
 
     def players_count(self, area: Union[str, Area, Positionable]) -> int:
         return len(self.players(area))

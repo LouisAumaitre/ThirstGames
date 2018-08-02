@@ -3,7 +3,7 @@ from typing import List
 
 from thirst_games.constants import (
     NARRATOR, HEAD_WOUND, BELLY_WOUND, LEG_WOUND, BLEEDING, SLEEPING, THIRSTY, TRAPPED,
-    MAP, PANIC, TIME, NIGHT, AMBUSH, DEATH, FLEEING, BURN_WOUND,
+    PANIC, TIME, NIGHT, AMBUSH, DEATH, FLEEING, BURN_WOUND,
     START_AREA)
 from thirst_games.map import Positionable
 from thirst_games.poison import Poison
@@ -168,8 +168,8 @@ class Body(Positionable):
             context[NARRATOR].add([self.first_name, 'hides', self.current_area.at])
             return
         if self.sleep < 0.1 \
-                or (context[TIME] == NIGHT and context[MAP].players_count == 1 and len(self.wounds) == 0) \
-                or (context[MAP].players_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
+                or (context[TIME] == NIGHT and self.map.players_count == 1 and len(self.wounds) == 0) \
+                or (self.map.players_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
                 or (context[TIME] == NIGHT and self.sleep < 0.3 and len(self.wounds) == 0):
             self.go_to_sleep(**context)
             return
@@ -208,12 +208,12 @@ class Body(Positionable):
         self._poisons.append(poison)
 
     def check_for_ambush_and_traps(self, **context):
-        traps = context[MAP].traps(self)
+        traps = self.map.traps(self)
         for t in traps:
             if t.check(self, **context):
                 t.apply(self, **context)
                 return True
-        ambushers = [p for p in context[MAP].players(self) if AMBUSH in p.status and SLEEPING not in p.status]
+        ambushers = [p for p in self.map.players(self) if AMBUSH in p.status and SLEEPING not in p.status]
         if not len(ambushers):
             return False
         ambusher = choice(ambushers)
@@ -295,5 +295,5 @@ class Body(Positionable):
     def die(self, **context):
         # self.drop_weapon(False, **context)
         # for e in self._equipment:
-        #     context[MAP].add_loot(e, self.current_area)
+        #     self.map.add_loot(e, self.current_area)
         context[DEATH](self, **context)

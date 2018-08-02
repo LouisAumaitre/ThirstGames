@@ -81,7 +81,6 @@ class Game:
         players = copy(self.alive_players)
         players.sort(key=lambda x: random())
         context = {
-            MAP: self.map,
             PLAYERS: players,
             DEATH: death,
             NARRATOR: self.narrator,
@@ -155,7 +154,7 @@ class Game:
 def death(dead_player, **context):
     try:
         context[PLAYERS].remove(dead_player)
-        context[MAP].remove_player(dead_player)
+        Map().remove_player(dead_player)
     except ValueError as e:
         context[NARRATOR].tell()
         raise ValueError(

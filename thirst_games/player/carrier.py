@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 
 from copy import copy
 
-from thirst_games.constants import MAP, KNIFE, HATCHET, NARRATOR, BLEEDING, TIME, STARTER, SWORD, AXE
+from thirst_games.constants import KNIFE, HATCHET, NARRATOR, BLEEDING, TIME, STARTER, SWORD, AXE
 from thirst_games.items import Bag, Item, Weapon, Bottle, Food, HANDS
 from thirst_games.map import START_AREA
 from thirst_games.narrator import format_list
@@ -90,7 +90,7 @@ class Carrier(Body):
             self.remove_item('iodine')
             verbs = ['disinfects']
             tools = ['iodine']
-        elif context[MAP].has_water(self):
+        elif self.map.has_water(self):
             self._max_health *= 0.99
             verbs = ['cleans']
             tools = [f'{self.current_area}\'s water']
@@ -136,10 +136,10 @@ class Carrier(Body):
 
     def loot(self, **context):
         self.take_a_break(**context)
-        if context[MAP].players_count(self) == 1:
-            item = context[MAP].pick_best_item(self)
+        if self.map.players_count(self) == 1:
+            item = self.map.pick_best_item(self)
         else:
-            item = context[MAP].pick_item(self.current_area)
+            item = self.map.pick_item(self.current_area)
         if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
             context[NARRATOR].add([
                 self.first_name, 'tries to loot', self.current_area.at, 'but can\'t find anything useful'])
@@ -152,7 +152,7 @@ class Carrier(Body):
 
     def loot_weapon(self, weapon: Optional[Weapon]=None, **context):
         if weapon is None:
-            weapon = context[MAP].pick_weapon(self.current_area)
+            weapon = self.map.pick_weapon(self.current_area)
         if weapon is None or (weapon.damage_mult <= self.weapon.damage_mult and (
                     not weapon.small or context[TIME] == STARTER or self.bag is None)):
             context[NARRATOR].add([
@@ -167,7 +167,7 @@ class Carrier(Body):
         self.get_weapon(weapon, **context)
 
     def loot_bag(self, **context):
-        item = context[MAP].pick_bag(self.current_area)
+        item = self.map.pick_bag(self.current_area)
         if item is None:
             return self.loot(**context)
         context[NARRATOR].add([self.first_name, 'picks up', item.long_name, self.current_area.at])
@@ -212,7 +212,7 @@ class Carrier(Body):
             if verbose:
                 context[NARRATOR].add([
                     self.first_name, 'drops', f'{self.his} {self.weapon.name}', self.current_area.at])
-            context[MAP].add_loot(self.weapon, self.current_area)
+            self.map.add_loot(self.weapon, self.current_area)
         self.weapon = HANDS
 
     def get_item(self, item, **context):
@@ -261,7 +261,7 @@ class Carrier(Body):
 
     def fill_bottles(self, **context):
         self.water_upkeep()
-        if context[MAP].has_water(self):
+        if self.map.has_water(self):
             total_water = self.water + sum(b.fill for b in self.bottles)
             self._water = max(1.5, self.water)
             for b in self.bottles:
@@ -300,7 +300,7 @@ class Carrier(Body):
         return amount
 
     def forage(self, **context):
-        food: Food = context[MAP].get_forage(self)
+        food: Food = self.map.get_forage(self)
         self.fill_bottles(**context)
         if food is None:
             context[NARRATOR].add([self.name, 'searches for food', 'but does not find anything edible'])
@@ -363,5 +363,5 @@ class Carrier(Body):
     def die(self, **context):
         self.drop_weapon(False, **context)
         for e in self._equipment:
-            context[MAP].add_loot(e, self.current_area)
+            self.map.add_loot(e, self.current_area)
         Body.die(self, **context)

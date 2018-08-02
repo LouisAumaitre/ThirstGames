@@ -2,7 +2,7 @@ from copy import copy
 from random import random
 
 from thirst_games.constants import (
-    MAP, SLEEPING, FLEEING, PANIC, NARRATOR, PLAYERS, AMBUSH, TRAPPED, TIME, STARTER,
+    SLEEPING, FLEEING, PANIC, NARRATOR, PLAYERS, AMBUSH, TRAPPED, TIME, STARTER,
     ARM_WOUND
 )
 from thirst_games.items import Weapon, PoisonVial
@@ -22,8 +22,7 @@ class Fighter(Carrier):
 
     def courage(self, **context):
         courage = self.health * self.energy + self._rage
-        if MAP in context:
-            courage = max([courage, self.estimate(context[MAP].loot(self), **context)])
+        courage = max([courage, self.estimate(self.map.loot(self), **context)])
         return courage
 
     def dangerosity(self, **context):
@@ -36,25 +35,25 @@ class Fighter(Carrier):
         self.status.append(FLEEING)
         if panic and random() > self.courage(**context) + 0.5:
             self.drop_weapon(True, **context)
-        min_player_per_area = min([len(area.players) for key, area in context[MAP].areas.items() if key != START_AREA])
+        min_player_per_area = min([len(area.players) for area in self.map.areas.values() if not area.is_start])
         # can't flee to or hide at the cornucopia
         best_areas = [
-            key for key, value in context[MAP].areas.items()
-            if len(value.players) == min_player_per_area and key != START_AREA
+            key for key, value in self.map.areas.items()
+            if len(value.players) == min_player_per_area and not value.is_start
         ]
-        best_areas.sort(key=lambda x: -len(context[MAP].loot(x)))
+        best_areas.sort(key=lambda x: -len(self.map.loot(x)))
         best_area = best_areas[0]
         if 'thirsty' in self.status and 'the river' in best_areas:
             best_area = 'the river'
         out = self.go_to(best_area, **context, **{PANIC: True})
-        if out is not None:
-            context[NARRATOR].add([self.first_name, f'flees to {out}'])
+        if out is not self.current_area:
+            context[NARRATOR].add([self.first_name, f'flees {out.to}'])
             self.check_for_ambush_and_traps(**context)
 
     def pursue(self, **context):
-        max_player_per_area = max([len(area.players) for area in context[MAP].areas.values()])
-        best_areas = [key for key, value in context[MAP].areas.items() if len(value.players) == max_player_per_area]
-        best_areas.sort(key=lambda x: -len(context[MAP].loot(x)))
+        max_player_per_area = max([len(area.players) for area in self.map.areas.values()])
+        best_areas = [key for key, value in self.map.areas.items() if len(value.players) == max_player_per_area]
+        best_areas.sort(key=lambda x: -len(self.map.loot(x)))
         best_area = best_areas[0]
         if 'thirsty' in self.status and 'the river' in best_areas:
             best_area = 'the river'
@@ -72,7 +71,7 @@ class Fighter(Carrier):
             self.reveal()
             self._energy -= self.move_cost
             self.busy = True
-            return context[MAP].move_player(self, area)
+            return self.map.move_player(self, area)
         else:
             self._energy -= self.move_cost
             self.hide(**context)
@@ -97,7 +96,7 @@ class Fighter(Carrier):
         self.poison_weapon(**context)
 
     def estimate_of_power(self, area, **context) -> float:
-        neighbors = context[MAP].players(area)
+        neighbors = self.map.players(area)
         if not len(neighbors):
             return 0
         seen_neighbors = [p for p in neighbors if self.can_see(p) and p != self]
@@ -114,19 +113,19 @@ class Fighter(Carrier):
     def pillage(self, stuff, **context):
         if len([p for p in context[PLAYERS] if p.is_alive]) == 1:
             return
-        if context[MAP].players_count(self) > 1:
+        if self.map.players_count(self) > 1:
             return
         looted = []
         for item in stuff:
-            if item not in context[MAP].loot(self.current_area):
+            if item not in self.map.loot(self.current_area):
                 continue
             if isinstance(item, Weapon):
                 if item.damage_mult > self.weapon.damage_mult:
                     looted.append(item)
-                    context[MAP].remove_loot(item, self.current_area)
+                    self.map.remove_loot(item, self.current_area)
             else:
                 looted.append(item)
-                context[MAP].remove_loot(item, self.current_area)
+                self.map.remove_loot(item, self.current_area)
         if not len(looted):
             return
         context[NARRATOR].add([self.first_name, 'loots', format_list([e.long_name for e in looted])])
@@ -146,7 +145,7 @@ class Fighter(Carrier):
             vial.poison.long_name = f'{self.first_name}\'s {vial.poison.name}'
 
     def attack_at_random(self, **context):
-        preys = [p for p in context[MAP].players(self) if self.can_see(p) and p != self]
+        preys = [p for p in self.map.players(self) if self.can_see(p) and p != self]
         preys.sort(key=lambda x: x.health * x.damage(**context))
         if len(preys):
             self.fight(preys[0], **context)

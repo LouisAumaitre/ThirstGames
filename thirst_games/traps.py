@@ -3,10 +3,10 @@ from typing import Type
 from random import random
 
 from thirst_games.constants import NARRATOR, PANIC, MAP, TRAPPED
-from thirst_games.map import START_AREA
+from thirst_games.map import START_AREA, Positionable, Map
 
 
-class Trap:
+class Trap(Positionable):
     ingredients = []
     areas = []
     requires_tools = False
@@ -17,6 +17,7 @@ class Trap:
         self.owner = owner
         self.knowing = [owner]
         self.stealth = stealth
+        Map().add_trap(self, owner)
 
     def check(self, player, **context) -> bool:
         if context.get(PANIC, False):
@@ -36,7 +37,7 @@ class Trap:
         name = self.long_name
         if player is self.owner:
             name = f'{player.his} own {self.name}'
-        context[MAP].traps[player.current_area].remove(self)
+            self.map.remove_trap(self)
         player.reveal()
         self._apply(name, player, **context)
 
@@ -128,7 +129,6 @@ def build_trap(player, trap_class: Type[Trap], **context):
         item = [i for i in player.equipment if i.name == ingredient][0]
         player.remove_item(item)
     trap = trap_class(player, random() / 2 + 0.5)
-    context[MAP].traps[player.current_area].append(trap)
     context[NARRATOR].add([player.first_name, 'builds', 'a', trap.name, f'at {player.current_area}'])
 
 
