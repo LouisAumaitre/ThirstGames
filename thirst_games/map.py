@@ -118,6 +118,7 @@ class Area:
 
 class Positionable:
     current_area: Area = None
+    destination: Area = None
     map: Any = None
 
 
@@ -258,6 +259,10 @@ class Map(metaclass=Singleton):
 
     def players(self, area: Union[str, Area, Positionable]) -> List[Positionable]:
         return self.get_area(area).players
+
+    def potential_players(self, area: Union[str, Area, Positionable]) -> List[Positionable]:
+        area = self.get_area(area)
+        return [p for a in self.areas for p in a.players if p.current_area == area or p.destination == area]
 
     def traps(self, area: Union[str, Area, Positionable]) -> List[Positionable]:
         return self.get_area(area).traps

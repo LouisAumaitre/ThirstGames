@@ -105,6 +105,13 @@ class Fighter(Carrier):
         seen_neighbors = [p for p in neighbors if self.can_see(p) and p != self]
         return sum([p.dangerosity() for p in seen_neighbors])
 
+    def estimate_of_danger(self, area) -> float:
+        neighbors = self.map.potential_players(area)
+        if not len(neighbors):
+            return 0
+        seen_neighbors = [p for p in neighbors if self.can_see(p) and p != self]
+        return sum([p.dangerosity() for p in seen_neighbors])
+
     def can_see(self, other: Carrier):
         stealth_mult = 1
         random_mult = (random() * 0.5 + 0.5)

@@ -230,6 +230,8 @@ class Body(Positionable):
             Narrator().new([self.first_name, 'frees', f'{self.him}self', 'from', 'the trap'])
 
     def upkeep(self):
+        self.destination = None
+
         dehydratation = 0.5 if BURN_WOUND in self.status else 0.3
         self._water -= dehydratation
         self.water_upkeep()
