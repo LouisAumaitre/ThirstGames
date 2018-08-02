@@ -117,8 +117,11 @@ class Narrator(metaclass=Singleton):
         elif isinstance(sentence, str):
             self.current_sentence.append(sentence)
 
-    def add(self, sentence):
-        self._add(sentence)
+    def add(self, sentence, stock=False):
+        if stock:
+            self.stock(sentence)
+        else:
+            self._add(sentence)
 
     def comma(self):
         if len(self.current_sentence) and self.current_sentence[-1][-1] not in ['!', '.', ',']:
@@ -149,6 +152,9 @@ class Narrator(metaclass=Singleton):
     def apply_stock(self):
         for s in self._stock:
             self._add(s)
+        self.clear_stock()
+
+    def clear_stock(self):
         self._stock.clear()
 
     @property

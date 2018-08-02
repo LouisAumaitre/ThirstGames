@@ -149,49 +149,49 @@ class Body(Positionable):
     def take_a_break(self):
         raise NotImplementedError
 
-    def rest(self):
+    def rest(self, stock=False):
         if self.current_area.name != START_AREA:
             self.stealth += random() * (1 - self.stealth)
-            Narrator().add([self.first_name, 'hides', self.current_area.at])
+            Narrator().add([self.first_name, 'hides', self.current_area.at], stock=stock)
 
         self.take_a_break()
         wounds = self.wounds
         if BLEEDING in wounds:
-            self.patch(BLEEDING)
+            self.patch(BLEEDING, stock=stock)
         elif len(wounds):
-            self.patch(choice(wounds))
+            self.patch(choice(wounds), stock=stock)
         else:
             self.add_health(max(self.energy, random()) * (self.max_health - self.health))
             self.add_energy(max(self.sleep, random()) * (1 - self.energy))
-            Narrator().add([self.first_name, 'rests', self.current_area.at])
+            Narrator().add([self.first_name, 'rests', self.current_area.at], stock=stock)
 
-    def hide(self, panic=False):
+    def hide(self, panic=False, stock=False):
         if panic:
-            Narrator().add([self.first_name, 'hides', self.current_area.at])
+            Narrator().add([self.first_name, 'hides', self.current_area.at], stock=stock)
             return
         if self.sleep < 0.1 \
                 or (Context().time == NIGHT and self.map.players_count == 1 and len(self.wounds) == 0) \
                 or (self.map.players_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
                 or (Context().time == NIGHT and self.sleep < 0.3 and len(self.wounds) == 0):
-            self.go_to_sleep()
+            self.go_to_sleep(stock=stock)
             return
-        return self.rest()
+        return self.rest(stock=stock)
 
     def reveal(self):
         self.stealth = 0
         if AMBUSH in self.status:
             self.status.remove(AMBUSH)
 
-    def patch(self, wound: str):
+    def patch(self, wound: str, stock=False):
         raise NotImplementedError
 
-    def go_to_sleep(self):
+    def go_to_sleep(self, stock=False):
         if self.energy < 0.2:
-            Narrator().add([self.first_name, 'is exhausted'])
+            Narrator().add([self.first_name, 'is exhausted'], stock=stock)
         self.add_health(self.energy * (1 - self.health))
         self.add_energy(self.sleep * (1 - self.energy))
         self.add_sleep(1)
-        Narrator().add([self.first_name, 'sleeps', self.current_area.at])
+        Narrator().add([self.first_name, 'sleeps', self.current_area.at], stock=stock)
         self.status.append(SLEEPING)
 
     def stop_running(self):

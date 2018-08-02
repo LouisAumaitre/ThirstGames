@@ -84,7 +84,7 @@ class Carrier(Body):
                 bags[0].content.remove(bag_weapons[0])
                 self.get_weapon(bag_weapons[0])
 
-    def patch(self, wound: str):
+    def patch(self, wound: str, stock=False):
         verbs = []
         tools = []
         if self.has_item('iodine'):
@@ -113,13 +113,15 @@ class Carrier(Body):
             tools.append(choice(['moss', 'cloth']))
 
         wound_name = 'wounds' if wound == BLEEDING else wound
-        Narrator().add([
-            self.first_name, format_list(verbs), self.his, wound_name, verb_part_2, 'using', format_list(tools)])
+        Narrator().add(
+            [self.first_name, format_list(verbs), self.his, wound_name, verb_part_2, 'using', format_list(tools)],
+            stock=stock
+        )
 
         self.status.remove(wound)
 
-    def rest(self):
-        Body.rest(self)
+    def rest(self, stock=False):
+        Body.rest(self, stock=stock)
 
         if self.current_area == START_AREA:
             if self.has_food and self.hunger > 0:
@@ -209,11 +211,11 @@ class Carrier(Body):
         elif weapon.small and self.bag is not None:
             self.bag.content.append(weapon)
 
-    def drop_weapon(self, verbose=True):
+    def drop_weapon(self, verbose=True, drop_verb='drops'):
         if self.weapon != HANDS:
             if verbose:
                 Narrator().add([
-                    self.first_name, 'drops', f'{self.his} {self.weapon.name}', self.current_area.at])
+                    self.first_name, drop_verb, f'{self.his} {self.weapon.name}', self.current_area.at])
             self.map.add_loot(self.weapon, self.current_area)
         self.weapon = HANDS
 

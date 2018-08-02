@@ -34,24 +34,25 @@ class Fighter(Carrier):
             power *= 0.1
         return power
 
-    def flee(self, panic=False):
+    def flee(self, panic=False, drop_verb='drops', filtered_areas=None, stock=False):
+        if filtered_areas is None:
+            filtered_areas = []
         self.status.append(FLEEING)
         if panic and random() > self.courage() + 0.5:
-            self.drop_weapon(True)
-        min_player_per_area = min([len(area.players) for area in self.map.areas if not area.is_start])
-        # can't flee to or hide at the cornucopia
-        best_areas = [area for area in self.map.areas if len(area.players) == min_player_per_area and not area.is_start]
-        if THIRSTY in self.status and len([a for a in best_areas if a.has_water]):
-            best_areas = [a for a in best_areas if a.has_water]
-        best_areas.sort(key=lambda x: -len(self.map.loot(x)))
-        best_area = best_areas[0]
-        out = self.go_to(best_area)
-        if best_area.is_start:
-            raise ValueError(f'min_player={min_player_per_area} best_areas={best_areas} best_area={best_area}')
-        if out is None:
+            self.drop_weapon(verbose=True, drop_verb=drop_verb)
+
+        available_areas = [area for area in self.map.areas if area not in filtered_areas]
+        available_areas.sort(
+            key=lambda x: len(x.players) * 10 + (30 if x.is_start else 0)
+                          - len(self.map.loot(x)) - (self.thirst if x.has_water else 0))
+        if not len(available_areas):
             self.hide(panic=panic)
+
+        out = self.go_to(available_areas[0])
+        if out is None:
+            self.hide(panic=panic, stock=stock)
         else:
-            Narrator().add([self.first_name, f'flees {out.to}'])
+            Narrator().add([self.first_name, f'flees {out.to}'], stock=stock)
             self.check_for_ambush_and_traps()
 
     def pursue(self):
