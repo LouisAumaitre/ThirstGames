@@ -241,6 +241,7 @@ class Map(metaclass=Singleton):
             return player.current_area
         self.remove_player(player)
         self.add_player(player, destination)
+        print(f'move {player.name} to {new_area.name}')
         return new_area
 
     def add_trap(self, trap: Positionable, area: Union[str, Area, Positionable]=START_AREA):

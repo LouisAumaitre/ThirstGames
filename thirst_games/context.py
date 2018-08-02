@@ -1,9 +1,17 @@
 from thirst_games.singleton import Singleton
 
 
+class AbstractGame:
+    alive_players = []
+    time = None
+
+    def death(self):
+        raise NotImplementedError
+
+
 class Context(metaclass=Singleton):
     def __init__(self):
-        self.game = None
+        self.game: AbstractGame = None
 
     @property
     def alive_players(self):

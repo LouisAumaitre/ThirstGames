@@ -5,7 +5,7 @@ from copy import copy
 from random import random, choice
 
 from thirst_games.constants import AFTERNOON, MORNING, NIGHT, STARTER
-from thirst_games.context import Context
+from thirst_games.context import Context, AbstractGame
 from thirst_games.event import WildFire, DropEvent
 from thirst_games.map import Map, START_AREA
 from thirst_games.narrator import Narrator, format_list
@@ -13,7 +13,7 @@ from thirst_games.player.player import Player
 from thirst_games.singleton import Singleton
 
 
-class Game(metaclass=Singleton):
+class Game(AbstractGame, metaclass=Singleton):
     def __init__(self, players: Optional[List[Player]]=None):
         if players is None:
             raise ValueError('No players in the arena')
