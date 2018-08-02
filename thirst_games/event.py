@@ -1,7 +1,7 @@
 from random import random, choice, randint
 from typing import List
 
-from thirst_games.constants import MAP, NARRATOR, PLAYERS
+from thirst_games.context import Context
 from thirst_games.map import Map, START_AREA, random_bag, Area
 from thirst_games.narrator import Narrator
 
@@ -62,7 +62,7 @@ class DropEvent(Event):
 
     def trigger(self, **context):
         area = self.areas[0]
-        nb_bags = randint(1, len(context[PLAYERS]) - 1)
+        nb_bags = randint(1, len(Context().alive_players) - 1)
         for i in range(nb_bags):
             Map().add_loot(random_bag(), area)
         verb = 'have' if nb_bags > 1 else 'has'

@@ -1,17 +1,11 @@
-MAP = 'map'
-NARRATOR = 'narrator'
-PLAYERS = 'players'
-DEATH = 'death'
 DEADS = 'deads'
 
 START_AREA = 'cornucopia'
 
-TIME = 'time'
 STARTER = 'starter'
 MORNING = 'morning'
 AFTERNOON = 'afternoon'
 NIGHT = 'night'
-DAY = 'day'
 EVENT = 'event'
 
 PANIC = 'panic'

@@ -3,7 +3,8 @@ from typing import List, Optional, Union
 
 from copy import copy
 
-from thirst_games.constants import KNIFE, HATCHET, NARRATOR, BLEEDING, TIME, STARTER, SWORD, AXE
+from thirst_games.constants import KNIFE, HATCHET, BLEEDING, STARTER, SWORD, AXE
+from thirst_games.context import Context
 from thirst_games.items import Bag, Item, Weapon, Bottle, Food, HANDS
 from thirst_games.map import START_AREA
 from thirst_games.narrator import format_list, Narrator
@@ -154,7 +155,7 @@ class Carrier(Body):
         if weapon is None:
             weapon = self.map.pick_weapon(self.current_area)
         if weapon is None or (weapon.damage_mult <= self.weapon.damage_mult and (
-                    not weapon.small or context[TIME] == STARTER or self.bag is None)):
+                    not weapon.small or Context().time == STARTER or self.bag is None)):
             Narrator().add([
                 self.first_name, 'tries to find a weapon', self.current_area.at, 'but can\'t find anything good'])
             return

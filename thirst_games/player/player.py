@@ -2,8 +2,8 @@ from random import random
 from typing import Dict
 
 from thirst_games.constants import (
-    PLAYERS, TIME, NIGHT, STARTER, TRAPPED,
-    START_AREA)
+    NIGHT, STARTER, TRAPPED, START_AREA)
+from thirst_games.context import Context
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.fighter import Fighter
 from thirst_games.traps import can_build_any_trap, build_any_trap
@@ -29,9 +29,9 @@ class Player(Fighter):
             else:
                 self.strategy = hide_strat
         else:
-            if context[TIME] == NIGHT:
+            if Context().time == NIGHT:
                 strats = night_strategies
-            elif context[TIME] == STARTER:
+            elif Context().time == STARTER:
                 strats = start_strategies
             else:
                 strats = morning_strategies
@@ -45,7 +45,7 @@ class Player(Fighter):
         self.stop_running()
         Narrator().cut()
         if not self.busy:
-            if context[TIME] == STARTER \
+            if Context().time == STARTER \
                     and self.current_area.name == START_AREA \
                     and self.map.players_count(self) == 1:
                 strats = [loot_bag_strat, loot_weapon_strat, hide_strat]
@@ -134,7 +134,7 @@ flee_strat = Strategy(
 attack_strat = Strategy(
     'attack',
     lambda x, **c: x.health * min(x.energy, x.stomach, x.sleep) *
-                   x.weapon.damage_mult / len(c[PLAYERS]),  # * (len(c[PLAYERS]) < 4),
+                   x.weapon.damage_mult / Context().player_count,  # * (len(c[PLAYERS]) < 4),
     lambda x, **c: x.attack_at_random(**c))
 ambush_strat = Strategy(
     'ambush',
@@ -143,7 +143,7 @@ ambush_strat = Strategy(
     lambda x, **c: x.set_up_ambush(**c))
 hunt_player_strat = Strategy(
     'hunt player',
-    lambda x, **c: x.health * x.weapon.damage_mult * (len(c[PLAYERS]) < 4),
+    lambda x, **c: x.health * x.weapon.damage_mult * (Context().player_count < 4),
     lambda x, **c: x.attack_at_random(**c))
 fight_strat = Strategy(
     'fight',
@@ -151,7 +151,7 @@ fight_strat = Strategy(
     lambda x, **c: x.attack_at_random(**c))
 duel_strat = Strategy(
     'duel',
-    lambda x, **c: (len(c[PLAYERS]) == 2) * sum(
+    lambda x, **c: (Context().player_count == 2) * sum(
         [x.dangerosity(**c) > n.dangerosity(**c) * 1.2 for n in x.map.players(x)]),
     lambda x, **c: x.attack_at_random(**c))
 loot_strat = Strategy(

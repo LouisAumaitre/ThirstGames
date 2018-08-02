@@ -2,9 +2,10 @@ from random import random, choice
 from typing import List
 
 from thirst_games.constants import (
-    NARRATOR, HEAD_WOUND, BELLY_WOUND, LEG_WOUND, BLEEDING, SLEEPING, THIRSTY, TRAPPED,
-    PANIC, TIME, NIGHT, AMBUSH, DEATH, FLEEING, BURN_WOUND,
+    HEAD_WOUND, BELLY_WOUND, LEG_WOUND, BLEEDING, SLEEPING, THIRSTY, TRAPPED,
+    PANIC, NIGHT, AMBUSH, FLEEING, BURN_WOUND,
     START_AREA)
+from thirst_games.context import Context
 from thirst_games.map import Positionable
 from thirst_games.narrator import Narrator
 from thirst_games.poison import Poison
@@ -169,9 +170,9 @@ class Body(Positionable):
             Narrator().add([self.first_name, 'hides', self.current_area.at])
             return
         if self.sleep < 0.1 \
-                or (context[TIME] == NIGHT and self.map.players_count == 1 and len(self.wounds) == 0) \
+                or (Context().time == NIGHT and self.map.players_count == 1 and len(self.wounds) == 0) \
                 or (self.map.players_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
-                or (context[TIME] == NIGHT and self.sleep < 0.3 and len(self.wounds) == 0):
+                or (Context().time == NIGHT and self.sleep < 0.3 and len(self.wounds) == 0):
             self.go_to_sleep(**context)
             return
         return self.rest(**context)
@@ -294,7 +295,4 @@ class Body(Positionable):
         return not self.is_alive
 
     def die(self, **context):
-        # self.drop_weapon(False, **context)
-        # for e in self._equipment:
-        #     self.map.add_loot(e, self.current_area)
-        context[DEATH](self, **context)
+        Context().death(self, **context)

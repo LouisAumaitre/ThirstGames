@@ -4,11 +4,12 @@ from copy import copy
 from random import random
 
 from thirst_games.constants import (
-    SLEEPING, FLEEING, PANIC, NARRATOR, PLAYERS, AMBUSH, TRAPPED, TIME, STARTER,
+    SLEEPING, FLEEING, PANIC, AMBUSH, TRAPPED, STARTER,
     ARM_WOUND,
     THIRSTY)
+from thirst_games.context import Context
 from thirst_games.items import Weapon, PoisonVial
-from thirst_games.map import START_AREA, Area, Positionable
+from thirst_games.map import Area, Positionable
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.body import Body
 from thirst_games.player.carrier import Carrier
@@ -60,7 +61,7 @@ class Fighter(Carrier):
         if out is self.current_area:
             Narrator().replace('hides and rests', 'rests')
         else:
-            targets = [p.first_name for p in context[PLAYERS] if p != self]
+            targets = [p.first_name for p in Context().alive_players if p != self]
             players = 'players' if len(targets) > 1 else targets[0]
             Narrator().add([self.first_name, 'searches for', players, out.at])
             self.check_for_ambush_and_traps(**context)
@@ -111,7 +112,7 @@ class Fighter(Carrier):
         return random_mult * self.wisdom > other.stealth * stealth_mult
 
     def pillage(self, stuff, **context):
-        if len([p for p in context[PLAYERS] if p.is_alive]) == 1:
+        if len([p for p in Context().alive_players if p.is_alive]) == 1:
             return
         if self.map.players_count(self) > 1:
             return
@@ -203,7 +204,7 @@ class Fighter(Carrier):
                     self.flee(True, **context)
                     self_stuff = self_stuff if not self.has_weapon else []
                     break
-                if context[TIME] == STARTER and round > 3:
+                if Context().time == STARTER and round > 3:
                     break
                 round += 1
                 if self.hit(other_player, **context):

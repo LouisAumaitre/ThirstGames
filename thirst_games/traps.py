@@ -2,7 +2,7 @@ from typing import Type
 
 from random import random
 
-from thirst_games.constants import NARRATOR, PANIC, MAP, TRAPPED
+from thirst_games.constants import PANIC, TRAPPED
 from thirst_games.map import START_AREA, Positionable, Map
 from thirst_games.narrator import Narrator
 
