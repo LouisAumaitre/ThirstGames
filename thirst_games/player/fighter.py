@@ -25,7 +25,7 @@ class Fighter(Carrier):
 
     def courage(self):
         courage = self.health * self.energy + self._rage
-        courage = max([courage, self.estimate(self.map.loot(self))])
+        courage = courage + self.estimate(self.map.loot(self)) * courage
         return courage
 
     def dangerosity(self):

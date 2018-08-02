@@ -15,6 +15,11 @@ class Player(Fighter):
         self.relationships: Dict[Player, Relationship] = {}
         self.strategy = None
         self._destination = None
+        self._time_since_last_loot_attempt = -1
+
+    def upkeep(self):
+        Fighter.upkeep(self)
+        self._time_since_last_loot_attempt += 1
 
     def relationship(self, other_player):
         if other_player not in self.relationships:
@@ -73,9 +78,10 @@ class Player(Fighter):
         self._destination = filtered[0]
         # sp = ' '
         # self.map.test += f' {self.name}->{self._destination.split(sp)[-1]} '
-        return areas_by_value[self._destination]
+        return areas_by_value[self._destination] * min([1, self._time_since_last_loot_attempt / Context().player_count])
 
     def go_get_drop(self):
+        self._time_since_last_loot_attempt = 0
         out = self.go_to(self._destination)
         if out is not None:
             Narrator().add([self.first_name, f'goes {out.to} to get loot'])

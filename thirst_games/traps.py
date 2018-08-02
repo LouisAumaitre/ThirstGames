@@ -2,7 +2,7 @@ from typing import Type
 
 from random import random
 
-from thirst_games.constants import PANIC, TRAPPED
+from thirst_games.constants import TRAPPED
 from thirst_games.map import START_AREA, Positionable, Map
 from thirst_games.narrator import Narrator
 
@@ -38,7 +38,7 @@ class Trap(Positionable):
         name = self.long_name
         if player is self.owner:
             name = f'{player.his} own {self.name}'
-            self.map.remove_trap(self)
+        self.map.remove_trap(self)
         player.reveal()
         self._apply(name, player)
 

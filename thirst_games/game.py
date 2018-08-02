@@ -143,7 +143,8 @@ class Game(AbstractGame, metaclass=Singleton):
             return
         self._event_gauge = 0
         event = choice(possible_events)()
-        Narrator().new(['EVENT:', event.name.upper(), f'at {format_list(event.areas)}'])
+        areas = format_list([f'the {area.name}' for area in event.areas])
+        Narrator().new(['EVENT:', event.name.upper(), f'at {areas}'])
         Narrator().cut()
         event.trigger()
         Narrator().new(' ')

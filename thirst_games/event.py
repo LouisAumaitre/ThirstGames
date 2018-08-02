@@ -34,12 +34,12 @@ class WildFire(Event):
                 Narrator().cut()
                 if p.can_flee():
                     if p.be_damaged(0.3, weapon='fire'):
-                        Narrator().new([p.name, 'fails', 'to escape the fire and dies', f'at {area}'])
+                        Narrator().new([p.name, 'fails', 'to escape the fire and dies', area.at])
                     else:
-                        p.flee()
+                        p.flee(panic=True)
                         Narrator().apply_stock()
                 else:
-                    Narrator().new([p.name, 'is', 'trapped', f'at {area}'])
+                    Narrator().new([p.name, 'is', 'trapped', area.at])
                     if p.be_damaged(random() * 0.2 + 0.3, weapon='fire'):
                         Narrator().add(['and', 'the fire', 'kills', p.him])
                     else:
@@ -66,7 +66,7 @@ class DropEvent(Event):
         for i in range(nb_bags):
             Map().add_loot(random_bag(), area)
         verb = 'have' if nb_bags > 1 else 'has'
-        Narrator().new([nb_bags, 'bag' + ('s' if nb_bags > 1 else ''), verb, 'been dropped', f'at {area}'])
+        Narrator().new([nb_bags, 'bag' + ('s' if nb_bags > 1 else ''), verb, 'been dropped', area.at])
 
     @classmethod
     def can_happen(cls) -> bool:

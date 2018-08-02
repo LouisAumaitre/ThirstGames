@@ -4,6 +4,7 @@ from thirst_games.singleton import Singleton
 class AbstractGame:
     alive_players = []
     time = None
+    going_to_cornucopia = 0
 
     def death(self, dead_player):
         raise NotImplementedError
