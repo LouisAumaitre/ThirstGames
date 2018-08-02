@@ -22,7 +22,7 @@ class Player(Fighter):
             self.relationships[other_player] = Relationship()
         return self.relationships[other_player]
 
-    def think(self, **context):
+    def think(self):
         if self.sleep < 0:
             if self.map.players_count(self) > 1 and self.energy > self.move_cost:
                 self.strategy = flee_strat
@@ -35,13 +35,13 @@ class Player(Fighter):
                 strats = start_strategies
             else:
                 strats = morning_strategies
-            strats.sort(key=lambda x: -x.pref(self, **context) + random() * (1 - self.wisdom))
+            strats.sort(key=lambda x: -x.pref(self) + random() * (1 - self.wisdom))
             self.strategy = strats[0]
             # if context['day'] == 1:
             #     Narrator().new([
             #         self.name, f': {[(round(s.pref(self, **context), 2), s.name) for s in strats]}'])
 
-    def act(self, **context):
+    def act(self):
         self.stop_running()
         Narrator().cut()
         if not self.busy:
@@ -49,23 +49,21 @@ class Player(Fighter):
                     and self.current_area.name == START_AREA \
                     and self.map.players_count(self) == 1:
                 strats = [loot_bag_strat, loot_weapon_strat, hide_strat]
-                for s in [strat for strat in strats if strat.pref(self, **context) > 0]:
-                    s.apply(self, **context)
+                for s in [strat for strat in strats if strat.pref(self) > 0]:
+                    s.apply(self)
             else:
-                self.strategy.apply(self, **context)
+                self.strategy.apply(self)
         Narrator().cut()
         self.strategy = None
 
-    def fight(self, other_player, **context):
+    def fight(self, other_player):
         self.relationship(other_player).allied = False
         other_player.relationship(self).allied = False
-        Fighter.fight(self, other_player, **context)
+        Fighter.fight(self, other_player)
 
-    def should_go_get_drop(self, **context):
+    def should_go_get_drop(self):
         areas_by_value = {
-            area: self.dangerosity(**context) +
-                  self.estimate(self.map.loot(area), **context) -
-                  self.estimate_of_power(area, **context)
+            area: self.dangerosity() + self.estimate(self.map.loot(area)) - self.estimate_of_power(area)
             for area in self.map.area_names
         }
         filtered = [key for key, value in areas_by_value.items() if value > 0]
@@ -79,22 +77,22 @@ class Player(Fighter):
         return areas_by_value[self._destination]
 
     def go_get_drop(self, **context):
-        out = self.go_to(self._destination, **context)
+        out = self.go_to(self._destination)
         if out is not None:
             Narrator().add([self.first_name, f'goes {out.to} to get loot'])
         else:
             Narrator().cut()
-        if self.check_for_ambush_and_traps(**context):
+        if self.check_for_ambush_and_traps():
             return
-        danger = self.estimate_of_power(self.current_area, **context)
+        danger = self.estimate_of_power(self.current_area)
         seen_neighbors = [p for p in self.map.players(self) if self.can_see(p) and p != self]
-        if danger > self.dangerosity(**context):
+        if danger > self.dangerosity():
             Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in seen_neighbors])])
             self.flee(**context)
         elif danger > 0:
-            self.attack_at_random(**context)
+            self.attack_at_random()
         else:
-            self.loot(**context)
+            self.loot()
 
 
 class Relationship:
@@ -109,87 +107,84 @@ class Strategy:
         self.pref = pref
         self.action = action
 
-    def apply(self, player, **context):
-        out = self.action(player, **context)
+    def apply(self, player):
+        out = self.action(player)
         if isinstance(out, str):
             print(f'{player.first_name} {out}')
 
 
 hide_strat = Strategy(
     'hide',
-    lambda x, **c: (len(x.wounds) + 1) *
+    lambda x: (len(x.wounds) + 1) *
                    (x.current_area != START_AREA or x.health > x.max_health / 2) *
                    (x.max_health - x.health / 2) *
                    (1 - min(x.energy, x.sleep)) /
                    x.map.players_count(x) + 0.1,
-    lambda x, **c: x.hide(**c))
+    lambda x: x.hide())
 flee_strat = Strategy(
     'flee',
-    lambda x, **c: (x.energy > x.move_cost) * (
-        x.estimate_of_power(x.current_area, **c) / min(x.map.players_count(x), 6) - x.dangerosity(**c)) + 0.1,
-    lambda x, **c: x.flee(**c))
+    lambda x: (x.energy > x.move_cost) * (
+        x.estimate_of_power(x.current_area) / min(x.map.players_count(x), 6) - x.dangerosity()) + 0.1,
+    lambda x: x.flee())
 attack_strat = Strategy(
     'attack',
-    lambda x, **c: x.health * min(x.energy, x.stomach, x.sleep) *
+    lambda x: x.health * min(x.energy, x.stomach, x.sleep) *
                    x.weapon.damage_mult / Context().player_count,  # * (len(c[PLAYERS]) < 4),
-    lambda x, **c: x.attack_at_random(**c))
+    lambda x: x.attack_at_random())
 ambush_strat = Strategy(
     'ambush',
-    lambda x, **c: x.health * min(x.energy, x.stomach, x.sleep) *
-                   x.weapon.damage_mult * (x.map.players_count(x) == 1),
-    lambda x, **c: x.set_up_ambush(**c))
+    lambda x: x.health * min(x.energy, x.stomach, x.sleep) * x.weapon.damage_mult * (x.map.players_count(x) == 1),
+    lambda x: x.set_up_ambush())
 hunt_player_strat = Strategy(
     'hunt player',
-    lambda x, **c: x.health * x.weapon.damage_mult * (Context().player_count < 4),
-    lambda x, **c: x.attack_at_random(**c))
+    lambda x: x.health * x.weapon.damage_mult * (Context().player_count < 4),
+    lambda x: x.attack_at_random())
 fight_strat = Strategy(
     'fight',
-    lambda x, **c: x.health * sum([x.dangerosity(**c) > n.dangerosity(**c) * 1.2 for n in x.map.players(x)]),
-    lambda x, **c: x.attack_at_random(**c))
+    lambda x: x.health * sum([x.dangerosity() > n.dangerosity() * 1.2 for n in x.map.players(x)]),
+    lambda x: x.attack_at_random())
 duel_strat = Strategy(
     'duel',
-    lambda x, **c: (Context().player_count == 2) * sum(
-        [x.dangerosity(**c) > n.dangerosity(**c) * 1.2 for n in x.map.players(x)]),
-    lambda x, **c: x.attack_at_random(**c))
+    lambda x: (Context().player_count == 2) * sum(
+        [x.dangerosity() > n.dangerosity() * 1.2 for n in x.map.players(x)]),
+    lambda x: x.attack_at_random())
 loot_strat = Strategy(
     'loot',
-    lambda x, **c: (x.energy - x.move_cost) * (2 if x.weapon.damage_mult == 1 else 0.2) *
-                   x.estimate(x.map.loot(x), **c),
-    lambda x, **c: x.loot(**c))
-go_get_drop = Strategy('go get loot', lambda x, **c: x.should_go_get_drop(**c), lambda x, **c: x.go_get_drop(**c))
+    lambda x: (x.energy - x.move_cost) * (2 if x.weapon.damage_mult == 1 else 0.2) * x.estimate(x.map.loot(x)),
+    lambda x: x.loot())
+go_get_drop = Strategy('go get loot', lambda x: x.should_go_get_drop(), lambda x: x.go_get_drop())
 loot_bag_strat = Strategy(
     'loot bag',
-    lambda x, **c: x.weapon.damage_mult * x.map.has_bags(x) * (x.bag is None),
-    lambda x, **c: x.loot_bag(**c))
+    lambda x: x.weapon.damage_mult * x.map.has_bags(x) * (x.bag is None),
+    lambda x: x.loot_bag())
 loot_weapon_strat = Strategy(
     'loot weapon',
-    lambda x, **c: x.estimate(x.map.weapons(x), **c),
-    lambda x, **c: x.loot_weapon(**c))
+    lambda x: x.estimate(x.map.weapons(x)),
+    lambda x: x.loot_weapon())
 forage_strat = Strategy(
     'forage',
-    lambda x, **c: x.hunger * x.map.forage_potential(x) / x.map.players_count(x),
-    lambda x, **c: x.forage(**c))
+    lambda x: x.hunger * x.map.forage_potential(x) / x.map.players_count(x),
+    lambda x: x.forage())
 dine_strat = Strategy(
     'dine',
-    lambda x, **c: x.hunger * x.has_food / x.map.players_count(x),
-    lambda x, **c: x.dine(**c))
+    lambda x: x.hunger * x.has_food / x.map.players_count(x),
+    lambda x: x.dine())
 craft_strat_1 = Strategy(
     'craft',
-    lambda x, **c: (x.energy - 0.2) * (2 - x.weapon.damage_mult) * (x.map.players_count(x) < 2),
-    lambda x, **c: x.craft(**c))
+    lambda x: (x.energy - 0.2) * (2 - x.weapon.damage_mult) * (x.map.players_count(x) < 2),
+    lambda x: x.craft())
 craft_strat_2 = Strategy(
     'craft',
-    lambda x, **c: (x.energy - 0.2) * (x.weapon.damage_mult < 2) *
-                   (2 - x.weapon.damage_mult) / x.map.players_count(x),
-    lambda x, **c: x.craft(**c))
+    lambda x: (x.energy - 0.2) * (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) / x.map.players_count(x),
+    lambda x: x.craft())
 trap_strat = Strategy(
     'build trap',
-    lambda x, **c: (x.energy - 0.2) * (x.map.players_count(x) < 2) * (can_build_any_trap(x, **c)),
-    lambda x, **c: build_any_trap(x, **c))
+    lambda x: (x.energy - 0.2) * (x.map.players_count(x) < 2) * (can_build_any_trap(x)),
+    lambda x: build_any_trap(x))
 free_trap_strat = Strategy(
     'free from trap',
-    lambda x, **c: 1000 * (TRAPPED in x.status),
-    lambda x, **c: x.free_from_trap(**c))
+    lambda x: 1000 * (TRAPPED in x.status),
+    lambda x: x.free_from_trap())
 
 start_strategies = [
     flee_strat, fight_strat, loot_bag_strat, loot_weapon_strat,

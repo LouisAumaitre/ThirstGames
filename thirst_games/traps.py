@@ -20,8 +20,8 @@ class Trap(Positionable):
         self.stealth = stealth
         Map().add_trap(self, owner)
 
-    def check(self, player, **context) -> bool:
-        if context.get(PANIC, False):
+    def check(self, player, panic=False) -> bool:
+        if panic:
             return random() > 0.5
         if player in self.knowing:
             return False
@@ -31,19 +31,19 @@ class Trap(Positionable):
             return False
         return random() > 0.5
 
-    def _apply(self, name, player, **context):
+    def _apply(self, name, player):
         raise NotImplementedError
 
-    def apply(self, player, **context):
+    def apply(self, player):
         name = self.long_name
         if player is self.owner:
             name = f'{player.his} own {self.name}'
             self.map.remove_trap(self)
         player.reveal()
-        self._apply(name, player, **context)
+        self._apply(name, player)
 
     @classmethod
-    def can_be_built(cls, player, **context) -> bool:
+    def can_be_built(cls, player) -> bool:
         if cls.requires_tools and not player.has_crafting_tool:
             return False
         for item in cls.ingredients:
@@ -60,8 +60,8 @@ class StakeTrap(Trap):
     requires_tools = True
     name = 'stake trap'
 
-    def _apply(self, name, player, **context):
-        if player.be_damaged(random(), 'trident', **context):
+    def _apply(self, name, player):
+        if player.be_damaged(random(), 'trident'):
             Narrator().new([player.first_name, 'impales', f'{player.him}self', 'on', f'{name}!'])
         else:
             Narrator().new([player.first_name, 'falls', f'into', f'{name}!'])
@@ -76,8 +76,8 @@ class ExplosiveTrap(Trap):
     requires_tools = False
     name = 'explosive trap'
 
-    def _apply(self, name, player, **context):
-        if player.be_damaged(random() * 5, 'fire', **context):
+    def _apply(self, name, player):
+        if player.be_damaged(random() * 5, 'fire'):
             Narrator().new([player.first_name, 'blows up', 'on', f'{name}!'])
         else:
             Narrator().new([player.first_name, 'steps', 'on', f'{name}!'])
@@ -92,10 +92,10 @@ class NetTrap(Trap):
     requires_tools = False
     name = 'net trap'
 
-    def _apply(self, name, player, **context):
+    def _apply(self, name, player):
         Narrator().new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
         player.status.append(TRAPPED)
-        take_advantage_of_trap(self, context, player)
+        take_advantage_of_trap(self, player)
 
 
 class WireTrap(Trap):
@@ -111,20 +111,20 @@ class WireTrap(Trap):
             Narrator().add([player.first_name, 'wounds', player.his, 'leg'])
         else:
             player.status.append(TRAPPED)
-            take_advantage_of_trap(self, context, player)
+            take_advantage_of_trap(self, player)
 
 
-def take_advantage_of_trap(trap, context, player):
+def take_advantage_of_trap(trap, player):
     if trap.owner.current_area == player.current_area and not trap.owner.busy:
         # can attack
-        if trap.owner.dangerosity(**context) > player.dangerosity(**context):
+        if trap.owner.dangerosity() > player.dangerosity():
             Narrator().cut()
-            trap.owner.fight(player, **context)
+            trap.owner.fight(player)
 
 
-def build_trap(player, trap_class: Type[Trap], **context):
+def build_trap(player, trap_class: Type[Trap]):
     player.reveal()
-    if not trap_class.can_be_built(player, **context):
+    if not trap_class.can_be_built(player):
         return
     for ingredient in trap_class.ingredients:
         item = [i for i in player.equipment if i.name == ingredient][0]
@@ -133,14 +133,14 @@ def build_trap(player, trap_class: Type[Trap], **context):
     Narrator().add([player.first_name, 'builds', 'a', trap.name, f'at {player.current_area}'])
 
 
-def can_build_any_trap(player, **context) -> bool:
+def can_build_any_trap(player) -> bool:
     for trap_class in [StakeTrap, ExplosiveTrap, NetTrap]:
-        if trap_class.can_be_built(player, **context):
+        if trap_class.can_be_built(player):
             return True
     return False
 
 
-def build_any_trap(player, **context):
+def build_any_trap(player):
     for trap_class in [StakeTrap, ExplosiveTrap, NetTrap]:
-        if trap_class.can_be_built(player, **context):
-            return build_trap(player, trap_class, **context)
+        if trap_class.can_be_built(player):
+            return build_trap(player, trap_class)

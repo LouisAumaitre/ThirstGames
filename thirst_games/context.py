@@ -5,7 +5,7 @@ class AbstractGame:
     alive_players = []
     time = None
 
-    def death(self):
+    def death(self, dead_player):
         raise NotImplementedError
 
 

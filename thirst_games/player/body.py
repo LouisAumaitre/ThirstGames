@@ -3,7 +3,7 @@ from typing import List
 
 from thirst_games.constants import (
     HEAD_WOUND, BELLY_WOUND, LEG_WOUND, BLEEDING, SLEEPING, THIRSTY, TRAPPED,
-    PANIC, NIGHT, AMBUSH, FLEEING, BURN_WOUND,
+    NIGHT, AMBUSH, FLEEING, BURN_WOUND,
     START_AREA)
 from thirst_games.context import Context
 from thirst_games.map import Positionable
@@ -48,11 +48,11 @@ class Body(Positionable):
             max_hp = min(self.health, max_hp)
         return max_hp
 
-    def add_health(self, amount, **context):
+    def add_health(self, amount):
         was_alive = self.is_alive
         self._health = min(self.max_health, self._health + amount)
         if self._health <= 0 and was_alive:
-            self.die(**context)
+            self.die()
 
     @property
     def wounds(self):
@@ -65,7 +65,7 @@ class Body(Positionable):
     def energy(self):
         return max(0, self._energy)
 
-    def add_energy(self, amount, **context):
+    def add_energy(self, amount):
         max_nrg = 1
         if HEAD_WOUND in self.status:
             max_nrg = 0.6
@@ -75,7 +75,7 @@ class Body(Positionable):
             if 'exhausted' not in self.status:
                 # Narrator().add([self.first_name, 'needs', 'to rest'])
                 self.status.append('exhausted')
-            self.add_health(self._energy, **context)
+            self.add_health(self._energy)
             if not self.is_alive:
                 Narrator().add([self.first_name, 'dies of exhaustion'])
             self._energy = 0
@@ -87,13 +87,13 @@ class Body(Positionable):
     def sleep(self):
         return max(0, self._sleep)
 
-    def add_sleep(self, amount, **context):
+    def add_sleep(self, amount):
         self._sleep = min(1, self._sleep + amount)
         if self._sleep < 0:
             if 'sleepy' not in self.status:
                 # Narrator().add([self.first_name, 'needs', 'to sleep'])
                 self.status.append('sleepy')
-            self.add_energy(self._sleep, **context)
+            self.add_energy(self._sleep)
             self._sleep = 0
         else:
             if 'sleepy' in self.status:
@@ -107,13 +107,13 @@ class Body(Positionable):
     def stomach(self):
         return self._stomach
 
-    def consume_nutriments(self, value, **context):
+    def consume_nutriments(self, value):
         self._stomach += value
         if self._stomach < 0:
             if 'hungry' not in self.status:
                 # Narrator().add([self.first_name, 'needs', 'to eat'])
                 self.status.append('hungry')
-            self.add_energy(self._stomach, **context)
+            self.add_energy(self._stomach)
             self._stomach = 0
         else:
             if 'hungry' in self.status:
@@ -141,56 +141,56 @@ class Body(Positionable):
             cost += 0.2
         return cost
 
-    def can_flee(self, **context):
+    def can_flee(self):
         if TRAPPED in self.status:
             return False
         return self.energy + self.health > self.move_cost or self.current_area.name != START_AREA
 
-    def take_a_break(self, **context):
+    def take_a_break(self):
         raise NotImplementedError
 
-    def rest(self, **context):
+    def rest(self):
         if self.current_area.name != START_AREA:
             self.stealth += random() * (1 - self.stealth)
             Narrator().add([self.first_name, 'hides', self.current_area.at])
 
-        self.take_a_break(**context)
+        self.take_a_break()
         wounds = self.wounds
         if BLEEDING in wounds:
-            self.patch(BLEEDING, **context)
+            self.patch(BLEEDING)
         elif len(wounds):
-            self.patch(choice(wounds), **context)
+            self.patch(choice(wounds))
         else:
             self.add_health(max(self.energy, random()) * (self.max_health - self.health))
             self.add_energy(max(self.sleep, random()) * (1 - self.energy))
             Narrator().add([self.first_name, 'rests', self.current_area.at])
 
-    def hide(self, **context):
-        if context.get(PANIC, False):
+    def hide(self, panic=False):
+        if panic:
             Narrator().add([self.first_name, 'hides', self.current_area.at])
             return
         if self.sleep < 0.1 \
                 or (Context().time == NIGHT and self.map.players_count == 1 and len(self.wounds) == 0) \
                 or (self.map.players_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
                 or (Context().time == NIGHT and self.sleep < 0.3 and len(self.wounds) == 0):
-            self.go_to_sleep(**context)
+            self.go_to_sleep()
             return
-        return self.rest(**context)
+        return self.rest()
 
     def reveal(self):
         self.stealth = 0
         if AMBUSH in self.status:
             self.status.remove(AMBUSH)
 
-    def patch(self, wound: str, **context):
+    def patch(self, wound: str):
         raise NotImplementedError
 
-    def go_to_sleep(self, **context):
+    def go_to_sleep(self):
         if self.energy < 0.2:
             Narrator().add([self.first_name, 'is exhausted'])
-        self.add_health(self.energy * (1 - self.health), **context)
-        self.add_energy(self.sleep * (1 - self.energy), **context)
-        self.add_sleep(1, **context)
+        self.add_health(self.energy * (1 - self.health))
+        self.add_energy(self.sleep * (1 - self.energy))
+        self.add_sleep(1)
         Narrator().add([self.first_name, 'sleeps', self.current_area.at])
         self.status.append(SLEEPING)
 
@@ -202,18 +202,18 @@ class Body(Positionable):
     def active_poisons(self) -> List[Poison]:
         return [p for p in self._poisons if p.amount > 0]
 
-    def remove_poison(self, poison, **context):
+    def remove_poison(self, poison):
         poison.amount = 0
         Narrator().add([self.first_name, 'is', 'no longer affected by', poison.long_name])
 
-    def add_poison(self, poison, **context):
+    def add_poison(self, poison):
         self._poisons.append(poison)
 
-    def check_for_ambush_and_traps(self, **context):
+    def check_for_ambush_and_traps(self):
         traps = self.map.traps(self)
         for t in traps:
-            if t.check(self, **context):
-                t.apply(self, **context)
+            if t.check(self):
+                t.apply(self)
                 return True
         ambushers = [p for p in self.map.players(self) if AMBUSH in p.status and SLEEPING not in p.status]
         if not len(ambushers):
@@ -221,15 +221,15 @@ class Body(Positionable):
         ambusher = choice(ambushers)
         ambusher.status.remove(AMBUSH)
         Narrator().new([self.first_name, 'falls', 'into', f'{ambusher.first_name}\'s ambush!'])
-        ambusher.fight(self, **context)
+        ambusher.fight(self)
         return True
 
-    def free_from_trap(self, **context):
+    def free_from_trap(self):
         if TRAPPED in self.status:
             self.status.remove(TRAPPED)
             Narrator().new([self.first_name, 'frees', f'{self.him}self', 'from', 'the trap'])
 
-    def upkeep(self, **context):
+    def upkeep(self):
         dehydratation = 0.5 if BURN_WOUND in self.status else 0.3
         self._water -= dehydratation
         self.water_upkeep()
@@ -246,23 +246,23 @@ class Body(Positionable):
             food_upkeep /= 2
         energy_upkeep += min(sleep_upkeep, self.sleep)  # compensates with sleep reserves
         energy_upkeep += min(food_upkeep, self.stomach)  # compensates with food reserves
-        self.add_sleep(-sleep_upkeep * 2, **context)  # consumes sleep reserves
-        self.consume_nutriments(-food_upkeep, **context)  # consumes food reserves
-        self.add_energy(energy_upkeep + sleep_upkeep + food_upkeep, **context)
+        self.add_sleep(-sleep_upkeep * 2)  # consumes sleep reserves
+        self.consume_nutriments(-food_upkeep)  # consumes food reserves
+        self.add_energy(energy_upkeep + sleep_upkeep + food_upkeep)
 
         if BLEEDING in self.status:
-            if self.be_damaged(max(0.05, self.health / 5), **context):
+            if self.be_damaged(max(0.05, self.health / 5)):
                 Narrator().add([self.first_name, 'bleeds', 'to death'])
         for poison in self.active_poisons:
-            poison.upkeep(self, **context)
+            poison.upkeep(self)
         self._rage = 0
 
-    def be_damaged(self, damage, weapon='default', attacker_name=None, **context) -> bool:
+    def be_damaged(self, damage, weapon='default', attacker_name=None) -> bool:
         self._rage += random() / 4 - damage
         if not self.is_alive:
             print(f'{self.first_name} is already dead')
             return False
-        self.add_health(-damage, **context)
+        self.add_health(-damage)
         if self.is_alive and damage > 0.3:
             wound_element = get_weapon_wound(weapon)
             bleeding = get_weapon_blood(weapon)
@@ -294,5 +294,5 @@ class Body(Positionable):
 
         return not self.is_alive
 
-    def die(self, **context):
-        Context().death(self, **context)
+    def die(self):
+        Context().death(self)

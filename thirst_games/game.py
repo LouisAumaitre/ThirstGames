@@ -152,7 +152,7 @@ class Game(AbstractGame, metaclass=Singleton):
         self._players_at_last_event = len(self.alive_players)
         self._time_since_last_event = 0
 
-    def death(self, dead_player, **context):
+    def death(self, dead_player):
         try:
             self.map.remove_player(dead_player)
         except ValueError as e:
