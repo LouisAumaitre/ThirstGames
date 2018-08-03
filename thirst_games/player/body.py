@@ -75,10 +75,13 @@ class Body(Positionable):
             if 'exhausted' not in self.status:
                 # Narrator().add([self.first_name, 'needs', 'to rest'])
                 self.status.append('exhausted')
-            self.add_health(self._energy)
-            if not self.is_alive:
-                Narrator().add([self.first_name, 'dies', 'of exhaustion'])
-            self._energy = 0
+            if self.stomach > 0:
+                self.consume_nutriments(self._energy)
+            elif self.sleep <= 0:
+                self.add_health(self._energy)
+                if not self.is_alive:
+                    Narrator().add([self.first_name, 'dies', 'of hunger and exhaustion'])
+                self._energy = 0
         else:
             if 'exhausted' in self.status:
                 self.status.remove('exhausted')
@@ -104,7 +107,7 @@ class Body(Positionable):
         return 1 - self._stomach
 
     @property
-    def stomach(self):
+    def stomach(self) -> float:
         return self._stomach
 
     def consume_nutriments(self, value):
@@ -195,7 +198,9 @@ class Body(Positionable):
         self.add_health(self.energy * (1 - self.health))
         self.add_energy(self.sleep * (1 - self.energy))
         self.add_sleep(1)
-        Narrator().add([self.first_name, 'sleeps', self.current_area.at], stock=stock)
+        verb = 'sleeps' if self.energy > 0 else 'collapses'
+        self.map.test += f'{self.name}-{Context().day}'
+        Narrator().add([self.first_name, verb, self.current_area.at], stock=stock)
         self.status.append(SLEEPING)
 
     def stop_running(self):

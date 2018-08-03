@@ -90,7 +90,7 @@ class DamageEvent(Event):
         if cls.water == -1:
             areas = [a for a in areas if not a.has_water]
         if cls.water == 1:
-            areas = [a for a in areas if not a.has_water]
+            areas = [a for a in areas if a.has_water]
         return areas
 
 

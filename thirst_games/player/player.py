@@ -42,7 +42,9 @@ class Player(Fighter):
     def act(self):
         self.stop_running()
         Narrator().cut()
-        if not self.busy:
+        if self.energy < 0:
+            self.go_to_sleep()
+        elif not self.busy:
             if Context().time == STARTER \
                     and self.current_area.name == START_AREA \
                     and self.map.players_count(self) == 1:
@@ -88,7 +90,6 @@ class Player(Fighter):
         potential_danger = sum([p.dangerosity() for p in seen_neighbors])
         actual_danger = sum([p.dangerosity() for p in free_neighbors])
 
-        Narrator().cut() # TODO: this is a test
         if potential_danger > self.dangerosity() and potential_danger > self.courage():
             Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in seen_neighbors])])
             self.flee()
@@ -103,6 +104,7 @@ class Player(Fighter):
                 Narrator().cut()
                 self.attack_at_random()
             else:  # loot and go/get your load and hit the road
+                Narrator().add([self.first_name, 'avoids', format_list([p.first_name for p in seen_neighbors])])
                 self.loot(take_a_break=False)
                 self.flee()
         else:  # servez-vous
@@ -134,11 +136,16 @@ class Strategy:
 
 hide_strat = Strategy(
     'hide',
-    lambda x: (len(x.wounds) * 2 + 1) *
-              (x.current_area != START_AREA or x.health > x.max_health / 2) *
-              (x.max_health - x.health / 2) *
-              (1 - min(x.energy, x.sleep)) /
-              x.map.players_count(x) + 0.1,
+    lambda x: max(
+        [max([
+            len(x.wounds) * 3, x.max_health - x.health,
+            1 - x.energy, 1 - x.sleep,
+            x.thirst if x.current_area.has_water else 0
+        ]) * (
+            x.current_area != START_AREA or x.health > x.max_health / 2
+        ) * (
+            x.max_health - x.health / 2
+        ) / x.map.players_count(x), 0.1]),
     lambda x: x.hide())
 flee_strat = Strategy(
     'flee',

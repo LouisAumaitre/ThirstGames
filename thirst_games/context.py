@@ -4,6 +4,7 @@ from thirst_games.singleton import Singleton
 class AbstractGame:
     alive_players = []
     time = None
+    day = 0
     going_to_cornucopia = 0
 
     def death(self, dead_player):
@@ -29,6 +30,10 @@ class Context(metaclass=Singleton):
     @property
     def time(self):
         return self.game.time
+
+    @property
+    def day(self):
+        return self.game.day
 
     @property
     def death(self):

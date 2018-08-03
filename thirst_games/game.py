@@ -150,7 +150,7 @@ class Game(AbstractGame, metaclass=Singleton):
         event.trigger()
         Narrator().new(' ')
         Narrator().cut()
-        Map().test += f' {event.name}-{self.day}'
+        # Map().test += f' {event.name}-{self.day}'
         self._players_at_last_event = len(self.alive_players)
         self._time_since_last_event = 0
 
