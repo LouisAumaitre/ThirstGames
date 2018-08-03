@@ -1,3 +1,4 @@
+from copy import copy
 from random import random, choice, randint
 from typing import List
 
@@ -29,11 +30,13 @@ class DamageEvent(Event):
             base_damage: float=0, extra_damage: float=0, dies='dies', trapped_means_dead=False,
     ):
         areas = self.available_areas()
-        max_p = max([len(a.players) for a in areas])
-        areas = [a for a in areas if len(a.players) == max_p]
-        if max_p == 1:
-            areas = [choice(areas)]
-        Event.__init__(self, name, areas)
+        areas.sort(key=lambda x: -len(x.players))
+        picked_areas = [areas.pop(0)]
+        while len(areas) > Context().player_count // 4:
+            picked_areas.append(areas.pop(0))
+            if len(areas) < 2:
+                break
+        Event.__init__(self, name, picked_areas)
         self.stealth = stealth
         self.it = it
         self.weapon_name = weapon_name
@@ -43,6 +46,7 @@ class DamageEvent(Event):
         self.trapped_means_dead = trapped_means_dead
 
     def trigger(self):
+        Context().forbidden_areas.extend(self.areas)
         for area in self.areas:
             for p in area.players:
                 Narrator().cut()
@@ -50,17 +54,18 @@ class DamageEvent(Event):
                 if p.can_flee():
                     if p.wisdom * random() > self.stealth:
                         Narrator().add([p.first_name, 'sees', self.it, 'coming'])
-                        p.flee(filtered_areas=self.areas, stock=True)
+                        p.flee(stock=True)
+                        if p.current_area in self.areas:
+                            Narrator().new([
+                                'error:', 'forbidden:', Context().forbidden_areas, p.name, p.current_area.at])
+                            Map().test = 'SHIT'
                     elif p.be_damaged(self.base_damage, weapon=self.weapon_name):
                         Narrator().new([p.name, 'fails', 'to escape', self.it, 'and', self.dies, area.at])
                     else:
-                        p.flee(panic=True, drop_verb='loses', filtered_areas=self.areas, stock=True)
-                else:
-                    Narrator().new([p.name, 'is', 'trapped', area.at])
-
-                if p.current_area not in self.areas:
+                        p.flee(panic=True, drop_verb='loses', stock=True)
                     Narrator().apply_stock()
                     continue  # successful escape
+                Narrator().new([p.name, 'is', 'trapped', area.at])
 
                 Narrator().clear_stock()
                 if self.trapped_means_dead:
@@ -70,18 +75,18 @@ class DamageEvent(Event):
                     Narrator().add(['and', self.dies])
                 else:
                     Narrator().apply_stock()
-                if not len(Narrator().current_sentence):  # error
+                if not len(Narrator().current_sentence):  # error
                     Narrator().add([p.name, 'escaped', self.it, 'and is', p.current_area.at])
             Narrator().clear_stock()
             area.loot.clear()
 
     @classmethod
     def can_happen(cls) -> bool:
-        return len(cls.available_areas()) > 0
+        return len([a for a in cls.available_areas() if len(a.players)]) > 0
 
     @classmethod
     def available_areas(cls) -> List[Area]:
-        areas = [a for a in Map().areas if len(a.players)]
+        areas = copy(Map().areas)
         if cls.water == -1:
             areas = [a for a in areas if not a.has_water]
         if cls.water == 1:
@@ -114,7 +119,7 @@ class AcidGas(DamageEvent):
         DamageEvent.__init__(
             self, 'acid cloud', 'the acid',
             weapon_name='acid', dies='melts into a puddle of blood',
-            base_damage=0.2, trapped_means_dead=True,
+            base_damage=0.2, trapped_means_dead=True, stealth=0.7,
         )
 
 
@@ -123,7 +128,7 @@ class Wasps(DamageEvent):
         DamageEvent.__init__(
             self, 'killer wasps', 'the wasps',
             weapon_name='acid', dies='dies from anaphylactic shock',
-            base_damage=0.2, extra_damage=0.4,
+            base_damage=0.2, extra_damage=0.4, stealth=0.8,
         )
 
 
@@ -132,7 +137,7 @@ class Beasts(DamageEvent):
         DamageEvent.__init__(
             self, choice(['dogs', 'killer monkeys']), 'the beasts',
             weapon_name='teeth', dies='is eaten alive',
-            base_damage=0.2, extra_damage=0.4,
+            base_damage=0.2, extra_damage=0.4, stealth=0.7,
         )
 
 

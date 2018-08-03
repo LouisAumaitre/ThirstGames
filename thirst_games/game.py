@@ -88,6 +88,7 @@ class Game(AbstractGame, metaclass=Singleton):
             print(f'{self.alive_players[0].name} wins the Hunger Games!')
 
     def launch(self):
+        Context().new_day()
         self.alive_players.sort(key=lambda x: random())
         self.play()
 

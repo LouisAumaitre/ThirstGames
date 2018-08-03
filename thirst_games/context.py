@@ -13,6 +13,10 @@ class AbstractGame:
 class Context(metaclass=Singleton):
     def __init__(self):
         self.game: AbstractGame = None
+        self.forbidden_areas = []
+
+    def new_day(self):
+        self.forbidden_areas.clear()
 
     @property
     def alive_players(self):

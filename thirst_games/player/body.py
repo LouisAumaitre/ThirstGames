@@ -71,13 +71,13 @@ class Body(Positionable):
             max_nrg = 0.6
         self._energy = min(max_nrg, self._energy + amount)
 
-        if self._energy < 0:
+        if self._energy < 0 and self.is_alive:
             if 'exhausted' not in self.status:
                 # Narrator().add([self.first_name, 'needs', 'to rest'])
                 self.status.append('exhausted')
             self.add_health(self._energy)
             if not self.is_alive:
-                Narrator().add([self.first_name, 'dies of exhaustion'])
+                Narrator().add([self.first_name, 'dies', 'of exhaustion'])
             self._energy = 0
         else:
             if 'exhausted' in self.status:
@@ -142,9 +142,13 @@ class Body(Positionable):
         return cost
 
     def can_flee(self):
+        filtered_areas = Context().forbidden_areas
+        accessible_areas = [a for a in self.map.areas if a not in filtered_areas]
+        if not len(accessible_areas):
+            return False
         if TRAPPED in self.status:
             return False
-        return self.energy + self.health > self.move_cost or self.current_area.name != START_AREA
+        return self.energy + self.health > self.move_cost or not self.current_area.is_start
 
     def take_a_break(self):
         raise NotImplementedError

@@ -32,9 +32,8 @@ class Fighter(Carrier):
             power *= 0.1
         return power
 
-    def flee(self, panic=False, drop_verb='drops', filtered_areas=None, stock=False):
-        if filtered_areas is None:
-            filtered_areas = []
+    def flee(self, panic=False, drop_verb='drops', stock=False):
+        filtered_areas = Context().forbidden_areas
         self.status.append(FLEEING)
         if panic and random() > self.courage() + 0.5:
             self.drop_weapon(verbose=True, drop_verb=drop_verb)
@@ -43,9 +42,6 @@ class Fighter(Carrier):
         available_areas.sort(
             key=lambda x: len(x.players) * 10 + (30 if x.is_start else 0)
                           - len(self.map.loot(x)) - (self.thirst if x.has_water else 0))
-        if not len(available_areas):
-            self.hide(panic=panic)
-            return
 
         out = self.go_to(available_areas[0])
         if out is None:
@@ -55,8 +51,9 @@ class Fighter(Carrier):
             self.check_for_ambush_and_traps()
 
     def pursue(self):
-        max_player_per_area = max([len(area.players) for area in self.map.areas])
-        best_areas = [area for area in self.map.areas if len(area.players) == max_player_per_area]
+        available_area = [a for a in self.map.areas if a not in Context().forbidden_areas]
+        max_player_per_area = max([len(area.players) for area in available_area])
+        best_areas = [area for area in available_area if len(area.players) == max_player_per_area]
         if THIRSTY in self.status and len([a for a in best_areas if a.has_water]):
             best_areas = [a for a in best_areas if a.has_water]
         best_areas.sort(key=lambda x: -len(self.map.loot(x)))
@@ -73,14 +70,12 @@ class Fighter(Carrier):
 
     def go_to(self, area: Union[str, Area, Positionable]) -> Optional[Area]:
         area = self.map.get_area(area)
-        if area != self.current_area and self.energy >= self.move_cost:
+        if area != self.current_area:
             self.reveal()
             self._energy -= self.move_cost
             self.busy = True
             return self.map.move_player(self, area)
-        else:
-            self._energy -= self.move_cost
-            return None
+        return None
 
     def set_up_ambush(self):
         self.stealth += (random() / 2 + 0.5) * (1 - self.stealth)
