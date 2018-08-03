@@ -26,7 +26,7 @@ class DamageEvent(Event):
     water = 0
 
     def __init__(
-            self, name: str, it: str, stealth=0.6, weapon_name='',
+            self, name: str, it: str, stealth=0.6, weapon_name='', remove_loot=False,
             base_damage: float=0, extra_damage: float=0, dies='dies', trapped_means_dead=False,
     ):
         areas = self.available_areas()
@@ -44,6 +44,7 @@ class DamageEvent(Event):
         self.extra_damage = extra_damage
         self.dies = dies
         self.trapped_means_dead = trapped_means_dead
+        self.remove_loot = remove_loot
 
     def trigger(self):
         Context().forbidden_areas.extend(self.areas)
@@ -54,7 +55,7 @@ class DamageEvent(Event):
                 if p.can_flee():
                     if p.wisdom * random() > self.stealth:
                         Narrator().add([p.first_name, 'sees', self.it, 'coming'])
-                        p.flee(stock=True)
+                        p.flee()
                         if p.current_area in self.areas:
                             Narrator().new([
                                 'error:', 'forbidden:', Context().forbidden_areas, p.name, p.current_area.at])
@@ -62,12 +63,10 @@ class DamageEvent(Event):
                     elif p.be_damaged(self.base_damage, weapon=self.weapon_name):
                         Narrator().new([p.name, 'fails', 'to escape', self.it, 'and', self.dies, area.at])
                     else:
-                        p.flee(panic=True, drop_verb='loses', stock=True)
-                    Narrator().apply_stock()
+                        Narrator().apply_stock()
+                        p.flee(panic=True, drop_verb='loses')
                     continue  # successful escape
                 Narrator().new([p.name, 'is', 'trapped', area.at])
-
-                Narrator().clear_stock()
                 if self.trapped_means_dead:
                     p.be_damaged(1)
                     Narrator().add([p.name, 'is', 'swipped', 'by', self.it, area.at, 'and', self.dies])
@@ -78,7 +77,8 @@ class DamageEvent(Event):
                 if not len(Narrator().current_sentence):  # error
                     Narrator().add([p.name, 'escaped', self.it, 'and is', p.current_area.at])
             Narrator().clear_stock()
-            area.loot.clear()
+            if self.remove_loot:
+                area.loot.clear()
 
     @classmethod
     def can_happen(cls) -> bool:
@@ -101,7 +101,7 @@ class WildFire(DamageEvent):
         DamageEvent.__init__(
             self, 'wildfire', 'the fire',
             weapon_name='fire', dies='burns to death',
-            base_damage=0.3, extra_damage=0.2,
+            base_damage=0.3, extra_damage=0.2, remove_loot=True,
         )
 
 
@@ -110,7 +110,7 @@ class Flood(DamageEvent):
 
     def __init__(self):
         DamageEvent.__init__(
-            self, 'flood', 'the flood', dies='drowns', trapped_means_dead=True
+            self, 'flood', 'the flood', dies='drowns', trapped_means_dead=True, remove_loot=True,
         )
 
 

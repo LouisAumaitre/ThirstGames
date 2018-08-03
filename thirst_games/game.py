@@ -42,26 +42,29 @@ class Game(AbstractGame, metaclass=Singleton):
         self._players_at_last_event = len(self.alive_players)
         self._time_since_last_event = 0
         Narrator().new(f'== DAY {self.day} START ==')
-        Narrator().new(['All players start at', START_AREA])
+        Narrator().new(['All players start', self.map.get_area(START_AREA).at])
         self.time = STARTER
         while self.map.players_count(START_AREA) > 1:
+            Narrator().tell()
             self.launch()
+            Narrator().tell(filters=[self.map.get_area(START_AREA).at])
             Narrator().new(f'...')
             if self.map.players_count(START_AREA) > 1:
                 Narrator().new([
                     format_list([p.first_name for p in self.alive_players if p.current_area.is_start]),
-                    'remain at',
-                    START_AREA
+                    'remain',
+                    self.map.get_area(START_AREA).at
                 ])
             elif self.map.players_count(START_AREA) == 1:
                 Narrator().new([
                     'Only',
                     [p for p in self.alive_players if p.current_area.is_start][0].first_name,
-                    'remain at',
-                    START_AREA
+                    'remain',
+                    self.map.get_area(START_AREA).at
                 ])
+                Narrator().tell(filters=[self.map.get_area(START_AREA).at])
                 self.launch()
-        Narrator().tell(filters=[f'at {START_AREA}'])
+        Narrator().tell()
         self._players_at_last_event = len(self.alive_players)
         while len(self.alive_players) > 1 and self.day < 10:
             if self.day != 1:
@@ -89,12 +92,13 @@ class Game(AbstractGame, metaclass=Singleton):
 
     def launch(self):
         Context().new_day()
-        self.alive_players.sort(key=lambda x: random())
+        # self.alive_players.sort(key=lambda x: random())
         self.play()
 
     def play(self):
         Narrator().cut()
         players = copy(self.alive_players)
+        players.sort(key=lambda x: random())
         if self.time != STARTER:
             for p in players:
                 p.upkeep()
