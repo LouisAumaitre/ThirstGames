@@ -59,12 +59,12 @@ class Game(AbstractGame, metaclass=Singleton):
                 Narrator().new([
                     'Only',
                     [p for p in self.alive_players if p.current_area.is_start][0].first_name,
-                    'remain',
+                    'remains',
                     self.map.get_area(START_AREA).at
                 ])
-                Narrator().tell(filters=[self.map.get_area(START_AREA).at])
+                Narrator().tell()
                 self.launch()
-        Narrator().tell()
+                Narrator().tell(filters=[self.map.get_area(START_AREA).at])
         self._players_at_last_event = len(self.alive_players)
         while len(self.alive_players) > 1 and self.day < 10:
             if self.day != 1:
