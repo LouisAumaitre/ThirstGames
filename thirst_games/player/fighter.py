@@ -45,6 +45,7 @@ class Fighter(Carrier):
                           - len(self.map.loot(x)) - (self.thirst if x.has_water else 0))
         if not len(available_areas):
             self.hide(panic=panic)
+            return
 
         out = self.go_to(available_areas[0])
         if out is None:

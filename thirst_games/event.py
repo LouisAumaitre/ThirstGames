@@ -21,121 +21,119 @@ class Event:
         raise NotImplementedError
 
 
-class WildFire(Event):
-    def __init__(self):
-        _map = Map()
-        max_p = max([len(area.players) for area in _map.areas if not area.has_water])
-        areas = [area for area in _map.areas if len(area.players) == max_p and not area.has_water]
+class DamageEvent(Event):
+    water = 0
+
+    def __init__(
+            self, name: str, it: str, stealth=0.6, weapon_name='',
+            base_damage: float=0, extra_damage: float=0, dies='dies', trapped_means_dead=False,
+    ):
+        areas = self.available_areas()
+        max_p = max([len(a.players) for a in areas])
+        areas = [a for a in areas if len(a.players) == max_p]
         if max_p == 1:
             areas = [choice(areas)]
-        Event.__init__(self, 'wildfire', areas)
+        Event.__init__(self, name, areas)
+        self.stealth = stealth
+        self.it = it
+        self.weapon_name = weapon_name
+        self.base_damage = base_damage
+        self.extra_damage = extra_damage
+        self.dies = dies
+        self.trapped_means_dead = trapped_means_dead
 
     def trigger(self):
         for area in self.areas:
             for p in area.players:
                 Narrator().cut()
+
                 if p.can_flee():
-                    if p.wisdom * random() > 0.6:
-                        Narrator().new([p.first_name, 'sees', 'the fire', 'coming'])
-                        p.flee(filtered_areas=self.areas)
-                    elif p.be_damaged(0.3, weapon='fire'):
-                        Narrator().new([p.name, 'fails', 'to escape the fire and dies', area.at])
+                    if p.wisdom * random() > self.stealth:
+                        Narrator().add([p.first_name, 'sees', self.it, 'coming'])
+                        p.flee(filtered_areas=self.areas, stock=True)
+                    elif p.be_damaged(self.base_damage, weapon=self.weapon_name):
+                        Narrator().new([p.name, 'fails', 'to escape', self.it, 'and', self.dies, area.at])
                     else:
-                        p.flee(panic=True, drop_verb='loses', filtered_areas=self.areas)
-                        Narrator().apply_stock()
+                        p.flee(panic=True, drop_verb='loses', filtered_areas=self.areas, stock=True)
                 else:
                     Narrator().new([p.name, 'is', 'trapped', area.at])
-                    if p.be_damaged(random() * 0.2 + 0.3, weapon='fire'):
-                        Narrator().add(['and', 'the fire', 'kills', p.him])
-                    else:
-                        Narrator().apply_stock()
-                if not len(Narrator().current_sentence):
-                    Narrator().add([p.name, 'escaped', 'the fire', 'and is', p.current_area.at])
-            area.loot.clear()
 
-    @classmethod
-    def can_happen(cls) -> bool:
-        # needs a place with players and no water
-        return len([area for area in Map().areas if not area.has_water and len(area.players)]) > 0
+                if p.current_area not in self.areas:
+                    Narrator().apply_stock()
+                    continue  # successful escape
 
-
-class Flood(Event):
-    def __init__(self):
-        _map = Map()
-        max_p = max([len(area.players) for area in _map.areas if area.has_water])
-        areas = [area for area in _map.areas if len(area.players) == max_p and area.has_water]
-        if max_p == 1:
-            areas = [choice(areas)]
-        Event.__init__(self, 'flood', areas)
-
-    def trigger(self):
-        for area in self.areas:
-            for p in area.players:
-                if p.can_flee and p.wisdom * random() > 0.6:
-                    Narrator().new([p.first_name, 'sees', 'the flood', 'coming'])
-                    p.flee(filtered_areas=self.areas, stock=True)
-                    if p.current_area not in self.areas:
-                        Narrator().apply_stock()
-                        continue
-                    else:
-                        Narrator().new([p.first_name, 'tries', 'to escape'])
-                elif p.can_flee() and random() * 0.8 < p.energy + p.move_cost:
-                    p.add_energy(-p.move_cost)
-                    p.flee(panic=True, drop_verb='loses', filtered_areas=self.areas, stock=True)
-                    if p.current_area not in self.areas:
-                        Narrator().new([p.first_name, 'swims', 'to the shore'])
-                        Narrator().apply_stock()
-                        continue
-                    else:
-                        Narrator().new([p.first_name, 'tries', 'to escape'])
-                p.be_damaged(1)
-                Narrator().add([p.name, 'is', 'swipped', 'by the water', area.at, 'and', 'drowns'])
                 Narrator().clear_stock()
-                Map().test += f' {p.name}!'
-            area.loot.clear()
-
-    @classmethod
-    def can_happen(cls) -> bool:
-        # needs a place with players and water
-        return len([area for area in Map().areas if area.has_water and len(area.players)]) > 0
-
-
-class AcidGas(Event):
-    def __init__(self):
-        _map = Map()
-        max_p = max([len(area.players) for area in _map.areas])
-        areas = [area for area in _map.areas if len(area.players) == max_p]
-        if max_p == 1:
-            areas = [choice(areas)]
-        Event.__init__(self, 'acid cloud', areas)
-
-    def trigger(self):
-        for area in self.areas:
-            for p in area.players:
-                Narrator().cut()
-                if p.can_flee():
-                    if p.wisdom * random() > 0.6:
-                        Narrator().new([p.first_name, 'sees', 'the cloud', 'coming'])
-                        p.flee(filtered_areas=self.areas)
-                    elif p.be_damaged(0.3):
-                        Narrator().new([p.name, 'fails', 'to escape the acid cloud and dies', area.at])
-                    else:
-                        p.flee(panic=True, drop_verb='loses', filtered_areas=self.areas)
-                        Narrator().apply_stock()
+                if self.trapped_means_dead:
+                    p.be_damaged(1)
+                    Narrator().add([p.name, 'is', 'swipped', 'by', self.it, area.at, 'and', self.dies])
+                elif p.be_damaged(random() * self.extra_damage + self.base_damage, weapon=self.weapon_name):
+                    Narrator().add(['and', self.dies])
                 else:
-                    Narrator().new([p.name, 'is', 'trapped', area.at])
-                    if p.be_damaged(random() * 0.2 + 0.3, weapon='fire'):
-                        Narrator().add(['and', 'the acid', 'kills', p.him])
-                    else:
-                        Narrator().apply_stock()
-                if not len(Narrator().current_sentence):
-                    Narrator().add([p.name, 'escaped', 'the acid', 'and is', p.current_area.at])
+                    Narrator().apply_stock()
+                if not len(Narrator().current_sentence):  # error
+                    Narrator().add([p.name, 'escaped', self.it, 'and is', p.current_area.at])
+            Narrator().clear_stock()
             area.loot.clear()
 
     @classmethod
     def can_happen(cls) -> bool:
-        # needs a place with players and no water
-        return len([area for area in Map().areas if len(area.players)]) > 0
+        return len(cls.available_areas()) > 0
+
+    @classmethod
+    def available_areas(cls) -> List[Area]:
+        areas = [a for a in Map().areas if len(a.players)]
+        if cls.water == -1:
+            areas = [a for a in areas if not a.has_water]
+        if cls.water == 1:
+            areas = [a for a in areas if not a.has_water]
+        return areas
+
+
+class WildFire(DamageEvent):
+    water = -1
+
+    def __init__(self):
+        DamageEvent.__init__(
+            self, 'wildfire', 'the fire',
+            weapon_name='fire', dies='burns to death',
+            base_damage=0.3, extra_damage=0.2,
+        )
+
+
+class Flood(DamageEvent):
+    water = 1
+
+    def __init__(self):
+        DamageEvent.__init__(
+            self, 'flood', 'the flood', dies='drowns', trapped_means_dead=True
+        )
+
+
+class AcidGas(DamageEvent):
+    def __init__(self):
+        DamageEvent.__init__(
+            self, 'acid cloud', 'the acid',
+            weapon_name='acid', dies='melts into a puddle of blood',
+            base_damage=0.2, trapped_means_dead=True,
+        )
+
+
+class Wasps(DamageEvent):
+    def __init__(self):
+        DamageEvent.__init__(
+            self, 'killer wasps', 'the wasps',
+            weapon_name='acid', dies='dies from anaphylactic shock',
+            base_damage=0.2, extra_damage=0.4,
+        )
+
+
+class Beasts(DamageEvent):
+    def __init__(self):
+        DamageEvent.__init__(
+            self, choice(['dogs', 'killer monkeys']), 'the beasts',
+            weapon_name='teeth', dies='is eaten alive',
+            base_damage=0.2, extra_damage=0.4,
+        )
 
 
 class DropEvent(Event):
@@ -153,7 +151,7 @@ class DropEvent(Event):
             Food(choice(['ration', 'food can', 'energy bar']), 0.50),
             Food(choice(['ration', 'food can', 'energy bar']), 0.25),
             Item('bandages'), Item('iodine'), Item('antidote'), Bottle(1),
-            Weapon(choice(SWORD, AXE, MACE), 2 + random())
+            Weapon(choice([SWORD, AXE, MACE]), 2 + random())
         ]
         possible_loots = [i for i in possible_loots if sum(p.estimate(i) for p in Context().alive_players)]
         possible_loots.sort(key=lambda x: -sum(p.estimate(x) for p in Context().alive_players))

@@ -27,6 +27,8 @@ weapon_wound_proba = {
     CLUB: [('head', 0.4), ('arm', 0.1), ('leg', 0.05)],
     MACE: [('head', 0.5), ('arm', 0.2), ('leg', 0.05)],
     'fire': [('burn', 0.9)],
+    'acid': [('burn', 0.6)],
+    'teeth': [('leg', 0.3), ('arm', 0.3)],
     'default': [('arm', 0.2), ('leg', 0.2)],
 }
 
@@ -42,8 +44,10 @@ def get_weapon_wound(weapon_name):
 
 
 weapon_bleed_proba = {
+    'teeth': 0.5,
     AXE: 0.5,
     SWORD: 0.5,
+    MACHETE: 0.4,
     KNIFE: 0.3,
     HATCHET: 0.3,
     TRIDENT: 0.4,
