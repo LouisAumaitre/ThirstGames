@@ -9,23 +9,39 @@ from thirst_games.traps import can_build_any_trap, build_any_trap
 
 
 class Player(Fighter):
-    def __init__(self, first_name: str, district: int, his='their'):
+    def __init__(self, first_name: str, district: int, his='their') -> None:
         Fighter.__init__(self, first_name, his)
         self.district = district
-        self.relationships: Dict[Player, Relationship] = {}
+        self.relationships: Dict[str, Relationship] = {}
         self.strategy = None
 
     def relationship(self, other_player):
         if other_player not in self.relationships:
-            self.relationships[other_player] = Relationship()
-        return self.relationships[other_player]
+            self.relationships[other_player.name] = Relationship()
+        return self.relationships[other_player.name]
+
+    def allies(self):
+        return [p for p in Context().alive_players if self.relationship(p).allied]
 
     def think(self):
+        allies = self.allies()
+        if allies and self.strategy is None:
+            strats = self._think()
+            for a in allies:
+                for s, v in a._think():
+                    strats[s] = strats.get(s, 0) + v
+        else:
+            strats = self._think()
+        self.strategy = [s for s, v in strats.items() if v == max(strats.values())][0]
+        for a in allies:
+            a.strategy = self.strategy
+
+    def _think(self) -> dict:
         if self.sleep < 0:
             if self.map.players_count(self) > 1 and self.energy > self.move_cost:
-                self.strategy = flee_strat
+                return {flee_strat: 1}
             else:
-                self.strategy = hide_strat
+                return {hide_strat: 1}
         else:
             if Context().time == NIGHT:
                 strats = night_strategies
@@ -33,8 +49,8 @@ class Player(Fighter):
                 strats = start_strategies
             else:
                 strats = morning_strategies
-            strats.sort(key=lambda x: -x.pref(self) + random() * (1 - self.wisdom))
-            self.strategy = strats[0]
+            # strats.sort(key=lambda x: -x.pref(self) + random() * (1 - self.wisdom))
+            return {s: s.pref(self) + random() * (1 - self.wisdom) for s in strats}
             # if self.strategy == go_get_drop:
             #     Narrator().new([
             #         self.name, f': {[(round(s.pref(self), 2), s.name) for s in strats]}'])

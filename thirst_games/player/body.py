@@ -199,7 +199,6 @@ class Body(Positionable):
         self.add_energy(self.sleep * (1 - self.energy))
         self.add_sleep(1)
         verb = 'sleeps' if self.energy > 0 else 'collapses'
-        self.map.test += f'{self.name}-{Context().day}'
         Narrator().add([self.first_name, verb, self.current_area.at], stock=stock)
         self.status.append(SLEEPING)
 

@@ -125,7 +125,7 @@ class Positionable:
 
 class Map(metaclass=Singleton):
 
-    def __init__(self, player_amount=24):
+    def __init__(self, player_amount=24) -> None:
         print(f'INIT ARENA FOR {player_amount} PLAYERS')
         possible_parts_names = list(_nature.keys())
         possible_parts_names.remove(START_AREA)

@@ -31,7 +31,7 @@ def format_list(names: List[str]):
 
 
 class Narrator(metaclass=Singleton):
-    def __init__(self):
+    def __init__(self) -> None:
         self.current_sentence: List[str] = []
         self.active_subject = None
         self._used_verbs = {}
