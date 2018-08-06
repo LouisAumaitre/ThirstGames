@@ -15,6 +15,7 @@ class Player(Fighter):
         self.district = district
         self.relationships: Dict[str, Relationship] = {}
         self.strategy = None
+        self.acted = True
 
     def relationship(self, other_player):
         if other_player.name not in self.relationships:
@@ -32,6 +33,9 @@ class Player(Fighter):
     def busy_allies(self):
         return [p for p in Context().alive_players if self.relationship(p).allied and p.busy]
 
+    def current_group(self):
+        return [*[p for p in self.present_allies() if not p.busy], self]
+
     def think(self):
         if self.strategy is not None:
             return
@@ -44,9 +48,11 @@ class Player(Fighter):
         else:
             strats = self._think()
         self.strategy = [s for s, v in strats.items() if v == max(strats.values())][0]
+        self.acted = False
         for a in allies:
             print(f'{self.name}&{a.name}:{self.strategy.name}')
             a.strategy = self.strategy
+            a.acted = False
 
     def _think(self) -> dict:
         if self.sleep < 0:
@@ -74,8 +80,15 @@ class Player(Fighter):
         return Fighter._flee_value(self, area) + 30 * len([a for a in self.allies() if a in area.players])
 
     def act(self):
-        self.stop_running()
         Narrator().cut()
+        for p in self.current_group():
+            p._act()
+        Narrator().cut()
+
+    def _act(self):
+        if self.acted:
+            return
+        self.stop_running()
         if self.energy < 0:
             self.go_to_sleep()
         elif not self.busy:
@@ -87,8 +100,8 @@ class Player(Fighter):
                     s.apply(self)
             else:
                 self.strategy.apply(self)
-        Narrator().cut()
         self.strategy = None
+        self.acted = True
 
     def fight(self, other_player):
         self.relationship(other_player).allied = False
