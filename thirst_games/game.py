@@ -37,6 +37,14 @@ class Game(AbstractGame, metaclass=Singleton):
     def alive_players(self):
         return [p for p in self.players if p.is_alive]
 
+    def all_players_at_start_are_allies(self):
+        players = copy(self.map.get_area(START_AREA).players)
+        player_one = players.pop()
+        for p in players:
+            if not player_one.relationship(p).allied:
+                return False
+        return True
+
     def run(self):
         self.day = 1
         self._event_gauge = 0
@@ -45,7 +53,7 @@ class Game(AbstractGame, metaclass=Singleton):
         Narrator().new(f'== DAY {self.day} START ==')
         Narrator().new(['All players start', self.map.get_area(START_AREA).at])
         self.time = STARTER
-        while self.map.players_count(START_AREA) > 1:
+        while not self.all_players_at_start_are_allies():
             Narrator().tell()
             self.launch()
             Narrator().tell(filters=[self.map.get_area(START_AREA).at])
@@ -114,6 +122,7 @@ class Game(AbstractGame, metaclass=Singleton):
                     players[i-2].act()
         for p in players:
             p.busy = False
+            p.acted = False
 
     def status(self):
         l_name = max([len(p.name) for p in self.alive_players])

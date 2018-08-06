@@ -37,7 +37,7 @@ class Player(Fighter):
         return [*[p for p in self.present_allies() if not p.busy], self]
 
     def think(self):
-        if self.strategy is not None:
+        if self.strategy is not None or self.acted:
             return
         allies = self.present_allies()
         if len(allies):
@@ -48,11 +48,9 @@ class Player(Fighter):
         else:
             strats = self._think()
         self.strategy = [s for s, v in strats.items() if v == max(strats.values())][0]
-        self.acted = False
         for a in allies:
             print(f'{self.name}&{a.name}:{self.strategy.name}')
             a.strategy = self.strategy
-            a.acted = False
 
     def _think(self) -> dict:
         if self.sleep < 0:
@@ -83,7 +81,7 @@ class Player(Fighter):
         Narrator().cut()
         for p in self.current_group():
             p._act()
-        Narrator().cut()
+            Narrator().cut()
 
     def _act(self):
         if self.acted:

@@ -256,7 +256,10 @@ class Map(metaclass=Singleton):
         trap.current_area.traps.remove(trap)
 
     def players_count(self, area: Union[str, Area, Positionable]) -> int:
-        return len(self.players(area))
+        v = len(self.players(area))
+        if not v and isinstance(area, Positionable):
+            print(f'Warning: {area.name} not in {area.current_area}? {area.current_area.players}')
+        return v
 
     def players(self, area: Union[str, Area, Positionable]) -> List[Positionable]:
         return self.get_area(area).players
