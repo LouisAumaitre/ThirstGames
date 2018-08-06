@@ -1,10 +1,10 @@
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 from copy import copy
 from random import random
 
 from thirst_games.constants import (
-    SLEEPING, FLEEING, AMBUSH, TRAPPED, STARTER, ARM_WOUND, THIRSTY)
+    SLEEPING, FLEEING, AMBUSH, TRAPPED, STARTER, ARM_WOUND)
 from thirst_games.context import Context
 from thirst_games.items import Weapon, PoisonVial
 from thirst_games.map import Area, Positionable
@@ -49,7 +49,7 @@ class Fighter(Carrier):
             self.check_for_ambush_and_traps()
 
     def _flee_value(self, area):
-        return -len(area.players) * 10 - (30 if area.is_start else 0) + len(
+        return -len(self.enemies(area)) * 10 - (30 if area.is_start else 0) + len(
             self.map.loot(area)) + (self.thirst if area.has_water else 0)
 
     def pursue(self):
@@ -66,7 +66,10 @@ class Fighter(Carrier):
             self.check_for_ambush_and_traps()
 
     def _pursue_value(self, area):
-        return len(area.players) * 10 + len(self.map.loot(area)) + (self.thirst if area.has_water else 0)
+        return len(self.enemies(area)) * 10 + len(self.map.loot(area)) + (self.thirst if area.has_water else 0)
+
+    def enemies(self, area: Area) -> List[Carrier]:
+        return [p for p in area.players if p != self]
 
     def go_to(self, area: Union[str, Area, Positionable]) -> Optional[Area]:
         area = self.map.get_area(area)
@@ -152,7 +155,7 @@ class Fighter(Carrier):
             vial.poison.long_name = f'{self.first_name}\'s {vial.poison.name}'
 
     def attack_at_random(self):
-        preys = [p for p in self.map.players(self) if self.can_see(p) and p != self]
+        preys = [p for p in self.enemies(self.current_area) if self.can_see(p) and p != self]
         preys.sort(key=lambda x: x.health * x.damage())
         if len(preys):
             self.fight(preys[0])

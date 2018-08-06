@@ -1,10 +1,11 @@
 from random import random
-from typing import Dict
+from typing import Dict, List
 
 from thirst_games.constants import (NIGHT, STARTER, TRAPPED, START_AREA)
 from thirst_games.context import Context
-from thirst_games.map import Map
+from thirst_games.map import Map, Area
 from thirst_games.narrator import format_list, Narrator
+from thirst_games.player.carrier import Carrier
 from thirst_games.player.fighter import Fighter
 from thirst_games.traps import can_build_any_trap, build_any_trap
 
@@ -32,6 +33,9 @@ class Player(Fighter):
 
     def busy_allies(self):
         return [p for p in Context().alive_players if self.relationship(p).allied and p.busy]
+
+    def enemies(self, area: Area) -> List[Carrier]:
+        return [p for p in area.players if p != self and not self.relationship(p).allied]
 
     def current_group(self):
         return [*[p for p in self.present_allies() if not p.busy], self]
