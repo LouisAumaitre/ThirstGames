@@ -32,8 +32,12 @@ class Group(PlayingEntity):
             player.act()
 
     def reset_turn(self):
+        acting_players = []
         for p in self.players:
-            p.reset_turn()
+            if p.new_strat() == self.strategy:
+                acting_players.append(p)
+            else:
+                p.act()
 
     @property
     def is_alive(self):
