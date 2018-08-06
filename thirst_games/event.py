@@ -9,6 +9,9 @@ from thirst_games.map import Map, START_AREA, Area
 from thirst_games.narrator import Narrator, format_list
 
 
+# TODO: sometimes events don't seem to affect everyone
+
+
 class Event:
     def __init__(self, name: str, areas: List[Area]):
         self.name = name

@@ -239,6 +239,7 @@ class Body(Positionable):
 
     def upkeep(self):
         self.destination = None
+        self.stop_running()
 
         dehydratation = 0.5 if BURN_WOUND in self.status else 0.3
         self._water -= dehydratation

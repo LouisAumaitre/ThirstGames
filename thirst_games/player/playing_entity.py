@@ -65,7 +65,7 @@ class Strategy:
         self.pref = pref
         self.action = action
 
-    def apply(self, player):
+    def apply(self, player: PlayingEntity):
         out = self.action(player)
         if isinstance(out, str):
-            print(f'{player.first_name} {out}')
+            print(f'{str(player)} {out}')

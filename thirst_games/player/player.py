@@ -1,5 +1,5 @@
 from random import random
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from thirst_games.constants import (NIGHT, STARTER, TRAPPED, START_AREA)
 from thirst_games.context import Context
@@ -73,26 +73,31 @@ class Player(Fighter, PlayingEntity):
         return Fighter._flee_value(self, area) + 30 * len([a for a in self.allies() if a in area.players])
 
     def act(self):
-        Narrator().cut()
-        if self.acted:
-            return
-        self.stop_running()
-        if self.energy < 0:
-            self.go_to_sleep()
-        elif not self.busy:
-            if Context().time == STARTER \
-                    and self.current_area.name == START_AREA \
-                    and self.map.players_count(self) == 1:
-                strats = [loot_bag_strat, loot_weapon_strat, hide_strat]
-                for s in [strat for strat in strats if strat.pref(self) > 0]:
-                    s.apply(self)
-            else:
-                try:
-                    self.strategy.apply(self)
-                except AttributeError as e:
-                    raise AttributeError(f'{self.name}({self.current_area.at}) has no strat ({self.strategy})') from e
+        new_strat = self.new_strat()
+        if new_strat is not None:
+            self.apply_strat(new_strat)
         self.strategy = None
         self.acted = True
+
+    def new_strat(self) -> Optional[Strategy]:
+        if self.acted or self.busy:
+            return None
+        if self.energy < 0:
+            return Strategy('collapse', None, lambda x: x.go_to_sleep())
+        elif Context().time == STARTER \
+                and self.current_area.name == START_AREA \
+                and len(self.enemies(self.current_area)) == 0:
+            return Strategy('won bloodbath', None, lambda x: x.cornucopia_victory())
+        return self.strategy
+
+    def apply_strat(self, strategy: Optional[Strategy]):
+        Narrator().cut()
+        if strategy is None:
+            strategy = self.strategy
+        try:
+            strategy.apply(self)
+        except AttributeError as e:
+            raise AttributeError(f'{self.name}({self.current_area.at}) has no strat ({self.strategy})') from e
         Narrator().cut()
 
     def fight(self, other_player):
@@ -153,6 +158,11 @@ class Player(Fighter, PlayingEntity):
                 self.name, f'potential_danger={potential_danger}', f'actual_danger={actual_danger}',
                 f'dangerosity={self.dangerosity()}', f'courage={self.courage()}',
             ])
+
+    def cornucopia_victory(self):
+        self.loot_bag()
+        self.loot_weapon()
+        self.take_a_break()
 
 
 class Relationship:

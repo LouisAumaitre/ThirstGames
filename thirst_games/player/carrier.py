@@ -12,7 +12,7 @@ from thirst_games.player.body import Body
 
 
 class Carrier(Body):
-    def __init__(self, first_name, his):
+    def __init__(self, first_name, his) -> None:
         Body.__init__(self, first_name, his)
         self._equipment: List[Item] = []
         self.weapon: Weapon = HANDS
