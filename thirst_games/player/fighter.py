@@ -14,7 +14,11 @@ from thirst_games.player.carrier import Carrier
 from thirst_games.weapons import weapon_bleed_proba
 
 
-class FightingEntity:
+class FightingEntity(Positionable):
+    @property
+    def is_alive(self):
+        raise NotImplementedError
+
     def courage(self):
         raise NotImplementedError
 

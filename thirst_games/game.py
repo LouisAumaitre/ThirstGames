@@ -7,9 +7,11 @@ from random import random, choice
 from thirst_games.constants import AFTERNOON, MORNING, NIGHT, STARTER
 from thirst_games.context import Context, AbstractGame
 from thirst_games.event import WildFire, DropEvent, Flood, AcidGas, Wasps, Beasts
-from thirst_games.map import Map, START_AREA
+from thirst_games.map import Map, START_AREA, Area
 from thirst_games.narrator import Narrator, format_list
+from thirst_games.player.group import Group
 from thirst_games.player.player import Player
+from thirst_games.player.playing_entity import PlayingEntity
 from thirst_games.singleton import Singleton
 
 
@@ -53,7 +55,7 @@ class Game(AbstractGame, metaclass=Singleton):
         Narrator().new(f'== DAY {self.day} START ==')
         Narrator().new(['All players start', self.map.get_area(START_AREA).at])
         self.time = STARTER
-        while not self.all_players_at_start_are_allies():
+        while len(self.playing_entities_at(self.map.get_area(START_AREA))) > 1:
             Narrator().tell()
             self.launch()
             Narrator().tell(filters=[self.map.get_area(START_AREA).at])
@@ -106,9 +108,12 @@ class Game(AbstractGame, metaclass=Singleton):
 
     def play(self):
         Narrator().cut()
-        players = copy(self.alive_players)
+        players: List[PlayingEntity] = []
+        for area in self.map.areas:
+            players.extend(self.playing_entities_at(area))
+        print(f'{[str(pe) for pe in players]}')
         if self.time != STARTER:
-            for p in players:
+            for p in self.alive_players:
                 p.upkeep()
         players.sort(key=lambda x: random())
         if self.check_for_event():
@@ -120,9 +125,23 @@ class Game(AbstractGame, metaclass=Singleton):
             if i - 2 >= 0 and players[i-2].is_alive:
                 if self.time != STARTER or players[i-2].current_area.is_start:
                     players[i-2].act()
-        for p in players:
+        for p in self.alive_players:
             p.busy = False
             p.acted = False
+
+    def playing_entities_at(self, area: Area) -> List[PlayingEntity]:
+        players: List[PlayingEntity] = []
+        area_players = copy(area.players)
+        while area_players:
+            group = area_players[0].current_group()
+            if len(group) > 1:
+                players.append(Group(group))
+            else:
+                players.append(group[0])
+            for p in group:
+                area_players.remove(p)
+        # print(f'{[str(pe) for pe in players]} {area.at}')
+        return players
 
     def status(self):
         l_name = max([len(p.name) for p in self.alive_players])

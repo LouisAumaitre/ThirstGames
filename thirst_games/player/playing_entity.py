@@ -14,6 +14,14 @@ class PlayingEntity(FightingEntity):
     def act(self):
         raise NotImplementedError
 
+    def reset_turn(self):
+        self.strategy = None
+        self.acted = False
+
+    @property
+    def is_alive(self):
+        raise NotImplementedError
+
     def courage(self):
         raise NotImplementedError
 

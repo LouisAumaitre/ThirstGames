@@ -17,6 +17,9 @@ class Player(Fighter, PlayingEntity):
         self.district = district
         self.relationships: Dict[str, Relationship] = {}
 
+    def __str__(self):
+        return self.first_name
+
     def relationship(self, other_player):
         if other_player.name not in self.relationships:
             self.relationships[other_player.name] = Relationship()
@@ -40,22 +43,11 @@ class Player(Fighter, PlayingEntity):
     def think(self):
         if self.strategy is not None or self.acted:
             return
-        allies = self.present_allies()
-        if len(allies):
-            strats = self._think()
-            for a in allies:
-                for s, v in a._think().items():
-                    strats[s] = strats.get(s, 0) + v
-        else:
-            strats = self._think()
+        strats = self.judge_strats()
         self.strategy = [s for s, v in strats.items() if v == max(strats.values())][0]
-        for a in allies:
-            print(f'{self.name}&{a.name}:{self.strategy.name}')
-            a.strategy = self.strategy
-        if not allies:
-            print(f'{self.name}:{self.strategy.name}')
+        # print(f'{self.name}:{self.strategy.name}')
 
-    def _think(self) -> dict:
+    def judge_strats(self) -> dict:
         if self.sleep < 0:
             if self.map.players_count(self) > 1 and self.energy > self.move_cost:
                 strats = flee_strats()
@@ -82,11 +74,6 @@ class Player(Fighter, PlayingEntity):
 
     def act(self):
         Narrator().cut()
-        for p in self.current_group():
-            p._act()
-            Narrator().cut()
-
-    def _act(self):
         if self.acted:
             return
         self.stop_running()
@@ -106,6 +93,7 @@ class Player(Fighter, PlayingEntity):
                     raise AttributeError(f'{self.name}({self.current_area.at}) has no strat ({self.strategy})') from e
         self.strategy = None
         self.acted = True
+        Narrator().cut()
 
     def fight(self, other_player):
         self.relationship(other_player).allied = False
