@@ -3,6 +3,7 @@ from typing import Dict
 
 from thirst_games.constants import (NIGHT, STARTER, TRAPPED, START_AREA)
 from thirst_games.context import Context
+from thirst_games.map import Map
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.fighter import Fighter
 from thirst_games.traps import can_build_any_trap, build_any_trap
@@ -16,44 +17,61 @@ class Player(Fighter):
         self.strategy = None
 
     def relationship(self, other_player):
-        if other_player not in self.relationships:
+        if other_player.name not in self.relationships:
             self.relationships[other_player.name] = Relationship()
         return self.relationships[other_player.name]
 
     def allies(self):
         return [p for p in Context().alive_players if self.relationship(p).allied]
 
+    def present_allies(self):
+        return [
+            p for p in Context().alive_players if self.relationship(p).allied and self.current_area == p.current_area
+        ]
+
+    def busy_allies(self):
+        return [p for p in Context().alive_players if self.relationship(p).allied and p.busy]
+
     def think(self):
-        allies = self.allies()
-        if allies and self.strategy is None:
+        if self.strategy is not None:
+            return
+        allies = self.present_allies()
+        if len(allies):
             strats = self._think()
             for a in allies:
-                for s, v in a._think():
+                for s, v in a._think().items():
                     strats[s] = strats.get(s, 0) + v
         else:
             strats = self._think()
         self.strategy = [s for s, v in strats.items() if v == max(strats.values())][0]
         for a in allies:
+            print(f'{self.name}&{a.name}:{self.strategy.name}')
             a.strategy = self.strategy
 
     def _think(self) -> dict:
         if self.sleep < 0:
             if self.map.players_count(self) > 1 and self.energy > self.move_cost:
-                return {flee_strat: 1}
+                strats = flee_strats()
             else:
                 return {hide_strat: 1}
         else:
             if Context().time == NIGHT:
-                strats = night_strategies
+                strats = night_strategies()
             elif Context().time == STARTER:
-                strats = start_strategies
+                strats = start_strategies()
             else:
-                strats = morning_strategies
-            # strats.sort(key=lambda x: -x.pref(self) + random() * (1 - self.wisdom))
-            return {s: s.pref(self) + random() * (1 - self.wisdom) for s in strats}
-            # if self.strategy == go_get_drop:
-            #     Narrator().new([
-            #         self.name, f': {[(round(s.pref(self), 2), s.name) for s in strats]}'])
+                strats = morning_strategies()
+        # strats.sort(key=lambda x: -x.pref(self) + random() * (1 - self.wisdom))
+        return {s: s.pref(self) + random() * (1 - self.wisdom) for s in strats}
+        # if self.strategy == go_get_drop:
+        #     Narrator().new([
+        #         self.name, f': {[(round(s.pref(self), 2), s.name) for s in strats]}'])
+
+    def _flee_value(self, area):
+        return Fighter._flee_value(self, area) + 30 * len([a for a in self.allies() if a in area.players])
+
+    def _pursue_value(self, area):
+        return Fighter._flee_value(self, area) + 30 * len([a for a in self.allies() if a in area.players])
 
     def act(self):
         self.stop_running()
@@ -163,11 +181,16 @@ hide_strat = Strategy(
             x.max_health - x.health / 2
         ) / x.map.players_count(x), 0.1]),
     lambda x: x.hide())
-flee_strat = Strategy(
-    'flee',
-    lambda x: (x.energy > x.move_cost) * (
-        x.estimate_of_power(x.current_area) / min(x.map.players_count(x), 6) - x.dangerosity()) + 0.1,
-    lambda x: x.flee())
+
+
+def flee_strats():
+    return [Strategy(
+        f'flee to {area.name}',
+        lambda x: x._flee_value(area) / 30,
+        lambda x: x.flee()
+    ) for area in Map().areas]
+
+
 attack_strat = Strategy(
     'attack',
     lambda x: x.health * min(x.energy, x.stomach, x.sleep) *
@@ -228,16 +251,22 @@ free_trap_strat = Strategy(
     lambda x: 1000 * (TRAPPED in x.status),
     lambda x: x.free_from_trap())
 
-start_strategies = [
-    flee_strat, fight_strat, loot_bag_strat, loot_weapon_strat,
-]
 
-morning_strategies = [
-    hide_strat, flee_strat, attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
-    hunt_player_strat, ambush_strat, go_get_drop, trap_strat, free_trap_strat, duel_strat,
-]
+def start_strategies():
+    return [
+        *flee_strats(), fight_strat, loot_bag_strat, loot_weapon_strat,
+    ]
 
-night_strategies = [
-    hide_strat, flee_strat, loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat, ambush_strat,
-    go_get_drop, trap_strat, free_trap_strat,
-]
+
+def morning_strategies():
+    return [
+        hide_strat, *flee_strats(), attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
+        hunt_player_strat, ambush_strat, go_get_drop, trap_strat, free_trap_strat, duel_strat,
+    ]
+
+
+def night_strategies():
+    return [
+        hide_strat, *flee_strats(), loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat,
+        ambush_strat, go_get_drop, trap_strat, free_trap_strat,
+    ]

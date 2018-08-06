@@ -39,9 +39,7 @@ class Fighter(Carrier):
             self.drop_weapon(verbose=True, drop_verb=drop_verb)
 
         available_areas = [area for area in self.map.areas if area not in filtered_areas]
-        available_areas.sort(
-            key=lambda x: len(x.players) * 10 + (30 if x.is_start else 0)
-                          - len(self.map.loot(x)) - (self.thirst if x.has_water else 0))
+        available_areas.sort(key=lambda x: -self._flee_value(x))
 
         out = self.go_to(available_areas[0])
         if out is None:
@@ -50,15 +48,14 @@ class Fighter(Carrier):
             Narrator().add([self.first_name, f'flees {out.to}'], stock=stock)
             self.check_for_ambush_and_traps()
 
+    def _flee_value(self, area):
+        return -len(area.players) * 10 - (30 if area.is_start else 0) + len(
+            self.map.loot(area)) + (self.thirst if area.has_water else 0)
+
     def pursue(self):
-        available_area = [a for a in self.map.areas if a not in Context().forbidden_areas]
-        max_player_per_area = max([len(area.players) for area in available_area])
-        best_areas = [area for area in available_area if len(area.players) == max_player_per_area]
-        if THIRSTY in self.status and len([a for a in best_areas if a.has_water]):
-            best_areas = [a for a in best_areas if a.has_water]
-        best_areas.sort(key=lambda x: -len(self.map.loot(x)))
-        best_area = best_areas[0]
-        out = self.go_to(best_area)
+        available_areas = [a for a in self.map.areas if a not in Context().forbidden_areas]
+        available_areas.sort(key=lambda x: -self._pursue_value(x))
+        out = self.go_to(available_areas[0])
         if out is None:
             self.hide()
             Narrator().replace('hides and rests', 'rests')
@@ -67,6 +64,9 @@ class Fighter(Carrier):
             players = 'players' if len(targets) > 1 else targets[0]
             Narrator().add([self.first_name, 'searches for', players, out.at])
             self.check_for_ambush_and_traps()
+
+    def _pursue_value(self, area):
+        return len(area.players) * 10 + len(self.map.loot(area)) + (self.thirst if area.has_water else 0)
 
     def go_to(self, area: Union[str, Area, Positionable]) -> Optional[Area]:
         area = self.map.get_area(area)

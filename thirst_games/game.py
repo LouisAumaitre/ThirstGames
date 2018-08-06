@@ -17,6 +17,7 @@ class Game(AbstractGame, metaclass=Singleton):
     def __init__(self, players: Optional[List[Player]]=None):
         if players is None:
             raise ValueError('No players in the arena')
+        Context().game = self
         self.players = players
         self.map = Map(len(players))
         self._event_gauge = 0
@@ -27,10 +28,10 @@ class Game(AbstractGame, metaclass=Singleton):
             for p2 in self.players:
                 if p != p2 and p.district == p2.district:
                     p.relationship(p2).friendship += 0.5
+                    p.relationship(p2).allied = True
         self.event_classes = [WildFire, DropEvent, Flood, AcidGas, Wasps, Beasts]
         self.day = 0
         self.time = STARTER
-        Context().game = self
 
     @property
     def alive_players(self):
@@ -66,7 +67,7 @@ class Game(AbstractGame, metaclass=Singleton):
                 self.launch()
                 Narrator().tell(filters=[self.map.get_area(START_AREA).at])
         self._players_at_last_event = len(self.alive_players)
-        while len(self.alive_players) > 1 and self.day < 10:
+        while len(self.alive_players) > 1 and self.day < 2:
             if self.day != 1:
                 self.time = MORNING
                 self.launch()
