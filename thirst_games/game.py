@@ -107,10 +107,10 @@ class Game(AbstractGame, metaclass=Singleton):
     def play(self):
         Narrator().cut()
         players = copy(self.alive_players)
-        players.sort(key=lambda x: random())
         if self.time != STARTER:
             for p in players:
                 p.upkeep()
+        players.sort(key=lambda x: random())
         if self.check_for_event():
             self.trigger_event()
         for i in range(len(players) + 2):

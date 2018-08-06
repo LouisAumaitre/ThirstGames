@@ -7,16 +7,15 @@ from thirst_games.map import Map, Area
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.carrier import Carrier
 from thirst_games.player.fighter import Fighter
+from thirst_games.player.playing_entity import Strategy, PlayingEntity
 from thirst_games.traps import can_build_any_trap, build_any_trap
 
 
-class Player(Fighter):
+class Player(Fighter, PlayingEntity):
     def __init__(self, first_name: str, district: int, his='their') -> None:
         Fighter.__init__(self, first_name, his)
         self.district = district
         self.relationships: Dict[str, Relationship] = {}
-        self.strategy = None
-        self.acted = True
 
     def relationship(self, other_player):
         if other_player.name not in self.relationships:
@@ -27,9 +26,7 @@ class Player(Fighter):
         return [p for p in Context().alive_players if self.relationship(p).allied]
 
     def present_allies(self):
-        return [
-            p for p in Context().alive_players if self.relationship(p).allied and self.current_area == p.current_area
-        ]
+        return [p for p in self.map.players(self) if self.relationship(p).allied]
 
     def busy_allies(self):
         return [p for p in Context().alive_players if self.relationship(p).allied and p.busy]
@@ -55,6 +52,8 @@ class Player(Fighter):
         for a in allies:
             print(f'{self.name}&{a.name}:{self.strategy.name}')
             a.strategy = self.strategy
+        if not allies:
+            print(f'{self.name}:{self.strategy.name}')
 
     def _think(self) -> dict:
         if self.sleep < 0:
@@ -101,7 +100,10 @@ class Player(Fighter):
                 for s in [strat for strat in strats if strat.pref(self) > 0]:
                     s.apply(self)
             else:
-                self.strategy.apply(self)
+                try:
+                    self.strategy.apply(self)
+                except AttributeError as e:
+                    raise AttributeError(f'{self.name}({self.current_area.at}) has no strat ({self.strategy})') from e
         self.strategy = None
         self.acted = True
 
@@ -169,18 +171,6 @@ class Relationship:
     def __init__(self):
         self.friendship = 0
         self.allied = False
-
-
-class Strategy:
-    def __init__(self, name, pref, action):
-        self.name = name
-        self.pref = pref
-        self.action = action
-
-    def apply(self, player):
-        out = self.action(player)
-        if isinstance(out, str):
-            print(f'{player.first_name} {out}')
 
 
 hide_strat = Strategy(

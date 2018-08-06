@@ -14,7 +14,45 @@ from thirst_games.player.carrier import Carrier
 from thirst_games.weapons import weapon_bleed_proba
 
 
-class Fighter(Carrier):
+class FightingEntity:
+    def courage(self):
+        raise NotImplementedError
+
+    def dangerosity(self):
+        raise NotImplementedError
+
+    def flee(self, panic=False, drop_verb='drops', stock=False):
+        raise NotImplementedError
+
+    def pursue(self):
+        raise NotImplementedError
+
+    def enemies(self, area: Area) -> List[Positionable]:
+        return [p for p in area.players if p != self]  # TODO: consider
+
+    def set_up_ambush(self):
+        raise NotImplementedError
+
+    def estimate_of_power(self, area) -> float:
+        raise NotImplementedError
+
+    def estimate_of_danger(self, area) -> float:
+        raise NotImplementedError
+
+    def can_see(self, other):
+        raise NotImplementedError
+
+    def pillage(self, stuff):
+        raise NotImplementedError
+
+    def attack_at_random(self):
+        raise NotImplementedError
+
+    def fight(self, other_player):
+        raise NotImplementedError
+
+
+class Fighter(Carrier, FightingEntity):
     def __init__(self, first_name: str, his='their'):
         Carrier.__init__(self, first_name, his)
         self.busy = False
@@ -112,7 +150,7 @@ class Fighter(Carrier):
         seen_neighbors = [p for p in neighbors if self.can_see(p) and p != self]
         return sum([p.dangerosity() for p in seen_neighbors])
 
-    def can_see(self, other: Carrier):
+    def can_see(self, other):
         stealth_mult = 1
         random_mult = (random() * 0.5 + 0.5)
         if other.current_area != self.current_area:

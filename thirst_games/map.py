@@ -118,9 +118,16 @@ class Area:
 
 
 class Positionable:
-    current_area: Area = None
+    _current_area: Area = None
     destination: Area = None
     map: Any = None
+
+    @property
+    def current_area(self) -> Area:
+        return self._current_area
+
+    def move_to(self, new_area: Area):
+        self._current_area = new_area
 
 
 class Map(metaclass=Singleton):
@@ -230,7 +237,7 @@ class Map(metaclass=Singleton):
 
     def add_player(self, player: Positionable, destination: Union[str, Area, Positionable]=START_AREA):
         area = self.get_area(destination)
-        player.current_area = area
+        player.move_to(area)
         player.map = self
         area.players.append(player)
 
@@ -248,7 +255,7 @@ class Map(metaclass=Singleton):
 
     def add_trap(self, trap: Positionable, area: Union[str, Area, Positionable]=START_AREA):
         area = self.get_area(area)
-        trap.current_area = area
+        trap.move_to(area)
         trap.map = self
         area.traps.append(trap)
 
