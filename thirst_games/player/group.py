@@ -72,8 +72,10 @@ class Group(PlayingEntity):
 
     def reset_turn(self):
         for p in self.players:
-            self.strategy = None
-            self.acted = False
+            p.strategy = None
+            p.acted = False
+        self.strategy = None
+        self.acted = False
 
     @property
     def is_alive(self):
@@ -88,7 +90,8 @@ class Group(PlayingEntity):
         return sum(p.courage for p in self.players)
 
     def flee(self, panic=False, drop_verb='drops', stock=False):
-        raise NotImplementedError
+        for player in self.acting_players:
+            player.flee(panic=panic, drop_verb=drop_verb, stock=stock)
 
     def pursue(self):
         raise NotImplementedError
