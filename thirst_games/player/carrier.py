@@ -24,6 +24,9 @@ class CarryingEntity:
     def craft(self):
         raise NotImplementedError
 
+    def estimate(self, item: Union[Item, List[Item]]) -> float:
+        raise NotImplementedError
+
 
 class Carrier(Body, CarryingEntity):
     def __init__(self, first_name, his) -> None:

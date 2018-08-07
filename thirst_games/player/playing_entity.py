@@ -23,10 +23,12 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     def is_alive(self):
         raise NotImplementedError
 
-    def courage(self):
+    @property
+    def courage(self) -> float:
         raise NotImplementedError
 
-    def dangerosity(self):
+    @property
+    def dangerosity(self) -> float:
         raise NotImplementedError
 
     def flee(self, panic=False, drop_verb='drops', stock=False):
@@ -81,6 +83,9 @@ class PlayingEntity(FightingEntity, CarryingEntity):
         raise NotImplementedError
 
     def check_for_ambush_and_traps(self):
+        raise NotImplementedError
+
+    def estimate(self, item) -> float:
         raise NotImplementedError
 
 

@@ -108,7 +108,7 @@ class Player(Fighter, PlayingEntity):
 
     def should_go_get_drop(self):
         areas_by_value = {
-            area: self.dangerosity() + self.estimate(self.map.loot(area)) - self.estimate_of_danger(area)
+            area: self.dangerosity + self.estimate(self.map.loot(area)) - self.estimate_of_danger(area)
             for area in self.map.area_names
         }
         filtered = [key for key, value in areas_by_value.items() if value > 0]
@@ -135,17 +135,17 @@ class Player(Fighter, PlayingEntity):
         potential_danger = sum([p.dangerosity() for p in seen_neighbors])
         actual_danger = sum([p.dangerosity() for p in free_neighbors])
 
-        if potential_danger > self.dangerosity() and potential_danger > self.courage():
+        if potential_danger > self.dangerosity and potential_danger > self.courage:
             Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in seen_neighbors])])
             self.flee()
-        elif actual_danger > self.dangerosity() and actual_danger > self.courage():
+        elif actual_danger > self.dangerosity and actual_danger > self.courage:
             Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in free_neighbors])])
             self.flee()
         elif actual_danger > 0:  # enemy present -> fight them
             Narrator().cut()
             self.attack_at_random()
         elif potential_danger > 0 and actual_danger == 0:  # enemy busy but incoming
-            if self.dangerosity() > potential_danger:  # attack before the other(s) arrive
+            if self.dangerosity > potential_danger:  # attack before the other(s) arrive
                 Narrator().cut()
                 self.attack_at_random()
             else:  # loot and go/get your load and hit the road
@@ -157,7 +157,7 @@ class Player(Fighter, PlayingEntity):
         if len(Narrator().current_sentence) == 0:
             Narrator().add([
                 self.name, f'potential_danger={potential_danger}', f'actual_danger={actual_danger}',
-                f'dangerosity={self.dangerosity()}', f'courage={self.courage()}',
+                f'dangerosity={self.dangerosity}', f'courage={self.courage}',
             ])
 
     def cornucopia_victory(self):
@@ -210,12 +210,12 @@ hunt_player_strat = Strategy(
     lambda x: x.attack_at_random())
 fight_strat = Strategy(
     'fight',
-    lambda x: x.health * sum([x.dangerosity() > n.dangerosity() * 1.2 for n in x.map.players(x)]),
+    lambda x: x.health * sum([x.dangerosity > n.dangerosity * 1.2 for n in x.map.players(x)]),
     lambda x: x.attack_at_random())
 duel_strat = Strategy(
     'duel',
     lambda x: (Context().player_count == 2) * sum(
-        [x.dangerosity() > n.dangerosity() * 1.2 for n in x.map.players(x)]),
+        [x.dangerosity > n.dangerosity * 1.2 for n in x.map.players(x)]),
     lambda x: x.attack_at_random())
 loot_strat = Strategy(
     'loot',

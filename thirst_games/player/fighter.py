@@ -19,10 +19,12 @@ class FightingEntity(Positionable):
     def is_alive(self):
         raise NotImplementedError
 
-    def courage(self):
+    @property
+    def courage(self) -> float:
         raise NotImplementedError
 
-    def dangerosity(self):
+    @property
+    def dangerosity(self) -> float:
         raise NotImplementedError
 
     def flee(self, panic=False, drop_verb='drops', stock=False):
@@ -69,12 +71,14 @@ class Fighter(Carrier, FightingEntity):
         self.wisdom = 0.9
         self._waiting = 0
 
-    def courage(self):
+    @property
+    def courage(self) -> float:
         courage = (self.health / self.max_health) * self.energy + self._rage
         courage = courage + self.estimate(self.map.loot(self)) * courage
         return courage
 
-    def dangerosity(self):
+    @property
+    def dangerosity(self) -> float:
         power = self.health * self._damage()
         if SLEEPING in self.status:
             power *= 0.1
@@ -83,7 +87,7 @@ class Fighter(Carrier, FightingEntity):
     def flee(self, panic=False, drop_verb='drops', stock=False):
         filtered_areas = Context().forbidden_areas
         self.status.append(FLEEING)
-        if panic and random() > self.courage() + 0.5:
+        if panic and random() > self.courage + 0.5:
             self.drop_weapon(verbose=True, drop_verb=drop_verb)
 
         available_areas = [area for area in self.map.areas if area not in filtered_areas]
@@ -151,14 +155,14 @@ class Fighter(Carrier, FightingEntity):
         if not len(neighbors):
             return 0
         seen_neighbors = [p for p in neighbors if self.can_see(p) and p != self]
-        return sum([p.dangerosity() for p in seen_neighbors])
+        return sum([p.dangerosity for p in seen_neighbors])
 
     def estimate_of_danger(self, area) -> float:
         neighbors = self.map.potential_players(area)
         if not len(neighbors):
             return 0
         seen_neighbors = [p for p in neighbors if self.can_see(p) and p != self]
-        return sum([p.dangerosity() for p in seen_neighbors])
+        return sum([p.dangerosity for p in seen_neighbors])
 
     def can_see(self, other):
         stealth_mult = 1
@@ -244,7 +248,7 @@ class Fighter(Carrier, FightingEntity):
                 Narrator().apply_stock()
                 verb = 'fights'
                 area = ''
-                if random() > other_player.courage() and other_player.can_flee():
+                if random() > other_player.courage and other_player.can_flee():
                     other_stuff = [other_player.weapon]
                     other_player.flee(panic=True)
                     other_stuff = other_stuff if not other_player.has_weapon else []
@@ -256,7 +260,7 @@ class Fighter(Carrier, FightingEntity):
                     break
                 Narrator().add([other_player.first_name, 'fights back', other_weapon])
                 Narrator().apply_stock()
-                if random() > self.courage() and self.can_flee():
+                if random() > self.courage and self.can_flee():
                     self_stuff = [self.weapon]
                     self.flee(panic=True)
                     self_stuff = self_stuff if not self.has_weapon else []

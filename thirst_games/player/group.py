@@ -3,10 +3,11 @@ from typing import List, Optional, Union
 
 from copy import copy
 
+from thirst_games.context import Context
 from thirst_games.items import Weapon, Item, Bag, HANDS
 from thirst_games.map import Positionable, Area
 from thirst_games.narrator import format_list, Narrator
-from thirst_games.player.player import Player
+from thirst_games.player.player import Player, go_get_drop
 from thirst_games.player.playing_entity import PlayingEntity
 
 
@@ -15,7 +16,7 @@ def player_names(players: List[Player]) -> str:
 
 
 class Group(PlayingEntity):
-    def __init__(self, players: List[Player]):
+    def __init__(self, players: List[Player]) -> None:
         if not len(players):
             raise ValueError
         self.players = players
@@ -23,15 +24,24 @@ class Group(PlayingEntity):
         self.move_to(players[0].current_area)
         self.map = players[0].map
 
+    @property
+    def current_area(self):
+        return self.acting_players[0].current_area
+
     def __str__(self):
         return f'G({format_list([p.name for p in self.players])})'
 
     def think(self):
         strats = {}
+        destinations = {}
         for a in self.players:
             for s, v in a.judge_strats().items():
                 strats[s] = strats.get(s, 0) + v
+                if s == go_get_drop:
+                    destinations[a.destination] = destinations.get(a.destination, 0) + v
         self.strategy = [s for s, v in strats.items() if v == max(strats.values())][0]
+        if self.strategy == go_get_drop:
+            self.destination = [area for area, v in destinations.items() if v == max(destinations.values())][0]
         print(f'{str(self)}:{self.strategy.name}')
         for a in self.players:
             a.strategy = self.strategy
@@ -61,10 +71,12 @@ class Group(PlayingEntity):
     def is_alive(self):
         return sum(p.is_alive for p in self.players) > 0
 
-    def courage(self):
+    @property
+    def courage(self) -> float:
         return max(p.courage for p in self.players)
 
-    def dangerosity(self):
+    @property
+    def dangerosity(self) -> float:
         return sum(p.courage for p in self.players)
 
     def flee(self, panic=False, drop_verb='drops', stock=False):
@@ -211,6 +223,9 @@ class Group(PlayingEntity):
         for p in self.acting_players:
             p.reveal()
 
+    def estimate(self, item) -> float:
+        raise NotImplementedError
+
     def go_to(self, area: Union[str, Area, Positionable]) -> Optional[Area]:
         area = self.map.get_area(area)
         if area != self.current_area:
@@ -232,17 +247,17 @@ class Group(PlayingEntity):
         potential_danger = sum([p.dangerosity() for p in seen_neighbors])
         actual_danger = sum([p.dangerosity() for p in free_neighbors])
 
-        if potential_danger > self.dangerosity() and potential_danger > self.courage():
+        if potential_danger > self.dangerosity and potential_danger > self.courage:
             Narrator().add([player_names(self.acting_players), 'see', format_list([p.first_name for p in seen_neighbors])])
             self.flee()
-        elif actual_danger > self.dangerosity() and actual_danger > self.courage():
+        elif actual_danger > self.dangerosity and actual_danger > self.courage:
             Narrator().add([player_names(self.acting_players), 'see', format_list([p.first_name for p in free_neighbors])])
             self.flee()
         elif actual_danger > 0:  # enemy present -> fight them
             Narrator().cut()
             self.attack_at_random()
         elif potential_danger > 0 and actual_danger == 0:  # enemy busy but incoming
-            if self.dangerosity() > potential_danger:  # attack before the other(s) arrive
+            if self.dangerosity > potential_danger:  # attack before the other(s) arrive
                 Narrator().cut()
                 self.attack_at_random()
             else:  # loot and go/get your load and hit the road
@@ -254,5 +269,5 @@ class Group(PlayingEntity):
         if len(Narrator().current_sentence) == 0:
             Narrator().add([
                 str(self), f'potential_danger={potential_danger}', f'actual_danger={actual_danger}',
-                f'dangerosity={self.dangerosity()}', f'courage={self.courage()}',
+                f'dangerosity={self.dangerosity}', f'courage={self.courage}',
             ])
