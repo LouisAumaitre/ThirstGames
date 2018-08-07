@@ -18,6 +18,12 @@ class CarryingEntity:
     def loot_bag(self):
         raise NotImplementedError
 
+    def loot(self, take_a_break=True):
+        raise NotImplementedError
+
+    def craft(self):
+        raise NotImplementedError
+
 
 class Carrier(Body, CarryingEntity):
     def __init__(self, first_name, his) -> None:

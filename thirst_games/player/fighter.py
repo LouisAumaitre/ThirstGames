@@ -1,7 +1,7 @@
 from typing import Union, Optional, List
 
 from copy import copy
-from random import random
+from random import random, choice
 
 from thirst_games.constants import (
     SLEEPING, FLEEING, AMBUSH, TRAPPED, STARTER, ARM_WOUND)
@@ -53,6 +53,12 @@ class FightingEntity(Positionable):
         raise NotImplementedError
 
     def fight(self, other_player):
+        raise NotImplementedError
+
+    def go_to(self, area: Union[str, Area, Positionable]) -> Optional[Area]:
+        raise NotImplementedError
+
+    def check_for_ambush_and_traps(self):
         raise NotImplementedError
 
 
@@ -302,3 +308,18 @@ class Fighter(Carrier, FightingEntity):
 
     def damage(self):
         return self._damage() * random()
+
+    def check_for_ambush_and_traps(self):
+        traps = self.map.traps(self)
+        for t in traps:
+            if t.check(self):
+                t.apply(self)
+                return True
+        ambushers = [p for p in self.map.players(self) if AMBUSH in p.status and SLEEPING not in p.status]
+        if not len(ambushers):
+            return False
+        ambusher = choice(ambushers)
+        ambusher.status.remove(AMBUSH)
+        Narrator().new([self.first_name, 'falls', 'into', f'{ambusher.first_name}\'s ambush!'])
+        ambusher.fight(self)
+        return True

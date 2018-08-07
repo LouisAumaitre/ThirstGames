@@ -121,6 +121,7 @@ class Positionable:
     _current_area: Area = None
     destination: Area = None
     map: Any = None
+    stealth: float = 0
 
     @property
     def current_area(self) -> Area:
@@ -128,6 +129,9 @@ class Positionable:
 
     def move_to(self, new_area: Area):
         self._current_area = new_area
+
+    def reveal(self):
+        self.stealth = 0
 
 
 class Map(metaclass=Singleton):

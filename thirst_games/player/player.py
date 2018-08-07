@@ -76,7 +76,6 @@ class Player(Fighter, PlayingEntity):
         new_strat = self.new_strat()
         if new_strat is not None:
             self.apply_strat(new_strat)
-        self.strategy = None
         self.acted = True
 
     def new_strat(self) -> Optional[Strategy]:
@@ -92,6 +91,8 @@ class Player(Fighter, PlayingEntity):
 
     def apply_strat(self, strategy: Optional[Strategy]):
         Narrator().cut()
+        if self.acted or self.busy:
+            return
         if strategy is None:
             strategy = self.strategy
         try:

@@ -59,6 +59,30 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     def fight(self, other_player):
         raise NotImplementedError
 
+    def hide(self):
+        raise NotImplementedError
+
+    def loot_weapon(self, weapon=None):
+        raise NotImplementedError
+
+    def loot_bag(self):
+        raise NotImplementedError
+
+    def loot(self, take_a_break=True):
+        raise NotImplementedError
+
+    def craft(self):
+        raise NotImplementedError
+
+    def go_get_drop(self):
+        raise NotImplementedError
+
+    def go_to(self, area):
+        raise NotImplementedError
+
+    def check_for_ambush_and_traps(self):
+        raise NotImplementedError
+
 
 class Strategy:
     def __init__(self, name, pref, action):

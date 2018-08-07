@@ -26,7 +26,6 @@ class Body(Positionable):
         self._water = 2
         self._rage = 0
         self._poisons: List[Poison] = []
-        self.stealth = 0
         self.status = []
 
     @property
@@ -185,6 +184,7 @@ class Body(Positionable):
         return self.rest(stock=stock)
 
     def reveal(self):
+        Positionable.reveal(self)
         self.stealth = 0
         if AMBUSH in self.status:
             self.status.remove(AMBUSH)
@@ -216,21 +216,6 @@ class Body(Positionable):
 
     def add_poison(self, poison):
         self._poisons.append(poison)
-
-    def check_for_ambush_and_traps(self):
-        traps = self.map.traps(self)
-        for t in traps:
-            if t.check(self):
-                t.apply(self)
-                return True
-        ambushers = [p for p in self.map.players(self) if AMBUSH in p.status and SLEEPING not in p.status]
-        if not len(ambushers):
-            return False
-        ambusher = choice(ambushers)
-        ambusher.status.remove(AMBUSH)
-        Narrator().new([self.first_name, 'falls', 'into', f'{ambusher.first_name}\'s ambush!'])
-        ambusher.fight(self)
-        return True
 
     def free_from_trap(self):
         if TRAPPED in self.status:
