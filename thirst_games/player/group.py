@@ -6,7 +6,7 @@ from random import random, choice
 from thirst_games.abstract.area import Area
 from thirst_games.abstract.entity import Entity
 from thirst_games.abstract.items import Weapon, Item, Bag, HANDS
-from thirst_games.abstract.playing_entity import PlayingEntity
+from thirst_games.abstract.playing_entity import PlayingEntity, do_a_fight
 from thirst_games.map import Map
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.player import Player, go_get_drop
@@ -21,9 +21,13 @@ class Group(PlayingEntity):
         PlayingEntity.__init__(self, 'group', 'it')
         if not len(players):
             raise ValueError
-        self.players = players
+        self._players = players
         self._acting_players = copy(players)
         self.move_to(players[0].current_area)
+
+    @property
+    def players(self):
+        return self._players
 
     @property
     def name(self) -> str:
@@ -124,7 +128,7 @@ class Group(PlayingEntity):
             player.attack_at_random()
 
     def fight(self, other_player):
-        raise NotImplementedError
+        do_a_fight(self.players, other_player.players)
 
     def loot_weapon(self, weapon: Optional[Union[Weapon, List[Weapon]]]=None):
         weapons: List[Weapon] = []

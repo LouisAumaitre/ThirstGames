@@ -5,7 +5,7 @@ from random import random, choice
 
 from thirst_games.abstract.entity import Entity, FightingEntity, LivingEntity
 from thirst_games.abstract.items import Weapon, PoisonVial
-from thirst_games.abstract.playing_entity import Strategy, PlayingEntity, Relationship
+from thirst_games.abstract.playing_entity import Strategy, PlayingEntity, Relationship, do_a_fight
 from thirst_games.constants import (NIGHT, STARTER, TRAPPED, START_AREA, SLEEPING, FLEEING, AMBUSH, ARM_WOUND)
 from thirst_games.context import Context
 from thirst_games.map import Map, Area
@@ -257,6 +257,8 @@ class Player(Carrier, PlayingEntity):
         return sum([p.dangerosity for p in seen_neighbors])
 
     def can_see(self, other):
+        if SLEEPING in self.status:
+            return False
         stealth_mult = 1
         random_mult = (random() * 0.5 + 0.5)
         if other.current_area != self.current_area:
@@ -310,69 +312,12 @@ class Player(Carrier, PlayingEntity):
         if isinstance(other_player, Player):
             self.relationship(other_player).allied = False
             other_player.relationship(self).allied = False
-        self.busy = True
-        other_player.busy = True
-
-        verb = 'catches and attacks' if FLEEING in other_player.status else (
-            'finds and attacks' if other_player.stealth else 'attacks')
-        if FLEEING in other_player.status:
-            other_player.status.remove(FLEEING)
-        weapon = f'with {self.his} {self.weapon.name}'
-        self_stuff = []
-        other_weapon = f'with {other_player.his} {other_player.weapon.name}'
-        other_stuff = []
-        area = self.current_area.at
-        surprise_mult = 2 if SLEEPING in other_player.status else (
-            2 if TRAPPED in other_player.status else (
-                1.5 if not other_player.can_see(self) else 1
-            ))
-        surprise = f'in {other_player.his} sleep' if SLEEPING in other_player.status else (
-            f'while {other_player.he} is trapped' if TRAPPED in other_player.status else (
-                'by surprise' if surprise_mult > 1 else ''))
-        self.reveal()
-        other_player.reveal()
-        round = 1
-
-        if self.hit(other_player, surprise_mult):
-            Narrator().add([
-                self.name, 'kills', other_player.name, surprise, area, weapon])
-            other_stuff = other_player.drops
-        else:
-            while True:
-                Narrator().new([self.name, verb, other_player.name, area, weapon])
-                Narrator().apply_stock()
-                verb = 'fights'
-                area = ''
-                if random() > other_player.courage and other_player.can_flee():
-                    other_stuff = [other_player.weapon]
-                    other_player.flee(panic=True)
-                    other_stuff = other_stuff if not other_player.has_weapon else []
-                    break
-                if other_player.hit(self):
-                    Narrator().add(['and'])
-                    Narrator().add([other_player.name, 'kills', self.him, 'in self-defense', other_weapon])
-                    self_stuff = self.drops
-                    break
-                Narrator().add([other_player.name, 'fights back', other_weapon])
-                Narrator().apply_stock()
-                if random() > self.courage and self.can_flee():
-                    self_stuff = [self.weapon]
-                    self.flee(panic=True)
-                    self_stuff = self_stuff if not self.has_weapon else []
-                    break
-                if Context().time == STARTER and round > 3:
-                    break
-                round += 1
-                if self.hit(other_player):
-                    Narrator().new([self.name, verb, 'and', 'kills', other_player.name, weapon])
-                    other_stuff = other_player.drops
-                    break
-        self.pillage(other_stuff)
-        other_player.pillage(self_stuff)
+        do_a_fight(self.players, other_player.players)
 
     def hit(self, target: LivingEntity, mult=1) -> bool:
         if SLEEPING in target.status:
             target.status.remove(SLEEPING)
+            mult *= 2
         if self.energy < 0.1:
             mult /= 2
             self._rage = -1
@@ -381,6 +326,8 @@ class Player(Carrier, PlayingEntity):
         hit_chance = mult if mult > 1 else 0.6 * mult
         if ARM_WOUND in self.status:
             hit_chance -= 0.2
+        if TRAPPED in target.status:
+            hit_chance += 0.3
         if random() < hit_chance:
             self._rage += 0.1
             if self.weapon.poison is not None and\

@@ -183,7 +183,12 @@ class Map(metaclass=Singleton):
         area.players.append(player)
 
     def remove_player(self, player: Entity):
-        player.current_area.players.remove(player)
+        try:
+            player.current_area.players.remove(player)
+        except ValueError as e:
+            for area in self.areas:
+                print(f'{area.name}: {[p.name for p in area.players]}')
+            raise e
 
     def move_player(self, player, destination: Union[str, Area, Entity]) -> Optional[Area]:
         new_area = self.get_area(destination)
