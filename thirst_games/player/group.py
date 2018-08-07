@@ -36,6 +36,7 @@ class Group(PlayingEntity):
         for p in self.players:
             if p.new_strat() == self.strategy:
                 acting_players.append(p)
+                print(f'{p.name} follows the strat')
             else:
                 p.act()
 

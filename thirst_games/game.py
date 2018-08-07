@@ -190,6 +190,9 @@ class Game(AbstractGame, metaclass=Singleton):
     def death(self, dead_player):
         try:
             self.map.remove_player(dead_player)
+            if len(self.alive_players) == 2:
+                self.alive_players[0].relationship(self.alive_players[1]).allied = False
+                self.alive_players[1].relationship(self.alive_players[0]).allied = False
         except ValueError as e:
             Narrator().tell()
             raise ValueError(
