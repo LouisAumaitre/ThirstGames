@@ -1,10 +1,11 @@
 from typing import List
 
 from thirst_games.map import Area, Positionable
+from thirst_games.player.carrier import CarryingEntity
 from thirst_games.player.fighter import FightingEntity
 
 
-class PlayingEntity(FightingEntity):
+class PlayingEntity(FightingEntity, CarryingEntity):
     strategy = None
     acted = False
 

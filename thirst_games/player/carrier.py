@@ -11,7 +11,15 @@ from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.body import Body
 
 
-class Carrier(Body):
+class CarryingEntity:
+    def loot_weapon(self, weapon: Optional[Union[Weapon, List[Weapon]]] = None):
+        raise NotImplementedError
+
+    def loot_bag(self):
+        raise NotImplementedError
+
+
+class Carrier(Body, CarryingEntity):
     def __init__(self, first_name, his) -> None:
         Body.__init__(self, first_name, his)
         self._equipment: List[Item] = []
