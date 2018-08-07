@@ -4,6 +4,7 @@ from typing import List, Optional
 from copy import copy
 from random import random, choice
 
+from thirst_games.abstract.playing_entity import PlayingEntity
 from thirst_games.constants import AFTERNOON, MORNING, NIGHT, STARTER
 from thirst_games.context import Context, AbstractGame
 from thirst_games.event import WildFire, DropEvent, Flood, AcidGas, Wasps, Beasts
@@ -11,7 +12,6 @@ from thirst_games.map import Map, START_AREA, Area
 from thirst_games.narrator import Narrator, format_list
 from thirst_games.player.group import Group
 from thirst_games.player.player import Player
-from thirst_games.player.playing_entity import PlayingEntity
 from thirst_games.singleton import Singleton
 
 
@@ -62,14 +62,14 @@ class Game(AbstractGame, metaclass=Singleton):
             Narrator().new(f'...')
             if self.map.players_count(START_AREA) > 1:
                 Narrator().new([
-                    format_list([p.first_name for p in self.alive_players if p.current_area.is_start]),
+                    format_list([p.name for p in self.alive_players if p.current_area.is_start]),
                     'remain',
                     self.map.get_area(START_AREA).at
                 ])
             elif self.map.players_count(START_AREA) == 1:
                 Narrator().new([
                     'Only',
-                    [p for p in self.alive_players if p.current_area.is_start][0].first_name,
+                    [p for p in self.alive_players if p.current_area.is_start][0].name,
                     'remains',
                     self.map.get_area(START_AREA).at
                 ])
@@ -111,7 +111,7 @@ class Game(AbstractGame, metaclass=Singleton):
         players: List[PlayingEntity] = []
         for area in self.map.areas:
             players.extend(self.playing_entities_at(area))
-        print(f'{[str(pe) for pe in players]}')
+        # print(f'{[str(pe) for pe in players]}')
         if self.time != STARTER:
             for p in self.alive_players:
                 p.upkeep()
@@ -196,6 +196,6 @@ class Game(AbstractGame, metaclass=Singleton):
         except ValueError as e:
             Narrator().tell()
             raise ValueError(
-                f'{dead_player.first_name} has {dead_player.health}hp, is_alive={dead_player.is_alive}, '
+                f'{dead_player.name} has {dead_player.health}hp, is_alive={dead_player.is_alive}, '
                 f'is_in_players={dead_player in self.alive_players}'
             ) from e

@@ -1,36 +1,20 @@
-from random import choice, random
 from typing import List, Optional, Union
 
 from copy import copy
+from random import choice, random
 
+from thirst_games.abstract.entity import CarryingEntity
+from thirst_games.abstract.items import Bag, Item, Weapon, Bottle, Food, HANDS
 from thirst_games.constants import KNIFE, HATCHET, BLEEDING, STARTER, SWORD, AXE
 from thirst_games.context import Context
-from thirst_games.items import Bag, Item, Weapon, Bottle, Food, HANDS
-from thirst_games.map import START_AREA
+from thirst_games.map import START_AREA, Map
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.body import Body
 
 
-class CarryingEntity:
-    def loot_weapon(self, weapon: Optional[Union[Weapon, List[Weapon]]] = None):
-        raise NotImplementedError
-
-    def loot_bag(self):
-        raise NotImplementedError
-
-    def loot(self, take_a_break=True):
-        raise NotImplementedError
-
-    def craft(self):
-        raise NotImplementedError
-
-    def estimate(self, item: Union[Item, List[Item]]) -> float:
-        raise NotImplementedError
-
-
 class Carrier(Body, CarryingEntity):
-    def __init__(self, first_name, his) -> None:
-        Body.__init__(self, first_name, his)
+    def __init__(self, name, his) -> None:
+        Body.__init__(self, name, his)
         self._equipment: List[Item] = []
         self.weapon: Weapon = HANDS
 
@@ -82,12 +66,12 @@ class Carrier(Body, CarryingEntity):
             stuff = [e.name for bag in bags for e in bag.content]
             if len(stuff):
                 Narrator().new([
-                    self.first_name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
+                    self.name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
                     'finds', format_list(stuff)])
                 Narrator().cut()
             else:
                 Narrator().new([
-                    self.first_name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
+                    self.name, 'checks', self.his, 'bags,' if len(bags) > 1 else 'bag,',
                     'finds', 'they are' if len(bags) > 1 else 'it is', 'empty'])
                 Narrator().cut()
             for i in range(1, len(bags)):
@@ -108,7 +92,7 @@ class Carrier(Body, CarryingEntity):
             self.remove_item('iodine')
             verbs = ['disinfects']
             tools = ['iodine']
-        elif self.map.has_water(self):
+        elif Map().has_water(self):
             self._max_health *= 0.99
             verbs = ['cleans']
             tools = [f'{self.current_area}\'s water']
@@ -131,7 +115,7 @@ class Carrier(Body, CarryingEntity):
 
         wound_name = 'wounds' if wound == BLEEDING else wound
         Narrator().add(
-            [self.first_name, format_list(verbs), self.his, wound_name, verb_part_2, 'using', format_list(tools)],
+            [self.name, format_list(verbs), self.his, wound_name, verb_part_2, 'using', format_list(tools)],
             stock=stock
         )
 
@@ -157,41 +141,41 @@ class Carrier(Body, CarryingEntity):
     def loot(self, take_a_break=True):
         if take_a_break:
             self.take_a_break()
-        if self.map.players_count(self) == 1:
-            item = self.map.pick_best_item(self)
+        if Map().players_count(self) == 1:
+            item = Map().pick_best_item(self)
         else:
-            item = self.map.pick_item(self.current_area)
+            item = Map().pick_item(self.current_area)
         if item is None or (isinstance(item, Weapon) and item.damage_mult <= self.weapon.damage_mult):
             Narrator().add([
-                self.first_name, 'tries to loot', self.current_area.at, 'but can\'t find anything useful'])
+                self.name, 'tries to loot', self.current_area.at, 'but can\'t find anything useful'])
             return
         if isinstance(item, Weapon):
             self.loot_weapon(item)
         else:
-            Narrator().add([self.first_name, 'picks up', item.long_name, self.current_area.at])
+            Narrator().add([self.name, 'picks up', item.long_name, self.current_area.at])
             self.get_item(item)
 
     def loot_weapon(self, weapon: Optional[Weapon]=None):
         if weapon is None:
-            weapon = self.map.pick_weapon(self.current_area)
+            weapon = Map().pick_weapon(self.current_area)
         if weapon is None or (weapon.damage_mult <= self.weapon.damage_mult and (
                     not weapon.small or Context().time == STARTER or self.bag is None)):
             Narrator().add([
-                self.first_name, 'tries to find a weapon', self.current_area.at, 'but can\'t find anything good'])
+                self.name, 'tries to find a weapon', self.current_area.at, 'but can\'t find anything good'])
             return
         if weapon.name == self.weapon.name:
             self.weapon.long_name.replace('\'s', '\'s old')
             Narrator().add([
-                self.first_name, 'picks up', f'a better {weapon.name}', self.current_area.at])
+                self.name, 'picks up', f'a better {weapon.name}', self.current_area.at])
         else:
-            Narrator().add([self.first_name, 'picks up', weapon.long_name, self.current_area.at])
+            Narrator().add([self.name, 'picks up', weapon.long_name, self.current_area.at])
         self.get_weapon(weapon)
 
     def loot_bag(self):
-        item = self.map.pick_bag(self.current_area)
+        item = Map().pick_bag(self.current_area)
         if item is None:
             return self.loot()
-        Narrator().add([self.first_name, 'picks up', item.long_name, self.current_area.at])
+        Narrator().add([self.name, 'picks up', item.long_name, self.current_area.at])
         self.get_item(item)
 
     def estimate(self, item: Union[Item, List[Item]]) -> float:
@@ -226,7 +210,7 @@ class Carrier(Body, CarryingEntity):
             else:
                 self.drop_weapon(verbose=False)
             self.weapon = weapon
-            self.weapon.long_name = f'{self.first_name}\'s {weapon.name}'
+            self.weapon.long_name = f'{self.name}\'s {weapon.name}'
         elif weapon.small and self.bag is not None:
             self.bag.content.append(weapon)
 
@@ -234,13 +218,13 @@ class Carrier(Body, CarryingEntity):
         if self.weapon != HANDS:
             if verbose:
                 Narrator().add([
-                    self.first_name, drop_verb, f'{self.his} {self.weapon.name}', self.current_area.at])
-            self.map.add_loot(self.weapon, self.current_area)
+                    self.name, drop_verb, f'{self.his} {self.weapon.name}', self.current_area.at])
+            Map().add_loot(self.weapon, self.current_area)
         self.weapon = HANDS
 
     def get_item(self, item):
         if isinstance(item, Bag):
-            item.long_name = f'{self.first_name}\'s {item.name}'
+            item.long_name = f'{self.name}\'s {item.name}'
             if 'unchecked bag' not in self.status:
                 self.status.append('unchecked bag')
             self._equipment.append(item)
@@ -274,17 +258,17 @@ class Carrier(Body, CarryingEntity):
         if weapon.damage_mult > self.weapon.damage_mult:
             description = weapon.long_name
             if weapon.name == self.weapon.name:
-                self.weapon.long_name = f'{self.first_name}\'s old {self.weapon.name}'
+                self.weapon.long_name = f'{self.name}\'s old {self.weapon.name}'
                 description = f'a better {weapon.name}'
-            Narrator().add([self.first_name, 'crafts', description, with_tool, self.current_area.at])
+            Narrator().add([self.name, 'crafts', description, with_tool, self.current_area.at])
             self.get_weapon(weapon)
         else:
             Narrator().add([
-                self.first_name, 'tries to craft a better weapon', self.current_area.at])
+                self.name, 'tries to craft a better weapon', self.current_area.at])
 
     def fill_bottles(self):
         self.water_upkeep()
-        if self.map.has_water(self):
+        if Map().has_water(self):
             total_water = self.water + sum(b.fill for b in self.bottles)
             self._water = max(1.5, self.water)
             for b in self.bottles:
@@ -323,7 +307,7 @@ class Carrier(Body, CarryingEntity):
         return amount
 
     def forage(self):
-        food: Food = self.map.get_forage(self)
+        food: Food = Map().get_forage(self)
         self.fill_bottles()
         if food is None:
             Narrator().add([self.name, 'searches for food', 'but does not find anything edible'])
@@ -378,7 +362,7 @@ class Carrier(Body, CarryingEntity):
 
     def consume_antidote(self):
         if len(self.active_poisons) and self.has_item('antidote'):
-            Narrator().new([self.first_name, 'uses', self.his, 'antidote'])
+            Narrator().new([self.name, 'uses', self.his, 'antidote'])
             poisons = copy(self.active_poisons)
             poisons.sort(key=lambda p: -p.damage * p.amount)
             self.remove_poison(poisons[0])
@@ -386,5 +370,5 @@ class Carrier(Body, CarryingEntity):
     def die(self):
         self.drop_weapon(verbose=False)
         for e in self._equipment:
-            self.map.add_loot(e, self.current_area)
+            Map().add_loot(e, self.current_area)
         Body.die(self)

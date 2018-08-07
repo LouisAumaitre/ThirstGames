@@ -1,32 +1,33 @@
-from random import random, choice
 from typing import List, Optional, Union
 
 from copy import copy
+from random import random, choice
 
-from thirst_games.constants import AMBUSH, SLEEPING
-from thirst_games.items import Weapon, Item, Bag, HANDS
-from thirst_games.map import Positionable, Area
+from thirst_games.abstract.area import Area
+from thirst_games.abstract.entity import Entity
+from thirst_games.abstract.items import Weapon, Item, Bag, HANDS
+from thirst_games.abstract.playing_entity import PlayingEntity
+from thirst_games.map import Map
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.player import Player, go_get_drop
-from thirst_games.player.playing_entity import PlayingEntity
 
 
 def player_names(players: List[Player]) -> str:
-    return format_list([p.first_name for p in players])
+    return format_list([p.name for p in players])
 
 
 class Group(PlayingEntity):
     def __init__(self, players: List[Player]) -> None:
+        PlayingEntity.__init__(self, 'group', 'it')
         if not len(players):
             raise ValueError
         self.players = players
         self._acting_players = copy(players)
         self.move_to(players[0].current_area)
-        self.map = players[0].map
 
     @property
     def name(self) -> str:
-        return f'The group of {self.acting_players[0].first_name}'
+        return f'{self.acting_players[0].name}\'s group'
 
     @property
     def acting_players(self) -> List[Player]:
@@ -96,7 +97,7 @@ class Group(PlayingEntity):
     def pursue(self):
         raise NotImplementedError
 
-    def enemies(self, area: Area) -> List[Positionable]:
+    def enemies(self, area: Area) -> List[Entity]:
         return [p for p in area.players if p != self]  # TODO: consider
 
     def set_up_ambush(self):
@@ -133,7 +134,7 @@ class Group(PlayingEntity):
             weapons = weapon
         if weapon is None:
             for _ in self.acting_players:
-                weapons.append(self.map.pick_weapon(self))
+                weapons.append(Map().pick_weapon(self))
         weapons = [w for w in weapons if w is not None]
 
         weapons.sort(key=lambda x: -x.damage_mult)
@@ -146,9 +147,9 @@ class Group(PlayingEntity):
                 if weapon.damage_mult > player.weapon.damage_mult:
                     if weapon.name == player.weapon.name:
                         player.weapon.long_name.replace('\'s', '\'s old')
-                        Narrator().add([player.first_name, 'picks up', f'a better {weapon.name}', self.current_area.at])
+                        Narrator().add([player.name, 'picks up', f'a better {weapon.name}', self.current_area.at])
                     else:
-                        Narrator().add([player.first_name, 'picks up', weapon.long_name, self.current_area.at])
+                        Narrator().add([player.name, 'picks up', weapon.long_name, self.current_area.at])
                     if player.weapon != HANDS:
                         weapons.append(player.weapon)
                     player.get_weapon(weapon)
@@ -166,9 +167,9 @@ class Group(PlayingEntity):
     def loot_bag(self):
         items: List[Item] = []
         for _ in self.acting_players:
-            b = self.map.pick_bag(self)
+            b = Map().pick_bag(self)
             if b is None:
-                b = self.map.pick_item(self)
+                b = Map().pick_item(self)
             if b is not None:
                 items.append(b)
 
@@ -179,7 +180,7 @@ class Group(PlayingEntity):
         for player in self.acting_players:
             if len(items):
                 item = items.pop(0)
-                Narrator().add([player.first_name, 'picks up', item.long_name, self.current_area.at])
+                Narrator().add([player.name, 'picks up', item.long_name, self.current_area.at])
                 player.get_item(item)
             else:
                 empty_handed.append(player)
@@ -193,7 +194,7 @@ class Group(PlayingEntity):
     def loot(self, take_a_break=True):
         items: List[Item] = []
         for _ in self.acting_players:
-            b = self.map.pick_item(self)
+            b = Map().pick_item(self)
             if b is not None:
                 items.append(b)
 
@@ -204,7 +205,7 @@ class Group(PlayingEntity):
         for player in self.acting_players:
             if len(items):
                 item = items.pop(0)
-                Narrator().add([player.first_name, 'picks up', item.long_name, self.current_area.at])
+                Narrator().add([player.name, 'picks up', item.long_name, self.current_area.at])
                 player.get_item(item)
             else:
                 empty_handed.append(player)
@@ -222,8 +223,8 @@ class Group(PlayingEntity):
         for player in self.acting_players:
             player.hide(stock=stock)
         # if self.sleep < 0.1 \
-        #         or (Context().time == NIGHT and self.map.players_count == 1 and len(self.wounds) == 0) \
-        #         or (self.map.players_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
+        #         or (Context().time == NIGHT and Map().players_count == 1 and len(self.wounds) == 0) \
+        #         or (Map().players_count == 1 and self.sleep < 0.2 and len(self.wounds) == 0) \
         #         or (Context().time == NIGHT and self.sleep < 0.3 and len(self.wounds) == 0):
         #     self.go_to_sleep(stock=stock)
         #     return
@@ -240,12 +241,12 @@ class Group(PlayingEntity):
     def estimate(self, item) -> float:
         raise NotImplementedError
 
-    def go_to(self, area: Union[str, Area, Positionable]) -> Optional[Area]:
-        area = self.map.get_area(area)
+    def go_to(self, area: Union[str, Area, Entity]) -> Optional[Area]:
+        area = Map().get_area(area)
         if area != self.current_area:
             for p in self.acting_players:
                 p.go_to(area)
-            return self.map.move_player(self, area)
+            return Map().move_player(self, area)
         return None
 
     def go_get_drop(self):
@@ -256,18 +257,18 @@ class Group(PlayingEntity):
             Narrator().cut()
         if self.check_for_ambush_and_traps():
             return
-        seen_neighbors = [p for p in self.map.potential_players(self) if self.can_see(p) and p != self]
+        seen_neighbors = [p for p in Map().potential_players(self) if self.can_see(p) and p != self]
         free_neighbors = [p for p in seen_neighbors if p.current_area == self.current_area and not p.busy]
         potential_danger = sum([p.dangerosity for p in seen_neighbors])
         actual_danger = sum([p.dangerosity for p in free_neighbors])
 
         if potential_danger > self.dangerosity and potential_danger > self.courage:
             Narrator().add([
-                player_names(self.acting_players), 'see', format_list([p.first_name for p in seen_neighbors])])
+                player_names(self.acting_players), 'see', format_list([p.name for p in seen_neighbors])])
             self.flee()
         elif actual_danger > self.dangerosity and actual_danger > self.courage:
             Narrator().add([
-                player_names(self.acting_players), 'see', format_list([p.first_name for p in free_neighbors])])
+                player_names(self.acting_players), 'see', format_list([p.name for p in free_neighbors])])
             self.flee()
         elif actual_danger > 0:  # enemy present -> fight them
             Narrator().cut()
@@ -278,7 +279,7 @@ class Group(PlayingEntity):
                 self.attack_at_random()
             else:  # loot and go/get your load and hit the road
                 Narrator().add([
-                    player_names(self.acting_players), 'avoid', format_list([p.first_name for p in seen_neighbors])])
+                    player_names(self.acting_players), 'avoid', format_list([p.name for p in seen_neighbors])])
                 self.loot(take_a_break=False)
                 self.flee()
         else:  # servez-vous
@@ -290,16 +291,19 @@ class Group(PlayingEntity):
             ])
 
     def check_for_ambush_and_traps(self):
-        traps = self.map.traps(self)
+        traps = Map().traps(self)
         for t in traps:
             if t.check(self):
                 t.apply(self)
                 return True
-        ambushers = [p for p in self.map.players(self) if AMBUSH in p.status and SLEEPING not in p.status]
+        ambushers = Map().ambushers(self)
         if not len(ambushers):
             return False
         ambusher = choice(ambushers)
-        ambusher.status.remove(AMBUSH)
-        Narrator().new([player_names(self.acting_players), 'falls', 'into', f'{ambusher.name}\'s ambush!'])
-        ambusher.fight(self)
+        ambusher.trigger_ambush(self)
         return True
+
+    def trigger_ambush(self, prey):
+        Map().remove_ambusher(self, self)
+        Narrator().new([prey.first_name, 'falls', 'into', f'{self.name}\'s ambush!'])
+        self.fight(prey)

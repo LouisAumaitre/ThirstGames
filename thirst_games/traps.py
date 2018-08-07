@@ -2,20 +2,22 @@ from typing import Type, List, Union
 
 from random import random, choice
 
+from thirst_games.abstract.entity import Entity, AbstractTrap
+from thirst_games.abstract.playing_entity import PlayingEntity
 from thirst_games.constants import TRAPPED
-from thirst_games.map import START_AREA, Positionable, Map
+from thirst_games.map import START_AREA, Map
 from thirst_games.narrator import Narrator
-from thirst_games.player.playing_entity import PlayingEntity
 
 
-class Trap(Positionable):
+class Trap(AbstractTrap):
     ingredients = []
     areas = []
     requires_tools = False
-    name = 'trap'
     group_trap = False
+    _name = 'trap'
 
     def __init__(self, owner, stealth):
+        Entity.__init__(self, self._name, 'it')
         self.long_name = f'{owner.first_name}\'s {self.name}'
         self.owner = owner
         self.knowing = [owner]
@@ -55,7 +57,7 @@ class Trap(Positionable):
             name = self.long_name
             if player is self.owner:
                 name = f'{player.his} own {self.name}'
-            self.map.remove_trap(self)
+            Map().remove_trap(self)
             player.reveal()
             self._apply(name, player)
 
@@ -75,7 +77,7 @@ class StakeTrap(Trap):
     ingredients = ['rope']
     areas = ['the forest', 'the jungle']
     requires_tools = True
-    name = 'stake trap'
+    _name = 'stake trap'
 
     def _apply(self, name, player):
         if player.be_damaged(random(), 'trident'):
@@ -91,7 +93,7 @@ class ExplosiveTrap(Trap):
     ingredients = ['explosive']
     areas = []
     requires_tools = False
-    name = 'explosive trap'
+    _name = 'explosive trap'
     group_trap = True
 
     def _apply(self, name, player):
@@ -108,7 +110,7 @@ class NetTrap(Trap):
     ingredients = ['net', 'rope']
     areas = ['the forest', 'the jungle', 'the ruins', START_AREA]
     requires_tools = False
-    name = 'net trap'
+    _name = 'net trap'
 
     def _apply(self, name, player):
         Narrator().new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
@@ -120,7 +122,7 @@ class WireTrap(Trap):
     ingredients = ['wire']
     areas = ['the forest', 'the jungle', 'the ruins', START_AREA, 'the river']
     requires_tools = False
-    name = 'wire trap'
+    _name = 'wire trap'
 
     def _apply(self, name, player):
         Narrator().new([player.first_name, 'gets', 'ensnared into', f'{name}!'])

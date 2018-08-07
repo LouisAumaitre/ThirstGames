@@ -1,43 +1,46 @@
-from random import random
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
-from thirst_games.constants import (NIGHT, STARTER, TRAPPED, START_AREA)
+from copy import copy
+from random import random, choice
+
+from thirst_games.abstract.entity import Entity, FightingEntity, LivingEntity
+from thirst_games.abstract.items import Weapon, PoisonVial
+from thirst_games.abstract.playing_entity import Strategy, PlayingEntity, Relationship
+from thirst_games.constants import (NIGHT, STARTER, TRAPPED, START_AREA, SLEEPING, FLEEING, AMBUSH, ARM_WOUND)
 from thirst_games.context import Context
 from thirst_games.map import Map, Area
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.carrier import Carrier
-from thirst_games.player.fighter import Fighter
-from thirst_games.player.playing_entity import Strategy, PlayingEntity
 from thirst_games.traps import can_build_any_trap, build_any_trap
+from thirst_games.weapons import weapon_bleed_proba
 
 
-class Player(Fighter, PlayingEntity):
-    def __init__(self, first_name: str, district: int, his='their') -> None:
-        Fighter.__init__(self, first_name, his)
+class Player(Carrier, PlayingEntity):
+    def __init__(self, name: str, district: int, he) -> None:
+        Carrier.__init__(self, name, he)
+        self.wisdom = 0.9
+        self._waiting = 0
         self.district = district
         self.relationships: Dict[str, Relationship] = {}
 
-    def __str__(self):
-        return self.first_name
-
-    def relationship(self, other_player):
+    def relationship(self, other_player) -> Relationship:
         if other_player.name not in self.relationships:
             self.relationships[other_player.name] = Relationship()
         return self.relationships[other_player.name]
 
-    def allies(self):
+    def allies(self) -> List[PlayingEntity]:
         return [p for p in Context().alive_players if self.relationship(p).allied]
 
-    def present_allies(self):
-        return [p for p in self.map.players(self) if self.relationship(p).allied]
+    def present_allies(self) -> List[PlayingEntity]:
+        return [p for p in Map().players(self) if self.relationship(p).allied and isinstance(p, PlayingEntity)]
 
-    def busy_allies(self):
+    def busy_allies(self) -> List[PlayingEntity]:
         return [p for p in Context().alive_players if self.relationship(p).allied and p.busy]
 
-    def enemies(self, area: Area) -> List[Carrier]:
+    def enemies(self, area: Area) -> List[FightingEntity]:
         return [p for p in area.players if p != self and not self.relationship(p).allied]
 
-    def current_group(self):
+    def current_group(self) -> List[PlayingEntity]:
         return [*[p for p in self.present_allies() if not p.busy], self]
 
     def think(self):
@@ -49,7 +52,7 @@ class Player(Fighter, PlayingEntity):
 
     def judge_strats(self) -> dict:
         if self.sleep < 0:
-            if self.map.players_count(self) > 1 and self.energy > self.move_cost:
+            if Map().players_count(self) > 1 and self.energy > self.move_cost:
                 strats = flee_strats()
             else:
                 return {hide_strat: 1}
@@ -67,10 +70,17 @@ class Player(Fighter, PlayingEntity):
         #         self.name, f': {[(round(s.pref(self), 2), s.name) for s in strats]}'])
 
     def _flee_value(self, area):
-        return Fighter._flee_value(self, area) + 30 * len([a for a in self.allies() if a in area.players])
+        return - len(self.enemies(area)) * 10 \
+               + len(Map().loot(area)) \
+               + (self.thirst if area.has_water else 0) \
+               + 30 * len([a for a in self.allies() if a in area.players])
 
     def _pursue_value(self, area):
-        return Fighter._flee_value(self, area) + 30 * len([a for a in self.allies() if a in area.players])
+        return -len(self.enemies(area)) * 10 \
+               - (30 if area.is_start else 0) \
+               + len(Map().loot(area)) \
+               + (self.thirst if area.has_water else 0) \
+               + 30 * len([a for a in self.allies() if a in area.players])
 
     def act(self):
         new_strat = self.new_strat()
@@ -101,15 +111,10 @@ class Player(Fighter, PlayingEntity):
             raise AttributeError(f'{self.name}({self.current_area.at}) has no strat ({self.strategy})') from e
         Narrator().cut()
 
-    def fight(self, other_player):
-        self.relationship(other_player).allied = False
-        other_player.relationship(self).allied = False
-        Fighter.fight(self, other_player)
-
     def should_go_get_drop(self):
         areas_by_value = {
-            area: self.dangerosity + self.estimate(self.map.loot(area)) - self.estimate_of_danger(area)
-            for area in self.map.area_names
+            area: self.dangerosity + self.estimate(Map().loot(area)) - self.estimate_of_danger(area)
+            for area in Map().area_names
         }
         filtered = [key for key, value in areas_by_value.items() if value > 0]
         if not len(filtered):
@@ -118,28 +123,28 @@ class Player(Fighter, PlayingEntity):
         filtered.sort(key=lambda x: -areas_by_value[x])
         self.destination = filtered[0]
         # sp = ' '
-        # self.map.test += f' {self.name}->{self._destination.split(sp)[-1]} '
+        # Map().test += f' {self.name}->{self._destination.split(sp)[-1]} '
         return areas_by_value[self.destination] * min([
             random(), 3 / Context().player_count])
 
     def go_get_drop(self):
         out = self.go_to(self.destination)
         if out is not None:
-            Narrator().add([self.first_name, f'goes {out.to} to get loot'])
+            Narrator().add([self.name, f'goes {out.to} to get loot'])
         else:
             Narrator().cut()
         if self.check_for_ambush_and_traps():
             return
-        seen_neighbors = [p for p in self.map.potential_players(self) if self.can_see(p) and p != self]
+        seen_neighbors = [p for p in Map().potential_players(self) if self.can_see(p) and p != self]
         free_neighbors = [p for p in seen_neighbors if p.current_area == self.current_area and not p.busy]
-        potential_danger = sum([p.dangerosity() for p in seen_neighbors])
-        actual_danger = sum([p.dangerosity() for p in free_neighbors])
+        potential_danger = sum([p.dangerosity for p in seen_neighbors])
+        actual_danger = sum([p.dangerosity for p in free_neighbors])
 
         if potential_danger > self.dangerosity and potential_danger > self.courage:
-            Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in seen_neighbors])])
+            Narrator().add([self.name, 'sees', format_list([p.name for p in seen_neighbors])])
             self.flee()
         elif actual_danger > self.dangerosity and actual_danger > self.courage:
-            Narrator().add([self.first_name, 'sees', format_list([p.first_name for p in free_neighbors])])
+            Narrator().add([self.name, 'sees', format_list([p.name for p in free_neighbors])])
             self.flee()
         elif actual_danger > 0:  # enemy present -> fight them
             Narrator().cut()
@@ -149,7 +154,7 @@ class Player(Fighter, PlayingEntity):
                 Narrator().cut()
                 self.attack_at_random()
             else:  # loot and go/get your load and hit the road
-                Narrator().add([self.first_name, 'avoids', format_list([p.first_name for p in seen_neighbors])])
+                Narrator().add([self.name, 'avoids', format_list([p.name for p in seen_neighbors])])
                 self.loot(take_a_break=False)
                 self.flee()
         else:  # servez-vous
@@ -165,11 +170,261 @@ class Player(Fighter, PlayingEntity):
         self.loot_weapon()
         self.take_a_break()
 
+    @property
+    def courage(self) -> float:
+        courage = (self.health / self.max_health) * self.energy + self._rage
+        courage = courage + self.estimate(Map().loot(self)) * courage
+        return courage
 
-class Relationship:
-    def __init__(self):
-        self.friendship = 0
-        self.allied = False
+    @property
+    def dangerosity(self) -> float:
+        power = self.health * self._damage()
+        if SLEEPING in self.status:
+            power *= 0.1
+        return power
+
+    def flee(self, panic=False, drop_verb='drops', stock=False):
+        filtered_areas = Context().forbidden_areas
+        self.status.append(FLEEING)
+        if panic and random() > self.courage + 0.5:
+            self.drop_weapon(verbose=True, drop_verb=drop_verb)
+
+        available_areas = [area for area in Map().areas if area not in filtered_areas]
+        available_areas.sort(key=lambda x: -self._flee_value(x))
+
+        out = self.go_to(available_areas[0])
+        if out is None:
+            self.hide(panic=panic, stock=stock)
+        else:
+            Narrator().add([self.name, f'flees {out.to}'], stock=stock)
+            self.check_for_ambush_and_traps()
+
+    def pursue(self):
+        available_areas = [a for a in Map().areas if a not in Context().forbidden_areas]
+        available_areas.sort(key=lambda x: -self._pursue_value(x))
+        out = self.go_to(available_areas[0])
+        if out is None:
+            self.hide()
+            Narrator().replace('hides and rests', 'rests')
+        else:
+            targets = [p.name for p in Context().alive_players if p != self]
+            players = 'players' if len(targets) > 1 else targets[0]
+            Narrator().add([self.name, 'searches for', players, out.at])
+            self.check_for_ambush_and_traps()
+
+    def go_to(self, area: Union[str, Area, Entity]) -> Optional[Area]:
+        area = Map().get_area(area)
+        if area != self.current_area:
+            self.reveal()
+            self._energy -= self.move_cost
+            self.busy = True
+            return Map().move_player(self, area)
+        return None
+
+    def set_up_ambush(self):
+        self.stealth += (random() / 2 + 0.5) * (1 - self.stealth)
+        if AMBUSH not in self.status:
+            self.status.append(AMBUSH)
+            Map().add_ambusher(self, self)
+            Narrator().add([self.name, 'sets up', 'an ambush', self.current_area.at])
+        else:
+            self._waiting += 1
+            if self._waiting < 2:
+                Narrator().add([self.name, 'keeps', 'hiding', self.current_area.at])
+            else:
+                Narrator().add([self.name, 'gets', 'tired of hiding', self.current_area.at])
+                self.status.remove(AMBUSH)
+                Map().remove_ambusher(self, self)
+                self.pursue()
+
+    def take_a_break(self):
+        Carrier.take_a_break(self)
+        self.poison_weapon()
+
+    def estimate_of_power(self, area) -> float:
+        neighbors = Map().players(area)
+        if not len(neighbors):
+            return 0
+        seen_neighbors = [p for p in neighbors if self.can_see(p) and p != self]
+        return sum([p.dangerosity for p in seen_neighbors])
+
+    def estimate_of_danger(self, area) -> float:
+        neighbors = Map().potential_players(area)
+        if not len(neighbors):
+            return 0
+        seen_neighbors = [p for p in neighbors if self.can_see(p) and p != self]
+        return sum([p.dangerosity for p in seen_neighbors])
+
+    def can_see(self, other):
+        stealth_mult = 1
+        random_mult = (random() * 0.5 + 0.5)
+        if other.current_area != self.current_area:
+            stealth_mult *= 2
+            random_mult = 1
+        return random_mult * self.wisdom > other.stealth * stealth_mult
+
+    def pillage(self, stuff):
+        if len([p for p in Context().alive_players if p.is_alive]) == 1:
+            return
+        if Map().players_count(self) > 1:
+            return
+        looted = []
+        for item in stuff:
+            if item not in Map().loot(self.current_area):
+                continue
+            if isinstance(item, Weapon):
+                if item.damage_mult > self.weapon.damage_mult:
+                    looted.append(item)
+                    Map().remove_loot(item, self.current_area)
+            else:
+                looted.append(item)
+                Map().remove_loot(item, self.current_area)
+        if not len(looted):
+            return
+        Narrator().add([self.name, 'loots', format_list([e.long_name for e in looted])])
+        for item in looted:
+            if isinstance(item, Weapon):
+                self.get_weapon(item)
+            else:
+                self.get_item(item)
+
+    def poison_weapon(self):
+        if self.has_item(
+                'poison vial') and weapon_bleed_proba.get(self.weapon.name, 0) > 0 and self.weapon.poison is None:
+            vial = [p_v for p_v in self.equipment if isinstance(p_v, PoisonVial)][0]
+            self.remove_item(vial)
+            self.weapon.poison = vial.poison
+            Narrator().add([self.name, 'puts', vial.poison.name, 'on', self.his, self.weapon.name])
+            vial.poison.long_name = f'{self.name}\'s {vial.poison.name}'
+
+    def attack_at_random(self):
+        preys = [p for p in self.enemies(self.current_area) if self.can_see(p) and p != self]
+        preys.sort(key=lambda x: x.health * x.damage())
+        if len(preys):
+            self.fight(preys[0])
+        else:
+            self.pursue()
+
+    def fight(self, other_player: FightingEntity):
+        if isinstance(other_player, PlayingEntity):
+            self.relationship(other_player).allied = False
+            other_player.relationship(self).allied = False
+        self.busy = True
+        other_player.busy = True
+
+        verb = 'catches and attacks' if FLEEING in other_player.status else (
+            'finds and attacks' if other_player.stealth else 'attacks')
+        if FLEEING in other_player.status:
+            other_player.status.remove(FLEEING)
+        weapon = f'with {self.his} {self.weapon.name}'
+        self_stuff = []
+        other_weapon = f'with {other_player.his} {other_player.weapon.name}'
+        other_stuff = []
+        area = self.current_area.at
+        surprise_mult = 2 if SLEEPING in other_player.status else (
+            2 if TRAPPED in other_player.status else (
+                1.5 if not other_player.can_see(self) else 1
+            ))
+        surprise = f'in {other_player.his} sleep' if SLEEPING in other_player.status else (
+            f'while {other_player.he} is trapped' if TRAPPED in other_player.status else (
+                'by surprise' if surprise_mult > 1 else ''))
+        self.reveal()
+        other_player.reveal()
+        round = 1
+
+        if self.hit(other_player, surprise_mult):
+            Narrator().add([
+                self.name, 'kills', other_player.name, surprise, area, weapon])
+            other_stuff = other_player.drops
+        else:
+            while True:
+                Narrator().new([self.name, verb, other_player.name, area, weapon])
+                Narrator().apply_stock()
+                verb = 'fights'
+                area = ''
+                if random() > other_player.courage and other_player.can_flee():
+                    other_stuff = [other_player.weapon]
+                    other_player.flee(panic=True)
+                    other_stuff = other_stuff if not other_player.has_weapon else []
+                    break
+                if other_player.hit(self):
+                    Narrator().add(['and'])
+                    Narrator().add([other_player.name, 'kills', self.him, 'in self-defense', other_weapon])
+                    self_stuff = self.drops
+                    break
+                Narrator().add([other_player.name, 'fights back', other_weapon])
+                Narrator().apply_stock()
+                if random() > self.courage and self.can_flee():
+                    self_stuff = [self.weapon]
+                    self.flee(panic=True)
+                    self_stuff = self_stuff if not self.has_weapon else []
+                    break
+                if Context().time == STARTER and round > 3:
+                    break
+                round += 1
+                if self.hit(other_player):
+                    Narrator().new([self.name, verb, 'and', 'kills', other_player.name, weapon])
+                    other_stuff = other_player.drops
+                    break
+        self.pillage(other_stuff)
+        other_player.pillage(self_stuff)
+
+    def hit(self, target: LivingEntity, mult=1) -> bool:
+        if SLEEPING in target.status:
+            target.status.remove(SLEEPING)
+        if self.energy < 0.1:
+            mult /= 2
+            self._rage = -1
+        else:
+            self.add_energy(-0.1)
+        hit_chance = mult if mult > 1 else 0.6 * mult
+        if ARM_WOUND in self.status:
+            hit_chance -= 0.2
+        if random() < hit_chance:
+            self._rage += 0.1
+            if self.weapon.poison is not None and\
+                            self.weapon.poison.long_name not in [p.long_name for p in target.active_poisons]:
+                if random() > 0.3:
+                    target.add_poison(copy(self.weapon.poison))
+                self.weapon.poison.amount -= 1
+                if self.weapon.poison.amount == 0:
+                    self.weapon.poison = None
+            return target.be_damaged(
+                self.damage() * mult, weapon=self.weapon.name, attacker_name=self.name)
+        else:  # Miss
+            self._rage -= 0.1
+            Narrator().stock([self.name, 'misses'])
+            return False
+
+    def _damage(self):
+        mult = 1
+        if ARM_WOUND in self.status:
+            mult -= 0.2
+        if TRAPPED in self.status:
+            mult *= 0.5
+        return mult * self.weapon.damage_mult / 2
+
+    def damage(self):
+        return self._damage() * random()
+
+    def check_for_ambush_and_traps(self):
+        traps = Map().traps(self)
+        for t in traps:
+            if t.check(self):
+                t.apply(self)
+                return True
+        ambushers = Map().ambushers(self)
+        if not len(ambushers):
+            return False
+        ambusher = choice(ambushers)
+        ambusher.trigger_ambush(self)
+        return True
+
+    def trigger_ambush(self, prey):
+        self.status.remove(AMBUSH)
+        Map().remove_ambusher(self, self)
+        Narrator().new([prey.name, 'falls', 'into', f'{self.name}\'s ambush!'])
+        self.fight(prey)
 
 
 hide_strat = Strategy(
@@ -183,7 +438,7 @@ hide_strat = Strategy(
             x.current_area != START_AREA or x.health > x.max_health / 2
         ) * (
             x.max_health - x.health / 2
-        ) / x.map.players_count(x), 0.1]),
+        ) / Map().players_count(x), 0.1]),
     lambda x: x.hide())
 
 
@@ -202,7 +457,7 @@ attack_strat = Strategy(
     lambda x: x.attack_at_random())
 ambush_strat = Strategy(
     'ambush',
-    lambda x: x.health * min(x.energy, x.stomach, x.sleep) * x.weapon.damage_mult * (x.map.players_count(x) == 1),
+    lambda x: x.health * min(x.energy, x.stomach, x.sleep) * x.weapon.damage_mult * (Map().players_count(x) == 1),
     lambda x: x.set_up_ambush())
 hunt_player_strat = Strategy(
     'hunt player',
@@ -210,45 +465,45 @@ hunt_player_strat = Strategy(
     lambda x: x.attack_at_random())
 fight_strat = Strategy(
     'fight',
-    lambda x: x.health * sum([x.dangerosity > n.dangerosity * 1.2 for n in x.map.players(x)]),
+    lambda x: x.health * sum([x.dangerosity > n.dangerosity * 1.2 for n in Map().players(x)]),
     lambda x: x.attack_at_random())
 duel_strat = Strategy(
     'duel',
     lambda x: (Context().player_count == 2) * sum(
-        [x.dangerosity > n.dangerosity * 1.2 for n in x.map.players(x)]),
+        [x.dangerosity > n.dangerosity * 1.2 for n in Map().players(x)]),
     lambda x: x.attack_at_random())
 loot_strat = Strategy(
     'loot',
-    lambda x: (x.energy - x.move_cost) * (2 if x.weapon.damage_mult == 1 else 0.2) * x.estimate(x.map.loot(x)),
+    lambda x: (x.energy - x.move_cost) * (2 if x.weapon.damage_mult == 1 else 0.2) * x.estimate(Map().loot(x)),
     lambda x: x.loot())
 go_get_drop = Strategy('go get loot', lambda x: x.should_go_get_drop(), lambda x: x.go_get_drop())
 loot_bag_strat = Strategy(
     'loot bag',
-    lambda x: x.weapon.damage_mult * x.map.has_bags(x) * (x.bag is None),
+    lambda x: x.weapon.damage_mult * Map().has_bags(x) * (x.bag is None),
     lambda x: x.loot_bag())
 loot_weapon_strat = Strategy(
     'loot weapon',
-    lambda x: x.estimate(x.map.weapons(x)),
+    lambda x: x.estimate(Map().weapons(x)),
     lambda x: x.loot_weapon())
 forage_strat = Strategy(
     'forage',
-    lambda x: x.hunger * x.map.forage_potential(x) / x.map.players_count(x),
+    lambda x: x.hunger * Map().forage_potential(x) / Map().players_count(x),
     lambda x: x.forage())
 dine_strat = Strategy(
     'dine',
-    lambda x: x.hunger * x.has_food / x.map.players_count(x),
+    lambda x: x.hunger * x.has_food / Map().players_count(x),
     lambda x: x.dine())
 craft_strat_1 = Strategy(
     'craft',
-    lambda x: (2 - x.weapon.damage_mult) * (1 / x.map.players_count(x)),
+    lambda x: (2 - x.weapon.damage_mult) * (1 / Map().players_count(x)),
     lambda x: x.craft())
 craft_strat_2 = Strategy(
     'craft',
-    lambda x: (x.energy - 0.2) * (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) / x.map.players_count(x),
+    lambda x: (x.energy - 0.2) * (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) / Map().players_count(x),
     lambda x: x.craft())
 trap_strat = Strategy(
     'build trap',
-    lambda x: (x.energy - 0.2) * (x.map.players_count(x) < 2) * (can_build_any_trap(x)),
+    lambda x: (x.energy - 0.2) * (Map().players_count(x) < 2) * (can_build_any_trap(x)),
     lambda x: build_any_trap(x))
 free_trap_strat = Strategy(
     'free from trap',

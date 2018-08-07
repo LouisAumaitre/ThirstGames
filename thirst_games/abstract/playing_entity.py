@@ -1,17 +1,13 @@
 from typing import List
 
-from thirst_games.map import Area, Positionable
-from thirst_games.player.carrier import CarryingEntity
-from thirst_games.player.fighter import FightingEntity
+from thirst_games.abstract.area import Area
+from thirst_games.abstract.entity import Entity, FightingEntity, CarryingEntity
 
 
 class PlayingEntity(FightingEntity, CarryingEntity):
     strategy = None
     acted = False
-
-    @property
-    def name(self) -> str:
-        raise NotImplementedError
+    busy = False
 
     def think(self):
         raise NotImplementedError
@@ -22,6 +18,9 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     def reset_turn(self):
         self.strategy = None
         self.acted = False
+
+    def relationship(self, other):
+        raise NotImplementedError
 
     @property
     def is_alive(self):
@@ -41,7 +40,7 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     def pursue(self):
         raise NotImplementedError
 
-    def enemies(self, area: Area) -> List[Positionable]:
+    def enemies(self, area: Area) -> List[Entity]:
         return [p for p in area.players if p != self]  # TODO: consider
 
     def set_up_ambush(self):
@@ -53,7 +52,7 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     def estimate_of_danger(self, area) -> float:
         raise NotImplementedError
 
-    def can_see(self, other: Positionable):
+    def can_see(self, other: Entity):
         raise NotImplementedError
 
     def pillage(self, stuff):
@@ -92,6 +91,9 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     def estimate(self, item) -> float:
         raise NotImplementedError
 
+    def trigger_ambush(self, prey):
+        raise NotImplementedError
+
 
 class Strategy:
     def __init__(self, name, pref, action):
@@ -103,3 +105,9 @@ class Strategy:
         out = self.action(player)
         if isinstance(out, str):
             print(f'{str(player)} {out}')
+
+
+class Relationship:
+    def __init__(self):
+        self.friendship = 0
+        self.allied = False

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from random import random, randint
 
 from thirst_games.narrator import format_list
@@ -20,7 +22,7 @@ class Weapon(Item):
         Item.__init__(self, name)
         self.damage_mult = damage_mult
         self.small = name in ['hatchet', 'knife']
-        self.poison: Poison = None
+        self.poison: Optional[Poison] = None
 
     def __str__(self):
         if self.poison is not None:

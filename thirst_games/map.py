@@ -1,9 +1,12 @@
-from typing import List, Union, Optional, Any
+from typing import List, Union, Optional
 
 from random import random, choice, randint
 
+from thirst_games.abstract.entity import Entity, AbstractTrap, CarryingEntity
+from thirst_games.abstract.items import Weapon, Item, Food, Bag, Bottle, PoisonVial
+from thirst_games.abstract.area import Area, _nature
+from thirst_games.abstract.playing_entity import PlayingEntity
 from thirst_games.constants import KNIFE, HATCHET, TRIDENT, AXE, SWORD, MACE, START_AREA, MACHETE
-from thirst_games.items import Weapon, Item, Food, Bag, Bottle, PoisonVial
 from thirst_games.poison import Poison
 from thirst_games.singleton import Singleton
 
@@ -69,71 +72,6 @@ def random_weapon() -> Weapon:
     raise ValueError
 
 
-_nature = {
-    START_AREA: {
-        'food': []
-    }, 'ruins': {
-        'food': ['roots']
-    }, 'forest': {
-        'food': ['roots', 'fruits', 'mushrooms', 'berries']
-    }, 'plain': {
-        'food': ['roots', 'berries']
-    }, 'rocks': {
-        'food': []
-    }, 'jungle': {
-        'food': ['roots', 'fruits']
-    }, 'river': {
-        'food': ['roots', 'algae']
-    }, 'hill': {
-        'food': ['roots']
-    }
-}
-
-
-class Area:
-    def __init__(self, name: str, ):
-        self.name = name
-        self.at = f'at the {name}'
-        self.to = f'to the {name}'
-        self.foods: List[str] = _nature[name]['food']
-        self.players: List[Positionable] = []
-        self.loot: List[Item] = []
-        self.traps: List[Positionable] = []
-
-    @property
-    def has_water(self) -> bool:
-        if self.name == 'river':
-            return True
-        return False
-
-    @property
-    def is_start(self) -> bool:
-        return self.name == START_AREA
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return f'{self.name}: {[p.name for p in self.players]}'
-
-
-class Positionable:
-    _current_area: Area = None
-    destination: Area = None
-    map: Any = None
-    stealth: float = 0
-
-    @property
-    def current_area(self) -> Area:
-        return self._current_area
-
-    def move_to(self, new_area: Area):
-        self._current_area = new_area
-
-    def reveal(self):
-        self.stealth = 0
-
-
 class Map(metaclass=Singleton):
 
     def __init__(self, player_amount=24) -> None:
@@ -157,8 +95,8 @@ class Map(metaclass=Singleton):
     def area_names(self) -> List[str]:
         return [area.name for area in self.areas]
 
-    def get_area(self, area: Union[str, Area, Positionable]) -> Area:
-        if isinstance(area, Positionable):
+    def get_area(self, area: Union[str, Area, Entity]) -> Area:
+        if isinstance(area, Entity):
             return area.current_area
         if isinstance(area, str):
             try:
@@ -169,59 +107,59 @@ class Map(metaclass=Singleton):
             return area
         raise ValueError(f'{area} is neither a string or a positionable')
 
-    def loot(self, area: Union[str, Area, Positionable]) -> List[Item]:
+    def loot(self, area: Union[str, Area, Entity]) -> List[Item]:
         return self.get_area(area).loot
 
-    def has_loot(self, area: Union[str, Area, Positionable]) -> bool:
+    def has_loot(self, area: Union[str, Area, Entity]) -> bool:
         return len(self.loot(area)) > 0
 
-    def forage_potential(self, area: Union[str, Area, Positionable]) -> float:
+    def forage_potential(self, area: Union[str, Area, Entity]) -> float:
         foods = self.get_area(area).foods
         if len(foods):
             return max([food_values[name] for name in foods])
         return 0
 
-    def get_forage(self, area: Union[str, Area, Positionable]) -> Optional[Food]:
+    def get_forage(self, area: Union[str, Area, Entity]) -> Optional[Food]:
         foods = self.get_area(area).foods
         if not len(foods):
             return None
         food_name = choice(foods)
         return Food(food_name, random() * food_values[food_name])
 
-    def weapons(self, area: Union[str, Area, Positionable]) -> List[Weapon]:
+    def weapons(self, area: Union[str, Area, Entity]) -> List[Weapon]:
         return [e for e in self.loot(area) if isinstance(e, Weapon)]
 
-    def has_weapons(self, area: Union[str, Area, Positionable]) -> bool:
+    def has_weapons(self, area: Union[str, Area, Entity]) -> bool:
         return len(self.weapons(area)) > 0
 
-    def pick_weapon(self, area: Union[str, Area, Positionable]) -> Optional[Weapon]:
+    def pick_weapon(self, area: Union[str, Area, Entity]) -> Optional[Weapon]:
         if not self.has_weapons(area):
             return None
         w = choice(self.weapons(area))
         self.remove_loot(w, area)
         return w
 
-    def bags(self, area: Union[str, Area, Positionable]) -> List[Bag]:
+    def bags(self, area: Union[str, Area, Entity]) -> List[Bag]:
         return [e for e in self.loot(area) if isinstance(e, Bag)]
 
-    def has_bags(self, area: Union[str, Area, Positionable]) -> bool:
+    def has_bags(self, area: Union[str, Area, Entity]) -> bool:
         return len(self.bags(area)) > 0
 
-    def pick_bag(self, area: Union[str, Area, Positionable]) -> Optional[Bag]:
+    def pick_bag(self, area: Union[str, Area, Entity]) -> Optional[Bag]:
         if not self.has_bags(area):
             return None
         b = choice(self.bags(area))
         self.remove_loot(b, area)
         return b
 
-    def pick_item(self, area: Union[str, Area, Positionable]):
+    def pick_item(self, area: Union[str, Area, Entity]):
         if not self.has_loot(area):
             return None
         i = choice(self.loot(area))
         self.remove_loot(i, area)
         return i
 
-    def pick_best_item(self, player: Positionable):
+    def pick_best_item(self, player: CarryingEntity):
         if not self.has_loot(player):
             return None
         best_value = max([player.estimate(i) for i in self.loot(player)])
@@ -230,25 +168,24 @@ class Map(metaclass=Singleton):
         self.remove_loot(i, player)
         return i
 
-    def remove_loot(self, item: Item, area: Union[str, Area, Positionable]):
+    def remove_loot(self, item: Item, area: Union[str, Area, Entity]):
         try:
             self.get_area(area).loot.remove(item)
         except ValueError as e:
             print(f'WARNING: tried to remove {item.long_name} from loot at {area} but couldn\'t')
 
-    def add_loot(self, item: Item, area: Union[str, Area, Positionable]):
+    def add_loot(self, item: Item, area: Union[str, Area, Entity]):
         self.get_area(area).loot.append(item)
 
-    def add_player(self, player: Positionable, destination: Union[str, Area, Positionable]=START_AREA):
+    def add_player(self, player: Entity, destination: Union[str, Area, Entity]=START_AREA):
         area = self.get_area(destination)
         player.move_to(area)
-        player.map = self
         area.players.append(player)
 
-    def remove_player(self, player: Positionable):
+    def remove_player(self, player: Entity):
         player.current_area.players.remove(player)
 
-    def move_player(self, player, destination: Union[str, Area, Positionable]) -> Optional[Area]:
+    def move_player(self, player, destination: Union[str, Area, Entity]) -> Optional[Area]:
         new_area = self.get_area(destination)
         # Narrator().new([player.current_area.name, '->', player.name, '->', new_area.name])
         if player.current_area == new_area:
@@ -257,30 +194,39 @@ class Map(metaclass=Singleton):
         self.add_player(player, destination)
         return new_area
 
-    def add_trap(self, trap: Positionable, area: Union[str, Area, Positionable]=START_AREA):
+    def add_trap(self, trap: Entity, area: Union[str, Area, Entity]=START_AREA):
         area = self.get_area(area)
         trap.move_to(area)
         trap.map = self
         area.traps.append(trap)
 
-    def remove_trap(self, trap: Positionable):
+    def remove_trap(self, trap: Entity):
         trap.current_area.traps.remove(trap)
 
-    def players_count(self, area: Union[str, Area, Positionable]) -> int:
+    def players_count(self, area: Union[str, Area, Entity]) -> int:
         v = len(self.players(area))
-        if not v and isinstance(area, Positionable):
+        if not v and isinstance(area, Entity):
             print(f'Warning: {area.name} not in {area.current_area}? {area.current_area.players}')
         return v
 
-    def players(self, area: Union[str, Area, Positionable]) -> List[Positionable]:
+    def players(self, area: Union[str, Area, Entity]) -> List[PlayingEntity]:
         return self.get_area(area).players
 
-    def potential_players(self, area: Union[str, Area, Positionable]) -> List[Positionable]:
+    def potential_players(self, area: Union[str, Area, Entity]) -> List[PlayingEntity]:
         area = self.get_area(area)
         return [p for a in self.areas for p in a.players if p.current_area == area or p.destination == area]
 
-    def traps(self, area: Union[str, Area, Positionable]) -> List[Positionable]:
+    def traps(self, area: Union[str, Area, Entity]) -> List[AbstractTrap]:
         return self.get_area(area).traps
 
-    def has_water(self, area: Union[str, Area, Positionable]) -> bool:
+    def has_water(self, area: Union[str, Area, Entity]) -> bool:
         return self.get_area(area).has_water
+
+    def ambushers(self, area: Union[str, Area, Entity]):
+        return self.get_area(area).ambushers
+
+    def add_ambusher(self, ambusher, area: Union[str, Area, Entity]):
+        self.get_area(area).ambushers.append(ambusher)
+
+    def remove_ambusher(self, ambusher, area: Union[str, Area, Entity]):
+        self.get_area(area).ambushers.remove(ambusher)
