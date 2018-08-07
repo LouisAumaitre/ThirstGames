@@ -9,6 +9,10 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     strategy = None
     acted = False
 
+    @property
+    def name(self) -> str:
+        raise NotImplementedError
+
     def think(self):
         raise NotImplementedError
 
@@ -49,7 +53,7 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     def estimate_of_danger(self, area) -> float:
         raise NotImplementedError
 
-    def can_see(self, other):
+    def can_see(self, other: Positionable):
         raise NotImplementedError
 
     def pillage(self, stuff):

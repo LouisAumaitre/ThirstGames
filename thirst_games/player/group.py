@@ -1,9 +1,9 @@
-from random import random
+from random import random, choice
 from typing import List, Optional, Union
 
 from copy import copy
 
-from thirst_games.context import Context
+from thirst_games.constants import AMBUSH, SLEEPING
 from thirst_games.items import Weapon, Item, Bag, HANDS
 from thirst_games.map import Positionable, Area
 from thirst_games.narrator import format_list, Narrator
@@ -20,9 +20,17 @@ class Group(PlayingEntity):
         if not len(players):
             raise ValueError
         self.players = players
-        self.acting_players = copy(players)
+        self._acting_players = copy(players)
         self.move_to(players[0].current_area)
         self.map = players[0].map
+
+    @property
+    def name(self) -> str:
+        return f'The group of {self.acting_players[0].first_name}'
+
+    @property
+    def acting_players(self) -> List[Player]:
+        return [p for p in self._acting_players if p.is_alive]
 
     @property
     def current_area(self):
@@ -48,11 +56,11 @@ class Group(PlayingEntity):
 
     def act(self):
         Narrator().cut()
-        self.acting_players = []
+        self._acting_players = []
         for p in self.players:
             player_strat = p.new_strat()
             if player_strat == self.strategy:
-                self.acting_players.append(p)
+                self._acting_players.append(p)
             else:
                 if player_strat is not None:
                     print(f'{p.name}:{player_strat.name}, group:{self.strategy.name}')
@@ -98,7 +106,10 @@ class Group(PlayingEntity):
         raise NotImplementedError
 
     def can_see(self, other):
-        raise NotImplementedError
+        for player in self.acting_players:
+            if player.can_see(other):
+                return True
+        return False
 
     def pillage(self, stuff):
         raise NotImplementedError
@@ -244,14 +255,16 @@ class Group(PlayingEntity):
             return
         seen_neighbors = [p for p in self.map.potential_players(self) if self.can_see(p) and p != self]
         free_neighbors = [p for p in seen_neighbors if p.current_area == self.current_area and not p.busy]
-        potential_danger = sum([p.dangerosity() for p in seen_neighbors])
-        actual_danger = sum([p.dangerosity() for p in free_neighbors])
+        potential_danger = sum([p.dangerosity for p in seen_neighbors])
+        actual_danger = sum([p.dangerosity for p in free_neighbors])
 
         if potential_danger > self.dangerosity and potential_danger > self.courage:
-            Narrator().add([player_names(self.acting_players), 'see', format_list([p.first_name for p in seen_neighbors])])
+            Narrator().add([
+                player_names(self.acting_players), 'see', format_list([p.first_name for p in seen_neighbors])])
             self.flee()
         elif actual_danger > self.dangerosity and actual_danger > self.courage:
-            Narrator().add([player_names(self.acting_players), 'see', format_list([p.first_name for p in free_neighbors])])
+            Narrator().add([
+                player_names(self.acting_players), 'see', format_list([p.first_name for p in free_neighbors])])
             self.flee()
         elif actual_danger > 0:  # enemy present -> fight them
             Narrator().cut()
@@ -261,7 +274,8 @@ class Group(PlayingEntity):
                 Narrator().cut()
                 self.attack_at_random()
             else:  # loot and go/get your load and hit the road
-                Narrator().add([player_names(self.acting_players), 'avoid', format_list([p.first_name for p in seen_neighbors])])
+                Narrator().add([
+                    player_names(self.acting_players), 'avoid', format_list([p.first_name for p in seen_neighbors])])
                 self.loot(take_a_break=False)
                 self.flee()
         else:  # servez-vous
@@ -271,3 +285,18 @@ class Group(PlayingEntity):
                 str(self), f'potential_danger={potential_danger}', f'actual_danger={actual_danger}',
                 f'dangerosity={self.dangerosity}', f'courage={self.courage}',
             ])
+
+    def check_for_ambush_and_traps(self):
+        traps = self.map.traps(self)
+        for t in traps:
+            if t.check(self):
+                t.apply(self)
+                return True
+        ambushers = [p for p in self.map.players(self) if AMBUSH in p.status and SLEEPING not in p.status]
+        if not len(ambushers):
+            return False
+        ambusher = choice(ambushers)
+        ambusher.status.remove(AMBUSH)
+        Narrator().new([player_names(self.acting_players), 'falls', 'into', f'{ambusher.name}\'s ambush!'])
+        ambusher.fight(self)
+        return True

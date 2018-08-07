@@ -1,10 +1,11 @@
-from typing import Type
+from typing import Type, List, Union
 
-from random import random
+from random import random, choice
 
 from thirst_games.constants import TRAPPED
 from thirst_games.map import START_AREA, Positionable, Map
 from thirst_games.narrator import Narrator
+from thirst_games.player.playing_entity import PlayingEntity
 
 
 class Trap(Positionable):
@@ -12,6 +13,7 @@ class Trap(Positionable):
     areas = []
     requires_tools = False
     name = 'trap'
+    group_trap = False
 
     def __init__(self, owner, stealth):
         self.long_name = f'{owner.first_name}\'s {self.name}'
@@ -20,27 +22,42 @@ class Trap(Positionable):
         self.stealth = stealth
         Map().add_trap(self, owner)
 
-    def check(self, player, panic=False) -> bool:
+    def check(self, players: Union[PlayingEntity, List[PlayingEntity]], panic=False) -> bool:
+        if not isinstance(players, list):
+            players = [players]
         if panic:
             return random() > 0.5
-        if player in self.knowing:
-            return False
-        if random() * player.wisdom > self.stealth:
-            Narrator().add([player.first_name, 'notices', self.long_name])
-            self.knowing.append(player)
+        noticed = False
+        for player in players:
+            if player in self.knowing:
+                noticed = True
+                break
+            if player.can_see(self):
+                Narrator().add([player.name, 'notices', self.long_name])
+                noticed = True
+                break
+        if noticed:
+            for player in players:
+                if player not in self.knowing:
+                    self.knowing.append(player)
             return False
         return random() > 0.5
 
     def _apply(self, name, player):
         raise NotImplementedError
 
-    def apply(self, player):
-        name = self.long_name
-        if player is self.owner:
-            name = f'{player.his} own {self.name}'
-        self.map.remove_trap(self)
-        player.reveal()
-        self._apply(name, player)
+    def apply(self, players: Union[PlayingEntity, List[PlayingEntity]]):
+        if not isinstance(players, list):
+            players = [players]
+        if not self.group_trap:
+            players = [choice(players)]
+        for player in players:
+            name = self.long_name
+            if player is self.owner:
+                name = f'{player.his} own {self.name}'
+            self.map.remove_trap(self)
+            player.reveal()
+            self._apply(name, player)
 
     @classmethod
     def can_be_built(cls, player) -> bool:
@@ -75,6 +92,7 @@ class ExplosiveTrap(Trap):
     areas = []
     requires_tools = False
     name = 'explosive trap'
+    group_trap = True
 
     def _apply(self, name, player):
         if player.be_damaged(random() * 5, 'fire'):
