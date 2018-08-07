@@ -51,6 +51,10 @@ class CarryingEntity(Entity):
 
 
 class LivingEntity(Entity):
+    @property
+    def drops(self):
+        raise NotImplementedError
+
     def be_damaged(self, damage, weapon='default', attacker_name=None) -> bool:
         raise NotImplementedError
 
@@ -76,6 +80,9 @@ class FightingEntity(LivingEntity):
 
     @property
     def dangerosity(self) -> float:
+        raise NotImplementedError
+
+    def can_flee(self):
         raise NotImplementedError
 
     def flee(self, panic=False, drop_verb='drops', stock=False):
@@ -115,6 +122,17 @@ class FightingEntity(LivingEntity):
         raise NotImplementedError
 
     def trigger_ambush(self, prey):
+        raise NotImplementedError
+
+    def hit(self, target, mult=1):
+        raise NotImplementedError
+
+    @property
+    def weapon(self) -> Weapon:
+        raise NotImplementedError
+
+    @property
+    def has_weapon(self) -> Weapon:
         raise NotImplementedError
 
 

@@ -19,21 +19,6 @@ class PlayingEntity(FightingEntity, CarryingEntity):
         self.strategy = None
         self.acted = False
 
-    def relationship(self, other):
-        raise NotImplementedError
-
-    @property
-    def is_alive(self):
-        raise NotImplementedError
-
-    @property
-    def courage(self) -> float:
-        raise NotImplementedError
-
-    @property
-    def dangerosity(self) -> float:
-        raise NotImplementedError
-
     def flee(self, panic=False, drop_verb='drops', stock=False):
         raise NotImplementedError
 
@@ -62,36 +47,6 @@ class PlayingEntity(FightingEntity, CarryingEntity):
         raise NotImplementedError
 
     def fight(self, other_player):
-        raise NotImplementedError
-
-    def hide(self):
-        raise NotImplementedError
-
-    def loot_weapon(self, weapon=None):
-        raise NotImplementedError
-
-    def loot_bag(self):
-        raise NotImplementedError
-
-    def loot(self, take_a_break=True):
-        raise NotImplementedError
-
-    def craft(self):
-        raise NotImplementedError
-
-    def go_get_drop(self):
-        raise NotImplementedError
-
-    def go_to(self, area):
-        raise NotImplementedError
-
-    def check_for_ambush_and_traps(self):
-        raise NotImplementedError
-
-    def estimate(self, item) -> float:
-        raise NotImplementedError
-
-    def trigger_ambush(self, prey):
         raise NotImplementedError
 
 

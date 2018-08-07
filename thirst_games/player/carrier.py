@@ -16,7 +16,11 @@ class Carrier(Body, CarryingEntity):
     def __init__(self, name, his) -> None:
         Body.__init__(self, name, his)
         self._equipment: List[Item] = []
-        self.weapon: Weapon = HANDS
+        self._weapon: Weapon = HANDS
+
+    @property
+    def weapon(self):
+        return self._weapon
 
     @property
     def equipment(self):
@@ -209,7 +213,7 @@ class Carrier(Body, CarryingEntity):
                 self.bag.content.append(self.weapon)
             else:
                 self.drop_weapon(verbose=False)
-            self.weapon = weapon
+            self._weapon = weapon
             self.weapon.long_name = f'{self.name}\'s {weapon.name}'
         elif weapon.small and self.bag is not None:
             self.bag.content.append(weapon)
@@ -220,7 +224,7 @@ class Carrier(Body, CarryingEntity):
                 Narrator().add([
                     self.name, drop_verb, f'{self.his} {self.weapon.name}', self.current_area.at])
             Map().add_loot(self.weapon, self.current_area)
-        self.weapon = HANDS
+        self._weapon = HANDS
 
     def get_item(self, item):
         if isinstance(item, Bag):

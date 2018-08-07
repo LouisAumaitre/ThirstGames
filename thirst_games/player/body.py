@@ -14,6 +14,7 @@ from thirst_games.weapons import get_weapon_wound, get_weapon_blood
 
 
 class Body(LivingEntity):
+
     def __init__(self, name: str, he):
         LivingEntity.__init__(self, name, he)
         self._health = 1
@@ -285,6 +286,10 @@ class Body(LivingEntity):
 
     def die(self):
         Context().death(self)
+
+    @property
+    def drops(self):
+        return []
 
     @property
     def full_status_desc(self):

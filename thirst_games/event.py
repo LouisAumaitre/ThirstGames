@@ -58,7 +58,7 @@ class DamageEvent(Event):
 
                 if p.can_flee():
                     if p.wisdom * random() > self.stealth:
-                        Narrator().add([p.first_name, 'sees', self.it, 'coming'])
+                        Narrator().add([p.name, 'sees', self.it, 'coming'])
                         p.flee()
                         if p.current_area in self.areas:
                             Narrator().new([

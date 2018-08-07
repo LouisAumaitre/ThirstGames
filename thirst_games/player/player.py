@@ -16,6 +16,7 @@ from thirst_games.weapons import weapon_bleed_proba
 
 
 class Player(Carrier, PlayingEntity):
+
     def __init__(self, name: str, district: int, he) -> None:
         Carrier.__init__(self, name, he)
         self.wisdom = 0.9
@@ -306,7 +307,7 @@ class Player(Carrier, PlayingEntity):
             self.pursue()
 
     def fight(self, other_player: FightingEntity):
-        if isinstance(other_player, PlayingEntity):
+        if isinstance(other_player, Player):
             self.relationship(other_player).allied = False
             other_player.relationship(self).allied = False
         self.busy = True
