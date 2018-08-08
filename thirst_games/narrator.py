@@ -124,7 +124,9 @@ class Narrator(metaclass=Singleton):
             self._add(sentence)
 
     def comma(self):
-        if len(self.current_sentence) and self.current_sentence[-1][-1] not in ['!', '.', ',']:
+        if len(self.current_sentence) \
+                and len(self.current_sentence[-1]) \
+                and self.current_sentence[-1][-1] not in ['!', '.', ',']:
             self.current_sentence.append(',')
 
     def cut(self):
