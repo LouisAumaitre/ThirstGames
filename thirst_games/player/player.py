@@ -40,7 +40,7 @@ class Player(Carrier, PlayingEntity):
         return [p for p in Context().alive_players if self.relationship(p).allied and p.busy]
 
     def enemies(self, area: Area) -> List[FightingEntity]:
-        return [p for p in area.players if p != self and not self.relationship(p).allied]
+        return [p for p in Context().playing_entities_at(area) if self not in p.players]
 
     def current_group(self) -> List[PlayingEntity]:
         return [*[p for p in self.present_allies() if not p.busy], self]
@@ -113,7 +113,7 @@ class Player(Carrier, PlayingEntity):
             raise AttributeError(f'{self.name}({self.current_area.at}) has no strat ({self.strategy})') from e
         Narrator().cut()
 
-    def should_go_get_drop(self):
+    def should_go_get_drop(self) -> float:
         areas_by_value = {
             area: self.dangerosity + self.estimate(Map().loot(area)) - self.estimate_of_danger(area)
             for area in Map().area_names
@@ -124,8 +124,6 @@ class Player(Carrier, PlayingEntity):
             return 0
         filtered.sort(key=lambda x: -areas_by_value[x])
         self.destination = filtered[0]
-        # sp = ' '
-        # Map().test += f' {self.name}->{self._destination.split(sp)[-1]} '
         return areas_by_value[self.destination] * min([
             random(), 3 / Context().player_count])
 
@@ -303,7 +301,7 @@ class Player(Carrier, PlayingEntity):
 
     def attack_at_random(self):
         preys = [p for p in self.enemies(self.current_area) if self.can_see(p) and p != self]
-        preys.sort(key=lambda x: x.health * x.damage())
+        preys.sort(key=lambda x: x.dangerosity)
         if len(preys):
             self.fight(preys[0])
         else:

@@ -7,6 +7,7 @@ from thirst_games.abstract.area import Area
 from thirst_games.abstract.entity import Entity
 from thirst_games.abstract.items import Weapon, Item, Bag, HANDS
 from thirst_games.abstract.playing_entity import PlayingEntity
+from thirst_games.context import Context
 from thirst_games.map import Map
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.fight import do_a_fight
@@ -59,6 +60,7 @@ class Group(PlayingEntity):
         print(f'{str(self)}:{self.strategy.name}')
         for a in self.players:
             a.strategy = self.strategy
+            a.destination = self.destination
 
     def act(self):
         Narrator().cut()
@@ -103,7 +105,7 @@ class Group(PlayingEntity):
         raise NotImplementedError
 
     def enemies(self, area: Area) -> List[PlayingEntity]:
-        return [p for p in area.players if p != self]  # TODO: consider
+        return [p for p in Context().playing_entities_at(area) if p != self]  # TODO: consider
 
     def set_up_ambush(self):
         raise NotImplementedError
@@ -125,7 +127,7 @@ class Group(PlayingEntity):
 
     def attack_at_random(self):
         preys = [p for p in self.enemies(self.current_area) if self.can_see(p) and p != self]
-        preys.sort(key=lambda x: x.health * x.damage())
+        preys.sort(key=lambda x: x.dangerosity)
         if len(preys):
             self.fight(preys[0])
         else:

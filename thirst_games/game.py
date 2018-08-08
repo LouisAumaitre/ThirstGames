@@ -56,6 +56,7 @@ class Game(AbstractGame, metaclass=Singleton):
         Narrator().new(f'== DAY {self.day} START ==')
         Narrator().new(['All players start', self.map.get_area(START_AREA).at])
         self.time = STARTER
+        Context().forbidden_areas.append(self.map.get_area(START_AREA))
         while len(self.playing_entities_at(self.map.get_area(START_AREA))) > 1:
             Narrator().tell()
             self.launch()

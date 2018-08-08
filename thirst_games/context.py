@@ -1,6 +1,7 @@
 from typing import List
 
 from thirst_games.abstract.playing_entity import PlayingEntity
+from thirst_games.map import Map
 from thirst_games.singleton import Singleton
 
 
