@@ -52,13 +52,27 @@ class DamageEvent(Event):
 
     def trigger(self):
         Context().forbidden_areas.extend(self.areas)
+        saw_it_coming = []
+        warned = []
+        Narrator().add(['should trigger for', [p.name for a in self.areas for p in a.players]])
+        for area in self.areas:
+            for p_e in Context().playing_entities_at(area):
+                for p in p_e.players:
+                    if p.wisdom * random() > self.stealth:
+                        saw_it_coming.append(p.name)
+                        warned.extend(p_e.players)
+                        break
+        if len(saw_it_coming):
+            Narrator().new([
+                format_list(saw_it_coming), 'see' if len(saw_it_coming) > 1 else 'sees', self.it, 'coming'
+            ])
         for area in self.areas:
             for p in area.players:
                 Narrator().cut()
+                Narrator().add(['trigger event for', p.name])
 
                 if p.can_flee():
-                    if p.wisdom * random() > self.stealth:
-                        Narrator().add([p.name, 'sees', self.it, 'coming'])
+                    if p in warned:
                         p.flee()
                         if p.current_area in self.areas:
                             Narrator().new([
