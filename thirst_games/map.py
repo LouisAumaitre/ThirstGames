@@ -231,8 +231,15 @@ class Map(metaclass=Singleton):
     def ambushers(self, area: Union[str, Area, Entity]):
         return self.get_area(area).ambushers
 
-    def add_ambusher(self, ambusher, area: Union[str, Area, Entity]):
-        self.get_area(area).ambushers.append(ambusher)
+    def add_ambusher(self, ambusher: PlayingEntity, area: Union[str, Area, Entity]):
+        area_ambushers = self.get_area(area).ambushers
+        if ambusher not in area_ambushers:
+            for p in ambusher.players:
+                for prev_ambush in area_ambushers:
+                    if p in prev_ambush.players:
+                        area_ambushers.remove(prev_ambush)
+                        break
+            area_ambushers.append(ambusher)
 
     def remove_ambusher(self, ambusher, area: Union[str, Area, Entity]):
         self.get_area(area).ambushers.remove(ambusher)

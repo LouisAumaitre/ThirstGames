@@ -141,9 +141,17 @@ class Game(AbstractGame, metaclass=Singleton):
                 players.append(Group(group))
             else:
                 players.append(group[0])
-            for p in group:
-                area_players.remove(p)
-        # print(f'{[str(pe) for pe in players]} {area.at}')
+            data = {p.name: p.busy for p in group}
+            print(f'group={data} from {[p.name for p in area_players]}')
+            for player in group:
+                try:
+                    print(f'remove {player.name} from {[p.name for p in area_players]}')
+                    area_players.remove(player)
+                except ValueError as e:
+                    print(f'{area.name}: {[p.name for p in area.players]}')
+                    print(f'added {players[-1]}: {[p.name for p in players[-1].players]}')
+                    print(f'cannot remove {player.name} from {[p.name for p in area_players]}')
+                    raise e
         return players
 
     def status(self):

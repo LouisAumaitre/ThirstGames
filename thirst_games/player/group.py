@@ -7,6 +7,7 @@ from thirst_games.abstract.area import Area
 from thirst_games.abstract.entity import Entity
 from thirst_games.abstract.items import Weapon, Item, Bag, HANDS
 from thirst_games.abstract.playing_entity import PlayingEntity
+from thirst_games.constants import AMBUSH
 from thirst_games.context import Context
 from thirst_games.map import Map
 from thirst_games.narrator import format_list, Narrator
@@ -108,7 +109,9 @@ class Group(PlayingEntity):
         return [p for p in Context().playing_entities_at(area) if p != self]  # TODO: consider
 
     def set_up_ambush(self):
-        raise NotImplementedError
+        self.stealth += (random() / 2 + 0.5) * (1 - self.stealth)
+        Map().add_ambusher(self, self)
+        Narrator().add([self.name, 'sets up', 'an ambush', self.current_area.at])
 
     def estimate_of_power(self, area) -> float:
         raise NotImplementedError
