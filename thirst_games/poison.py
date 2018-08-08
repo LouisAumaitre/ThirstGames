@@ -1,14 +1,16 @@
+from thirst_games.abstract.entity import LivingEntity
+from thirst_games.abstract.items import AbstractPoison
 from thirst_games.narrator import Narrator
 
 
-class Poison:
+class Poison(AbstractPoison):
     def __init__(self, name, amount, damage):
         self.name = name
         self.long_name = 'the ' + name
         self.amount = amount
         self.damage = damage
 
-    def upkeep(self, player):
+    def upkeep(self, player: LivingEntity):
         if self.amount == 0:
             player.remove_poison(self)
             return
@@ -16,7 +18,7 @@ class Poison:
         live = player.is_alive
         player.add_health(-self.damage)
         if live and not player.is_alive:
-            Narrator().new([player.first_name, 'succumbs', 'to', self.long_name])
+            Narrator().new([player.name, 'succumbs', 'to', self.long_name])
 
     def __str__(self):
         return f'{self.name}({int(self.damage * 100)}x{self.amount})'

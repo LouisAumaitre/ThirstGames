@@ -3,7 +3,6 @@ from typing import Optional
 from random import random, randint
 
 from thirst_games.narrator import format_list
-from thirst_games.poison import Poison
 
 
 class Item:
@@ -64,8 +63,12 @@ class Bottle(Item):
         return f'{self.name}({int(self.fill * 100)}%)'
 
 
+class AbstractPoison:
+    name = 'poison'
+
+
 class PoisonVial(Item):
-    def __init__(self, poison: Poison):
+    def __init__(self, poison: AbstractPoison):
         Item.__init__(self, poison.name + ' vial')
         self.poison = poison
 

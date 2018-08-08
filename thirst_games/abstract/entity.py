@@ -54,7 +54,14 @@ class CarryingEntity(Entity):
 
 class LivingEntity(Entity):
     @property
+    def is_alive(self) -> bool:
+        raise NotImplementedError
+
+    @property
     def drops(self):
+        raise NotImplementedError
+
+    def add_health(self, val):
         raise NotImplementedError
 
     def be_damaged(self, damage, weapon='default', attacker_name=None) -> bool:
