@@ -36,16 +36,14 @@ class Player(Carrier, PlayingEntity):
     def present_allies(self) -> List[PlayingEntity]:
         return [p for p in Map().players(self) if self.relationship(p).allied and p != self]
 
+    def current_group(self) -> List[PlayingEntity]:
+        return [*self.present_allies(), self]
+
     def busy_allies(self) -> List[PlayingEntity]:
         return [p for p in Context().alive_players if self.relationship(p).allied and p.busy]
 
     def enemies(self, area: Area) -> List[FightingEntity]:
         return [p for p in Context().playing_entities_at(area) if self not in p.players]
-
-    def current_group(self) -> List[PlayingEntity]:
-        if self.busy:
-            return [self]
-        return [*[p for p in self.present_allies() if not p.busy], self]
 
     def think(self):
         if self.strategy is not None or self.acted:

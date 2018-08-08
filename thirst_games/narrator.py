@@ -79,8 +79,8 @@ class Narrator(metaclass=Singleton):
                 line_str += self.switch(phrase) + ' '
             if line_str[-2] not in ['=', '-', '.', '!', ' ']:
                 line_str = line_str[:-1] + '.'
-            if len(line_str.split('misses')) > 2:
-                continue
+            # if len(line_str.split('misses')) > 2:
+            #     continue
             print(line_str)
 
     def _add(self, sentence):

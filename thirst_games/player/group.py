@@ -58,7 +58,7 @@ class Group(PlayingEntity):
         self.strategy = [s for s, v in strats.items() if v == max(strats.values())][0]
         if self.strategy == go_get_drop:
             self.destination = [area for area, v in destinations.items() if v == max(destinations.values())][0]
-        print(f'{str(self)}:{self.strategy.name}')
+        # print(f'{str(self)}:{self.strategy.name}')
         for a in self.players:
             a.strategy = self.strategy
             a.destination = self.destination
@@ -270,7 +270,7 @@ class Group(PlayingEntity):
             Narrator().cut()
         if self.check_for_ambush_and_traps():
             return
-        seen_neighbors = [p for p in Map().potential_players(self) if self.can_see(p) and p != self]
+        seen_neighbors = [p for p in Map().potential_players(self) if self.can_see(p) and p not in self.players]
         free_neighbors = [p for p in seen_neighbors if p.current_area == self.current_area and not p.busy]
         potential_danger = sum([p.dangerosity for p in seen_neighbors])
         actual_danger = sum([p.dangerosity for p in free_neighbors])

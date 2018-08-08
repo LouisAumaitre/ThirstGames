@@ -11,9 +11,9 @@ from thirst_games.narrator import Narrator
 def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
     initiative: Dict[PlayingEntity, float] = {}
     weapon_name: Dict[PlayingEntity, str] = {}
-    print(f'FIGHT between {[p.name for p in team_1]}, {[p.name for p in team_2]}')
     drops = []
     at_area = team_1[0].current_area.at
+    Narrator().add(['FIGHT between', [p.name for p in team_1], 'vs', [p.name for p in team_2]], at_area)
     for e in team_1:
         initiative[e] = 1 + random()
         if not len([e2 for e2 in team_2 if e2.can_see(e)]):
@@ -72,6 +72,7 @@ def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
                 break
             do_attack(player, choice(team_1), team_1)
         Narrator().cut()
+    Narrator().add(['FIGHT is over', [p.name for p in team_1], 'vs', [p.name for p in team_2]])
 
     if not len(team_2):
         for e in team_1:
