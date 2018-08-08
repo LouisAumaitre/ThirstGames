@@ -1,9 +1,10 @@
 #!python
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from copy import copy
 from random import random, choice
 
+from thirst_games.abstract.entity import Entity
 from thirst_games.abstract.playing_entity import PlayingEntity
 from thirst_games.constants import AFTERNOON, MORNING, NIGHT, STARTER
 from thirst_games.context import Context, AbstractGame
@@ -129,7 +130,8 @@ class Game(AbstractGame, metaclass=Singleton):
             p.busy = False
             p.acted = False
 
-    def playing_entities_at(self, area: Area) -> List[PlayingEntity]:
+    def playing_entities_at(self, area: Union[str, Area, Entity]) -> List[PlayingEntity]:
+        area = self.map.get_area(area)
         players: List[PlayingEntity] = []
         area_players = copy(area.players)
         while area_players:

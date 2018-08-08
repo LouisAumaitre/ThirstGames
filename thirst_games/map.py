@@ -1,5 +1,6 @@
 from typing import List, Union, Optional
 
+from copy import copy
 from random import random, choice, randint
 
 from thirst_games.abstract.entity import Entity, AbstractTrap, CarryingEntity

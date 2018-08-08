@@ -1,3 +1,6 @@
+from typing import List
+
+from thirst_games.abstract.playing_entity import PlayingEntity
 from thirst_games.singleton import Singleton
 
 
@@ -8,6 +11,9 @@ class AbstractGame:
     going_to_cornucopia = 0
 
     def death(self, dead_player):
+        raise NotImplementedError
+
+    def playing_entities_at(self, area) -> List[PlayingEntity]:
         raise NotImplementedError
 
 
@@ -38,3 +44,6 @@ class Context(metaclass=Singleton):
     @property
     def death(self):
         return self.game.death
+
+    def playing_entities_at(self, area) -> List[PlayingEntity]:
+        return self.game.playing_entities_at(area)

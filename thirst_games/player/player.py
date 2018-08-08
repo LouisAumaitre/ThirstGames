@@ -5,12 +5,13 @@ from random import random, choice
 
 from thirst_games.abstract.entity import Entity, FightingEntity, LivingEntity
 from thirst_games.abstract.items import Weapon, PoisonVial
-from thirst_games.abstract.playing_entity import Strategy, PlayingEntity, Relationship, do_a_fight
+from thirst_games.abstract.playing_entity import Strategy, PlayingEntity, Relationship
 from thirst_games.constants import (NIGHT, STARTER, TRAPPED, START_AREA, SLEEPING, FLEEING, AMBUSH, ARM_WOUND)
 from thirst_games.context import Context
 from thirst_games.map import Map, Area
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.carrier import Carrier
+from thirst_games.player.fight import do_a_fight
 from thirst_games.traps import can_build_any_trap, build_any_trap
 from thirst_games.weapons import weapon_bleed_proba
 
