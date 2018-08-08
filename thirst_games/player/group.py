@@ -98,9 +98,9 @@ class Group(PlayingEntity):
     def dangerosity(self) -> float:
         return sum(p.courage for p in self.players)
 
-    def flee(self, panic=False, drop_verb='drops', stock=False):
+    def flee(self, panic=False, drop_verb='drops', stock=False, filtered_areas=[]):
         for player in self.acting_players:
-            player.flee(panic=panic, drop_verb=drop_verb, stock=stock)
+            player.flee(panic=panic, drop_verb=drop_verb, stock=stock, filtered_areas=filtered_areas)
 
     def pursue(self):
         raise NotImplementedError
@@ -278,11 +278,11 @@ class Group(PlayingEntity):
         if potential_danger > self.dangerosity and potential_danger > self.courage:
             Narrator().add([
                 player_names(self.acting_players), 'see', format_list([p.name for p in seen_neighbors])])
-            self.flee()
+            self.flee(filtered_areas=[self.destination])
         elif actual_danger > self.dangerosity and actual_danger > self.courage:
             Narrator().add([
                 player_names(self.acting_players), 'see', format_list([p.name for p in free_neighbors])])
-            self.flee()
+            self.flee(filtered_areas=[self.destination])
         elif actual_danger > 0:  # enemy present -> fight them
             Narrator().cut()
             self.attack_at_random()
@@ -294,7 +294,7 @@ class Group(PlayingEntity):
                 Narrator().add([
                     player_names(self.acting_players), 'avoid', format_list([p.name for p in seen_neighbors])])
                 self.loot(take_a_break=False)
-                self.flee()
+                self.flee(filtered_areas=[self.destination])
         else:  # servez-vous
             self.loot()
         if len(Narrator().current_sentence) == 0:

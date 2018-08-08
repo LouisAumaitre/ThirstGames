@@ -142,10 +142,10 @@ class Player(Carrier, PlayingEntity):
 
         if potential_danger > self.dangerosity and potential_danger > self.courage:
             Narrator().add([self.name, 'sees', format_list([p.name for p in seen_neighbors])])
-            self.flee()
+            self.flee(filtered_areas=[self.destination])
         elif actual_danger > self.dangerosity and actual_danger > self.courage:
             Narrator().add([self.name, 'sees', format_list([p.name for p in free_neighbors])])
-            self.flee()
+            self.flee(filtered_areas=[self.destination])
         elif actual_danger > 0:  # enemy present -> fight them
             Narrator().cut()
             self.attack_at_random()
@@ -156,7 +156,7 @@ class Player(Carrier, PlayingEntity):
             else:  # loot and go/get your load and hit the road
                 Narrator().add([self.name, 'avoids', format_list([p.name for p in seen_neighbors])])
                 self.loot(take_a_break=False)
-                self.flee()
+                self.flee(filtered_areas=[self.destination])
         else:  # servez-vous
             self.loot()
         if len(Narrator().current_sentence) == 0:
@@ -183,8 +183,8 @@ class Player(Carrier, PlayingEntity):
             power *= 0.1
         return power
 
-    def flee(self, panic=False, drop_verb='drops', stock=False):
-        filtered_areas = Context().forbidden_areas
+    def flee(self, panic=False, drop_verb='drops', stock=False, filtered_areas=[]):
+        filtered_areas = [*Context().forbidden_areas, *filtered_areas]
         self.status.append(FLEEING)
         if panic and random() > self.courage + 0.5:
             self.drop_weapon(verbose=True, drop_verb=drop_verb)

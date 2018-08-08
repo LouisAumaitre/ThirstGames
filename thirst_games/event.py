@@ -69,6 +69,7 @@ class DamageEvent(Event):
         for area in self.areas:
             for p in area.players:
                 Narrator().cut()
+                Narrator().add([area.name, ':', [p.name for p in area.players]])
                 Narrator().add(['trigger event for', p.name])
 
                 if p.can_flee():
@@ -97,6 +98,8 @@ class DamageEvent(Event):
             Narrator().clear_stock()
             if self.remove_loot:
                 area.loot.clear()
+        for area in Map().areas:
+            Narrator().new([area.name, ':', [p.name for p in area.players]])
 
     @classmethod
     def can_happen(cls) -> bool:
