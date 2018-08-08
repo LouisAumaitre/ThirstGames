@@ -7,12 +7,11 @@ from thirst_games.abstract.area import Area
 from thirst_games.abstract.entity import Entity
 from thirst_games.abstract.items import Weapon, Item, Bag, HANDS, Food
 from thirst_games.abstract.playing_entity import PlayingEntity
-from thirst_games.constants import AMBUSH
 from thirst_games.context import Context
 from thirst_games.map import Map
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.fight import do_a_fight
-from thirst_games.player.player import Player, go_get_drop
+from thirst_games.player.player import Player
 
 
 def player_names(players: List[Player]) -> str:
@@ -49,19 +48,13 @@ class Group(PlayingEntity):
 
     def think(self):
         strats = {}
-        destinations = {}
         for a in self.players:
             for s, v in a.judge_strats().items():
                 strats[s] = strats.get(s, 0) + v
-                if s == go_get_drop:
-                    destinations[a.destination] = destinations.get(a.destination, 0) + v
         self.strategy = [s for s, v in strats.items() if v == max(strats.values())][0]
-        if self.strategy == go_get_drop:
-            self.destination = [area for area, v in destinations.items() if v == max(destinations.values())][0]
         # print(f'{str(self)}:{self.strategy.name}')
         for a in self.players:
             a.strategy = self.strategy
-            a.destination = self.destination
 
     def act(self):
         Narrator().cut()
@@ -74,8 +67,10 @@ class Group(PlayingEntity):
                 if player_strat is not None:
                     print(f'{p.name}:{player_strat.name}, group:{self.strategy.name}')
                 p.apply_strat(player_strat)
-        if len(self.acting_players):
+        if len(self.acting_players) > 1:
             self.strategy.apply(self)
+        elif len(self.acting_players) == 1:
+            self.strategy.apply(self.acting_players[0])
         Narrator().cut()
         self.acted = True
 
@@ -279,8 +274,8 @@ class Group(PlayingEntity):
             return Map().move_player(self, area)
         return None
 
-    def go_get_drop(self):
-        out = self.go_to(self.destination)
+    def go_get_drop(self, area: Area):
+        out = self.go_to(area)
         if out is not None:
             Narrator().add([player_names(self.acting_players), f'goes {out.to} to get loot'])
         else:
@@ -295,11 +290,11 @@ class Group(PlayingEntity):
         if potential_danger > self.dangerosity and potential_danger > self.courage:
             Narrator().add([
                 player_names(self.acting_players), 'see', format_list([p.name for p in seen_neighbors])])
-            self.flee(filtered_areas=[self.destination])
+            self.flee(filtered_areas=[area])
         elif actual_danger > self.dangerosity and actual_danger > self.courage:
             Narrator().add([
                 player_names(self.acting_players), 'see', format_list([p.name for p in free_neighbors])])
-            self.flee(filtered_areas=[self.destination])
+            self.flee(filtered_areas=[area])
         elif actual_danger > 0:  # enemy present -> fight them
             Narrator().cut()
             self.attack_at_random()
@@ -311,14 +306,14 @@ class Group(PlayingEntity):
                 Narrator().add([
                     player_names(self.acting_players), 'avoid', format_list([p.name for p in seen_neighbors])])
                 self.loot(take_a_break=False)
-                self.flee(filtered_areas=[self.destination])
+                self.flee(filtered_areas=[area])
         else:  # servez-vous
             self.loot()
-        if len(Narrator().current_sentence) == 0:
-            Narrator().add([
-                str(self), f'potential_danger={potential_danger}', f'actual_danger={actual_danger}',
-                f'dangerosity={self.dangerosity}', f'courage={self.courage}',
-            ])
+        # if len(Narrator().current_sentence) == 0:
+        #     Narrator().add([
+        #         str(self), f'potential_danger={potential_danger}', f'actual_danger={actual_danger}',
+        #         f'dangerosity={self.dangerosity}', f'courage={self.courage}',
+        #     ])
 
     def check_for_ambush_and_traps(self):
         traps = Map().traps(self)

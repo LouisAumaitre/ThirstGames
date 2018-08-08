@@ -113,22 +113,12 @@ class Player(Carrier, PlayingEntity):
             raise AttributeError(f'{self.name}({self.current_area.at}) has no strat ({self.strategy})') from e
         Narrator().cut()
 
-    def should_go_get_drop(self) -> float:
-        areas_by_value = {
-            area: self.dangerosity + self.estimate(Map().loot(area)) - self.estimate_of_danger(area)
-            for area in Map().area_names
-        }
-        filtered = [key for key, value in areas_by_value.items() if value > 0]
-        if not len(filtered):
-            self.destination = self.current_area
-            return 0
-        filtered.sort(key=lambda x: -areas_by_value[x])
-        self.destination = filtered[0]
-        return areas_by_value[self.destination] * min([
-            random(), 3 / Context().player_count])
+    def should_go_get_drop(self, area: Area) -> float:
+        area_value = self.dangerosity + self.estimate(Map().loot(area)) - self.estimate_of_danger(area)
+        return area_value * min([random(), 3 / Context().player_count])
 
-    def go_get_drop(self):
-        out = self.go_to(self.destination)
+    def go_get_drop(self, area: Area):
+        out = self.go_to(area)
         if out is not None:
             Narrator().add([self.name, f'goes {out.to} to get loot'])
         else:
@@ -142,10 +132,10 @@ class Player(Carrier, PlayingEntity):
 
         if potential_danger > self.dangerosity and potential_danger > self.courage:
             Narrator().add([self.name, 'sees', format_list([p.name for p in seen_neighbors])])
-            self.flee(filtered_areas=[self.destination])
+            self.flee(filtered_areas=[area])
         elif actual_danger > self.dangerosity and actual_danger > self.courage:
             Narrator().add([self.name, 'sees', format_list([p.name for p in free_neighbors])])
-            self.flee(filtered_areas=[self.destination])
+            self.flee(filtered_areas=[area])
         elif actual_danger > 0:  # enemy present -> fight them
             Narrator().cut()
             self.attack_at_random()
@@ -156,7 +146,7 @@ class Player(Carrier, PlayingEntity):
             else:  # loot and go/get your load and hit the road
                 Narrator().add([self.name, 'avoids', format_list([p.name for p in seen_neighbors])])
                 self.loot(take_a_break=False)
-                self.flee(filtered_areas=[self.destination])
+                self.flee(filtered_areas=[area])
         else:  # servez-vous
             self.loot()
         if len(Narrator().current_sentence) == 0:
@@ -397,7 +387,15 @@ def flee_strats():
         f'flee to {area.name}',
         lambda x: x._flee_value(area) / 30,
         lambda x: x.flee()
-    ) for area in Map().areas]
+    ) for area in Map().areas if area not in Context().forbidden_areas]
+
+
+def get_drop_strats():
+    return [Strategy(
+        f'go get loot {area.at}',
+        lambda x: x.should_go_get_drop(area),
+        lambda x: x.go_get_drop(area)
+    ) for area in Map().areas if area not in Context().forbidden_areas]
 
 
 attack_strat = Strategy(
@@ -426,7 +424,6 @@ loot_strat = Strategy(
     'loot',
     lambda x: (x.energy - x.move_cost) * (2 if x.weapon.damage_mult == 1 else 0.2) * x.estimate(Map().loot(x)),
     lambda x: x.loot())
-go_get_drop = Strategy('go get loot', lambda x: x.should_go_get_drop(), lambda x: x.go_get_drop())
 loot_bag_strat = Strategy(
     'loot bag',
     lambda x: x.weapon.damage_mult * Map().has_bags(x) * (x.bag is None),
@@ -470,12 +467,12 @@ def start_strategies():
 def morning_strategies():
     return [
         hide_strat, *flee_strats(), attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
-        hunt_player_strat, ambush_strat, go_get_drop, trap_strat, free_trap_strat, duel_strat,
+        hunt_player_strat, ambush_strat, *get_drop_strats(), trap_strat, free_trap_strat, duel_strat,
     ]
 
 
 def night_strategies():
     return [
         hide_strat, *flee_strats(), loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat,
-        ambush_strat, go_get_drop, trap_strat, free_trap_strat,
+        ambush_strat, *get_drop_strats(), trap_strat, free_trap_strat,
     ]

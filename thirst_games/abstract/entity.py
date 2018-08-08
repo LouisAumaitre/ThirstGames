@@ -12,7 +12,6 @@ class Entity:
         self.his = 'his' if he == 'he' else ('her' if he == 'she' else 'its')
         self.status: List[str] = []
         self._current_area: Area = None
-        self.destination: Area = None
         self.stealth: float = 0
 
     @property

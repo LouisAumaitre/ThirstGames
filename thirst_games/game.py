@@ -192,7 +192,7 @@ class Game(AbstractGame, metaclass=Singleton):
     def death(self, dead_player):
         try:
             self.map.remove_player(dead_player)
-            if len(self.alive_players) == 2:
+            if len(self.alive_players) == 2 and self.alive_players[0].relationship(self.alive_players[1]).allied:
                 self.alive_players[0].relationship(self.alive_players[1]).allied = False
                 self.alive_players[1].relationship(self.alive_players[0]).allied = False
                 Narrator().stock([
