@@ -173,7 +173,9 @@ class Player(Carrier, PlayingEntity):
             power *= 0.1
         return power
 
-    def flee(self, panic=False, drop_verb='drops', stock=False, filtered_areas=[]):
+    def flee(self, panic=False, drop_verb='drops', stock=False, filtered_areas=None):
+        if filtered_areas is None:
+            filtered_areas = []
         filtered_areas = [*Context().forbidden_areas, *filtered_areas]
         self.status.append(FLEEING)
         if panic and random() > self.courage + 0.5:

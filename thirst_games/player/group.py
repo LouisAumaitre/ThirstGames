@@ -93,7 +93,7 @@ class Group(PlayingEntity):
     def dangerosity(self) -> float:
         return sum(p.courage for p in self.players)
 
-    def flee(self, panic=False, drop_verb='drops', stock=False, filtered_areas=[]):
+    def flee(self, panic=False, drop_verb='drops', stock=False, filtered_areas=None):
         for player in self.acting_players:
             player.flee(panic=panic, drop_verb=drop_verb, stock=stock, filtered_areas=filtered_areas)
 
@@ -336,6 +336,10 @@ class Group(PlayingEntity):
     def take_a_break(self):
         for player in self.acting_players:
             player.take_a_break()
+
+    def forage(self):
+        for player in self.acting_players:
+            player.forage()
 
     def dine(self):
         Map().test = True
