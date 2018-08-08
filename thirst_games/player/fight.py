@@ -28,14 +28,16 @@ def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
         verbs_1 = 'finds and '
 
     for e in [*team_1, *team_2]:
-        e.busy = True
-        e.reveal()
         if FLEEING in e.status:
             e.status.remove(FLEEING)
         weapon_name[e] = f'with {e.his} {e.weapon.name}'
     fight_round = 0
 
     def do_attack(attacker, defender, defending_team, surprise=''):
+        attacker.busy = True
+        attacker.reveal()
+        defender.busy = True
+        defender.reveal()
         if attacker.hit(defender, 1 + initiative[attacker] - initiative[defender]):
             Narrator().add([
                 attacker.name, verbs_1 + 'kills', defender.name, surprise, at_area, weapon_name[player_1]])

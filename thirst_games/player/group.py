@@ -121,7 +121,11 @@ class Group(PlayingEntity):
 
     def can_see(self, other):
         for player in self.acting_players:
-            if player.can_see(other):
+            if isinstance(other, PlayingEntity):
+                for target in other.players:
+                    if player.can_see(target):
+                        return True
+            elif player.can_see(other):
                 return True
         return False
 
@@ -129,7 +133,10 @@ class Group(PlayingEntity):
         raise NotImplementedError
 
     def attack_at_random(self):
-        preys = [p for p in self.enemies(self.current_area) if self.can_see(p) and p != self]
+        preys = [
+            p for p in self.enemies(self.current_area)
+            if self.can_see(p) and not set(self.players).intersection(set(p.players))
+        ]
         preys.sort(key=lambda x: x.dangerosity)
         if len(preys):
             self.fight(preys[0])
