@@ -56,16 +56,6 @@ class Group(PlayingEntity):
         for a in self.players:
             a.strategy = self.strategy
 
-        if self.strategy == loot_start_strat:
-            for x in self.players:
-                w = x.estimate(Map().weapons(x))
-                b = x.weapon.damage_mult * Map().has_bags(x) * (x.bag is None)
-                if w == b == 0:
-                    print(x.name)
-                    print(f'w={round(w, 2)} b={round(b, 2)}')
-                    for s in start_strategies():
-                        print(f'{s.name}: {s.pref(x)}')
-
     def act(self):
         Narrator().cut()
         self._acting_players = []

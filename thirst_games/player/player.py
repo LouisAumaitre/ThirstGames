@@ -93,7 +93,8 @@ class Player(Carrier, PlayingEntity):
         return - len(self.enemies(area)) * 10 \
                + len(Map().loot(area)) \
                + (self.thirst if area.has_water else 0) \
-               + (30 * len([a for a in self.allies() if a in area.players]) if area != self.current_area else 0)
+               + (30 * len([a for a in self.allies() if a in area.players]) if area != self.current_area else 0) \
+               + 1
 
     def _pursue_value(self, area):
         return -len(self.enemies(area)) * 10 \
@@ -455,7 +456,7 @@ hunt_player_strat = Strategy(
     lambda x: x.attack_at_random())
 fight_strat = Strategy(
     'fight',
-    lambda x: x.health * sum([x.dangerosity > n.dangerosity * 1.2 for n in Map().players(x)]),
+    lambda x: x.health * (sum([x.dangerosity > n.dangerosity * 1.2 for n in Map().players(x)]) + 0.1),
     lambda x: x.attack_at_random())
 duel_strat = Strategy(
     'duel',
