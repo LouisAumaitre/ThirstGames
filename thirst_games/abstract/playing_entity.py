@@ -112,7 +112,7 @@ def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
             defending_team.remove(defender)
         else:
             verb = 'attacks' if fight_round == 1 else 'fights'
-            Narrator().new([attacker.name, verbs_1 + verb, defender.name, at_area, weapon_name[player_1]])
+            Narrator().add([attacker.name, verbs_1 + verb, defender.name, at_area, weapon_name[player_1]])
             Narrator().apply_stock()
         if defender.is_alive and random() > defender.courage and defender.can_flee():
             w = defender.weapon
@@ -124,6 +124,8 @@ def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
     while len(team_1) and len(team_2) and (Context().time != STARTER or fight_round < 4):
         fight_round += 1
         for player_1 in team_1:
+            if not len(team_2):
+                break
             player_2 = choice(team_2)
 
             surprise_txt = f'in {player_2.his} sleep' if SLEEPING in player_2.status else (
@@ -135,7 +137,10 @@ def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
             initiative[player_2] = 1
 
         for player in team_2:
+            if not len(team_1):
+                break
             do_attack(player, choice(team_1), team_1)
+        Narrator().cut()
 
     if not len(team_2):
         for e in team_1:

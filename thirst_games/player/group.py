@@ -27,7 +27,7 @@ class Group(PlayingEntity):
 
     @property
     def players(self):
-        return self._players
+        return [p for p in self._players if p.is_alive]
 
     @property
     def name(self) -> str:
@@ -101,7 +101,7 @@ class Group(PlayingEntity):
     def pursue(self):
         raise NotImplementedError
 
-    def enemies(self, area: Area) -> List[Entity]:
+    def enemies(self, area: Area) -> List[PlayingEntity]:
         return [p for p in area.players if p != self]  # TODO: consider
 
     def set_up_ambush(self):
@@ -123,12 +123,15 @@ class Group(PlayingEntity):
         raise NotImplementedError
 
     def attack_at_random(self):
-        # TODO: group fight
-        for player in self.acting_players:
-            player.attack_at_random()
+        preys = [p for p in self.enemies(self.current_area) if self.can_see(p) and p != self]
+        preys.sort(key=lambda x: x.health * x.damage())
+        if len(preys):
+            self.fight(preys[0])
+        else:
+            self.pursue()
 
-    def fight(self, other_player):
-        do_a_fight(self.players, other_player.players)
+    def fight(self, other_player: PlayingEntity):
+        do_a_fight(self.acting_players, other_player.players)
 
     def loot_weapon(self, weapon: Optional[Union[Weapon, List[Weapon]]]=None):
         weapons: List[Weapon] = []
