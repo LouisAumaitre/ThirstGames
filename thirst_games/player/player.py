@@ -93,7 +93,7 @@ class Player(Carrier, PlayingEntity):
         return - len(self.enemies(area)) * 10 \
                + len(Map().loot(area)) \
                + (self.thirst if area.has_water else 0) \
-               + 30 * len([a for a in self.allies() if a in area.players])
+               + (30 * len([a for a in self.allies() if a in area.players]) if area != self.current_area else 0)
 
     def _pursue_value(self, area):
         return -len(self.enemies(area)) * 10 \
@@ -191,18 +191,20 @@ class Player(Carrier, PlayingEntity):
             power *= 0.1
         return power
 
-    def flee(self, panic=False, drop_verb='drops', stock=False, filtered_areas=None):
-        if filtered_areas is None:
-            filtered_areas = []
-        filtered_areas = [*Context().forbidden_areas, *filtered_areas]
-        self.status.append(FLEEING)
-        if panic and random() > self.courage + 0.5:
-            self.drop_weapon(verbose=True, drop_verb=drop_verb)
+    def flee(self, area=None, panic=False, drop_verb='drops', stock=False, filtered_areas=None):
+        if area is None:
+            if filtered_areas is None:
+                filtered_areas = []
+            filtered_areas = [*Context().forbidden_areas, *filtered_areas]
+            self.status.append(FLEEING)
+            if panic and random() > self.courage + 0.5:
+                self.drop_weapon(verbose=True, drop_verb=drop_verb)
 
-        available_areas = [area for area in Map().areas if area not in filtered_areas]
-        available_areas.sort(key=lambda x: -self._flee_value(x))
+            available_areas = [area for area in Map().areas if area not in filtered_areas]
+            available_areas.sort(key=lambda x: self._flee_value(x))
+            area = available_areas[-1]
 
-        out = self.go_to(available_areas[0])
+        out = self.go_to(area)
         if out is None:
             self.hide(panic=panic, stock=stock)
         else:
@@ -386,6 +388,16 @@ class Player(Carrier, PlayingEntity):
         Narrator().new([prey.name, 'falls', 'into', f'{self.name}\'s ambush!'])
         self.fight(prey)
 
+    def loot_start(self):
+        w = self.estimate(Map().weapons(self))
+        b = self.weapon.damage_mult * Map().has_bags(self) * (self.bag is None)
+        if w > b and w > 0:
+            self.loot_weapon()
+        elif b > 0:
+            self.loot_bag(take_a_break=False)
+        else:
+            self.hide()
+
 
 hide_strat = Strategy(
     'hide',
@@ -402,12 +414,22 @@ hide_strat = Strategy(
     lambda x: x.hide())
 
 
+class FleeStrat(Strategy):
+    def __init__(self, area):
+        Strategy.__init__(self, f'flee to {area.name}', None, None)
+        self.area = area
+
+        def _pref(x):
+            return x._flee_value(self.area) / 30
+
+        self.pref = _pref
+
+    def apply(self, player: PlayingEntity):
+        player.flee(self.area)
+
+
 def flee_strats():
-    return [Strategy(
-        f'flee to {area.name}',
-        lambda x: x._flee_value(area) / 30,
-        lambda x: x.flee()
-    ) for area in Map().areas if area not in Context().forbidden_areas]
+    return [FleeStrat(area) for area in Map().areas if area not in Context().forbidden_areas]
 
 
 def get_drop_strats():
@@ -448,10 +470,9 @@ loot_bag_strat = Strategy(
     'loot bag',
     lambda x: x.weapon.damage_mult * Map().has_bags(x) * (x.bag is None),
     lambda x: x.loot_bag())
-loot_weapon_strat = Strategy(
-    'loot weapon',
-    lambda x: x.estimate(Map().weapons(x)),
-    lambda x: x.loot_weapon())
+loot_start_strat = Strategy(
+    'loot', lambda x: max(x.estimate(Map().weapons(x)), x.weapon.damage_mult * Map().has_bags(x) * (x.bag is None)),
+    lambda x: x.loot_start())
 forage_strat = Strategy(
     'forage',
     lambda x: x.hunger * Map().forage_potential(x) / Map().players_count(x),
@@ -480,7 +501,7 @@ free_trap_strat = Strategy(
 
 def start_strategies():
     return [
-        *flee_strats(), fight_strat, loot_bag_strat, loot_weapon_strat,
+        *flee_strats(), fight_strat, loot_start_strat,
     ]
 
 

@@ -154,18 +154,21 @@ class Carrier(Body, CarryingEntity):
                 self.name, 'tries to loot', self.current_area.at, 'but can\'t find anything useful'])
             return
         if isinstance(item, Weapon):
-            self.loot_weapon(item)
+            self.loot_weapon(item, retry=False)
         else:
             Narrator().add([self.name, 'picks up', item.long_name, self.current_area.at])
             self.get_item(item)
 
-    def loot_weapon(self, weapon: Optional[Weapon]=None):
+    def loot_weapon(self, weapon: Optional[Weapon]=None, retry=True):
         if weapon is None:
             weapon = Map().pick_weapon(self.current_area)
         if weapon is None or (weapon.damage_mult <= self.weapon.damage_mult and (
                     not weapon.small or Context().time == STARTER or self.bag is None)):
-            Narrator().add([
-                self.name, 'tries to find a weapon', self.current_area.at, 'but can\'t find anything good'])
+            if retry:
+                return self.loot(take_a_break=False)
+            else:
+                Narrator().add([
+                    self.name, 'tries to find a weapon', self.current_area.at, 'but can\'t find anything good'])
             return
         if weapon.name == self.weapon.name:
             self.weapon.long_name.replace('\'s', '\'s old')
@@ -175,10 +178,10 @@ class Carrier(Body, CarryingEntity):
             Narrator().add([self.name, 'picks up', weapon.long_name, self.current_area.at])
         self.get_weapon(weapon)
 
-    def loot_bag(self):
+    def loot_bag(self, take_a_break=True):
         item = Map().pick_bag(self.current_area)
         if item is None:
-            return self.loot()
+            return self.loot(take_a_break=take_a_break)
         Narrator().add([self.name, 'picks up', item.long_name, self.current_area.at])
         self.get_item(item)
 

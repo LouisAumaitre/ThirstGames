@@ -29,6 +29,9 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     def enemies(self, area: Area) -> List[Entity]:
         return [p for p in area.players if p != self]  # TODO: consider
 
+    def loot_start(self):
+        raise NotImplementedError
+
 
 class Strategy:
     def __init__(self, name, pref, action):

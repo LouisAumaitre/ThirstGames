@@ -11,7 +11,7 @@ from thirst_games.context import Context
 from thirst_games.map import Map
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.fight import do_a_fight
-from thirst_games.player.player import Player
+from thirst_games.player.player import Player, loot_start_strat, start_strategies
 
 
 def player_names(players: List[Player]) -> str:
@@ -55,6 +55,16 @@ class Group(PlayingEntity):
         # print(f'{str(self)}:{self.strategy.name}')
         for a in self.players:
             a.strategy = self.strategy
+
+        if self.strategy == loot_start_strat:
+            for x in self.players:
+                w = x.estimate(Map().weapons(x))
+                b = x.weapon.damage_mult * Map().has_bags(x) * (x.bag is None)
+                if w == b == 0:
+                    print(x.name)
+                    print(f'w={round(w, 2)} b={round(b, 2)}')
+                    for s in start_strategies():
+                        print(f'{s.name}: {s.pref(x)}')
 
     def act(self):
         Narrator().cut()
@@ -379,3 +389,7 @@ class Group(PlayingEntity):
                         Narrator().new([f'the {poison[player].name}', 'is', 'poisonous!'])
                         Narrator().cut()
                     player.consume_antidote()
+
+    def loot_start(self):
+        for player in self.acting_players:
+            player.loot_start()

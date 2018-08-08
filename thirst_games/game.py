@@ -109,12 +109,11 @@ class Game(AbstractGame, metaclass=Singleton):
 
     def play(self):
         Narrator().cut()
+        players: List[PlayingEntity] = []
         for player in self.alive_players:
             player.consider_betrayal()
-        players: List[PlayingEntity] = []
         for area in self.map.areas:
             players.extend(self.playing_entities_at(area))
-        # print(f'{[str(pe) for pe in players]}')
         if self.time != STARTER:
             for p in self.alive_players:
                 p.upkeep()
