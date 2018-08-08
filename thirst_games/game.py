@@ -195,6 +195,9 @@ class Game(AbstractGame, metaclass=Singleton):
             if len(self.alive_players) == 2:
                 self.alive_players[0].relationship(self.alive_players[1]).allied = False
                 self.alive_players[1].relationship(self.alive_players[0]).allied = False
+                Narrator().stock([
+                    self.alive_players[0].name, 'and', self.alive_players[1].name, 'are no longer allies'
+                ])
         except ValueError as e:
             Narrator().tell()
             raise ValueError(

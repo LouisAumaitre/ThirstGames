@@ -68,6 +68,7 @@ def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
                     'by surprise' if initiative[player_1] > initiative[player_2] else ''))
 
             do_attack(player_1, player_2, team_2, surprise_txt)
+            verbs_1 = ''
             initiative[player_1] = 1
             initiative[player_2] = 1
 

@@ -207,9 +207,12 @@ class Player(Carrier, PlayingEntity):
             self.hide()
             Narrator().replace('hides and rests', 'rests')
         else:
-            targets = [p.name for p in Context().alive_players if p != self]
-            players = 'players' if len(targets) > 1 else targets[0]
-            Narrator().add([self.name, 'searches for', players, out.at])
+            targets = [p.name for p in Context().alive_players if p != self and not self.relationship(p).allied]
+            if len(targets) == 0:
+                Narrator().add([self.name, 'doesn\'t know', 'who to look for', out.at])
+            else:
+                players = 'players' if len(targets) > 1 else targets[0]
+                Narrator().add([self.name, 'searches for', players, out.at])
             self.check_for_ambush_and_traps()
 
     def go_to(self, area: Union[str, Area, Entity]) -> Optional[Area]:

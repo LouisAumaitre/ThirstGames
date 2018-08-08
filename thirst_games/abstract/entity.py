@@ -49,6 +49,9 @@ class CarryingEntity(Entity):
     def estimate(self, item: Union[Item, List[Item]]) -> float:
         raise NotImplementedError
 
+    def take_a_break(self):
+        raise NotImplementedError
+
 
 class LivingEntity(Entity):
     @property

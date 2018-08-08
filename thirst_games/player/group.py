@@ -1,11 +1,11 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 from copy import copy
 from random import random, choice
 
 from thirst_games.abstract.area import Area
 from thirst_games.abstract.entity import Entity
-from thirst_games.abstract.items import Weapon, Item, Bag, HANDS
+from thirst_games.abstract.items import Weapon, Item, Bag, HANDS, Food
 from thirst_games.abstract.playing_entity import PlayingEntity
 from thirst_games.constants import AMBUSH
 from thirst_games.context import Context
@@ -337,3 +337,47 @@ class Group(PlayingEntity):
         Map().remove_ambusher(self, self)
         Narrator().new([prey.first_name, 'falls', 'into', f'{self.name}\'s ambush!'])
         self.fight(prey)
+
+    def take_a_break(self):
+        for player in self.acting_players:
+            player.take_a_break()
+
+    def dine(self):
+        Map().test = True
+        self.take_a_break()
+        food_owner: Dict[Food, Player] = {}
+        for player in self.acting_players:
+            for e in player.equipment:
+                if isinstance(e, Food):
+                    food_owner[e] = player
+        if not len(food_owner):
+            Narrator().add([self.name, 'does not have', 'anything to eat'])
+        else:
+            food = list(food_owner.keys())
+            food.sort(key=lambda x: x.value)
+            diner = {p: [] for p in self.acting_players}
+            poison = {p: None for p in self.acting_players}
+            eaters = copy(self.acting_players)
+            eaters.sort(key=lambda x: -x.hunger)
+            while len(eaters) and len(food):
+                eaters_this_round = copy(eaters)
+                for eater in eaters_this_round:
+                    try:
+                        meal = food.pop()
+                    except IndexError:
+                        break
+                    food_owner[meal].remove_item(meal)
+                    diner[eater].append(meal.name)
+                    if eater.eat(meal, verbose=False) == 'poison':
+                        poison[eater] = meal
+                        eaters.remove(eater)
+                    elif not eater.hunger:
+                        eaters.remove(eater)
+
+            for player in self.acting_players:
+                if len(diner[player]):
+                    Narrator().add([player.name, 'eats', player.his, format_list(diner[player]), self.current_area.at])
+                    if poison[player] is not None:
+                        Narrator().new([f'the {poison[player].name}', 'is', 'poisonous!'])
+                        Narrator().cut()
+                    player.consume_antidote()
