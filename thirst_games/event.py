@@ -54,7 +54,7 @@ class DamageEvent(Event):
         Context().forbidden_areas.extend(self.areas)
         saw_it_coming = []
         warned = []
-        Narrator().add(['should trigger for', [p.name for a in self.areas for p in a.players]])
+        # Narrator().add(['should trigger for', [p.name for a in self.areas for p in a.players]])
         for area in self.areas:
             for p_e in Context().playing_entities_at(area):
                 for p in p_e.players:
@@ -67,10 +67,9 @@ class DamageEvent(Event):
                 format_list(saw_it_coming), 'see' if len(saw_it_coming) > 1 else 'sees', self.it, 'coming'
             ])
         for area in self.areas:
-            for p in area.players:
+            area_players = copy(area.players)
+            for p in area_players:
                 Narrator().cut()
-                Narrator().add([area.name, ':', [p.name for p in area.players]])
-                Narrator().add(['trigger event for', p.name])
 
                 if p.can_flee():
                     if p in warned:
@@ -88,7 +87,7 @@ class DamageEvent(Event):
                 Narrator().new([p.name, 'is', 'trapped', area.at])
                 if self.trapped_means_dead:
                     p.be_damaged(1)
-                    Narrator().add([p.name, 'is', 'swipped', 'by', self.it, area.at, 'and', self.dies])
+                    Narrator().add([p.name, 'is', 'swiped', 'by', self.it, area.at, 'and', self.dies])
                 elif p.be_damaged(random() * self.extra_damage + self.base_damage, weapon=self.weapon_name):
                     Narrator().add(['and', self.dies])
                 else:
@@ -98,8 +97,6 @@ class DamageEvent(Event):
             Narrator().clear_stock()
             if self.remove_loot:
                 area.loot.clear()
-        for area in Map().areas:
-            Narrator().new([area.name, ':', [p.name for p in area.players]])
 
     @classmethod
     def can_happen(cls) -> bool:
