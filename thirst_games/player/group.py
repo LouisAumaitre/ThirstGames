@@ -103,7 +103,17 @@ class Group(PlayingEntity):
             player.flee(panic=panic, drop_verb=drop_verb, stock=stock, filtered_areas=filtered_areas)
 
     def pursue(self):
-        raise NotImplementedError
+        available_areas = [a for a in Map().areas if a not in Context().forbidden_areas]
+        available_areas.sort(key=lambda x: sum(p._pursue_value(x) for p in self.acting_players))
+        out = self.go_to(available_areas[-1])
+        if out is None:
+            self.hide()
+            Narrator().replace('hides and rests', 'rests')
+        else:
+            targets = [p.name for p in Context().alive_players if p not in self.players]
+            players = 'players' if len(targets) > 2 else format_list(targets)
+            Narrator().add([self.name, 'searches for', players, out.at])
+            self.check_for_ambush_and_traps()
 
     def enemies(self, area: Area) -> List[PlayingEntity]:
         return [p for p in Context().playing_entities_at(area) if p != self]  # TODO: consider

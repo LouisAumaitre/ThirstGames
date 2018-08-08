@@ -79,7 +79,7 @@ class Game(AbstractGame, metaclass=Singleton):
                 self.launch()
                 Narrator().tell(filters=[self.map.get_area(START_AREA).at])
         self._players_at_last_event = len(self.alive_players)
-        while len(self.alive_players) > 1 and self.day < 2:
+        while len(self.alive_players) > 1 and self.day < 5:
             if self.day != 1:
                 self.time = MORNING
                 self.launch()

@@ -13,7 +13,7 @@ def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
     weapon_name: Dict[PlayingEntity, str] = {}
     drops = []
     at_area = team_1[0].current_area.at
-    Narrator().new(['FIGHT between', [p.name for p in team_1], 'vs', [p.name for p in team_2], at_area])
+    # Narrator().new(['FIGHT between', [p.name for p in team_1], 'vs', [p.name for p in team_2], at_area])
     for e in team_1:
         initiative[e] = 1 + random()
         if not len([e2 for e2 in team_2 if e2.can_see(e)]):
@@ -34,18 +34,20 @@ def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
     fight_round = 0
 
     def do_attack(attacker, defender, defending_team, surprise=''):
+        if attacker in team_1:
+            Narrator().cut()
         attacker.busy = True
         attacker.reveal()
         defender.busy = True
         defender.reveal()
         if attacker.hit(defender, 1 + initiative[attacker] - initiative[defender]):
             Narrator().add([
-                attacker.name, verbs_1 + 'kills', defender.name, surprise, at_area, weapon_name[player_1]])
+                attacker.name, verbs_1 + 'kills', defender.name, surprise, at_area, weapon_name[attacker]])
             drops.extend(player_2.drops)
             defending_team.remove(defender)
         else:
-            verb = 'attacks' if fight_round == 1 else 'fights'
-            Narrator().add([attacker.name, verbs_1 + verb, defender.name, at_area, weapon_name[player_1]])
+            verb = 'attacks' if fight_round == 1 and attacker in team_1 else 'fights'
+            Narrator().add([attacker.name, verbs_1 + verb, defender.name, at_area, weapon_name[attacker]])
             Narrator().apply_stock()
         if defender.is_alive and random() > defender.courage and defender.can_flee():
             w = defender.weapon
@@ -74,7 +76,7 @@ def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
                 break
             do_attack(player, choice(team_1), team_1)
         Narrator().cut()
-    Narrator().new(['FIGHT is over', [p.name for p in team_1], 'vs', [p.name for p in team_2]])
+    # Narrator().new(['FIGHT is over', [p.name for p in team_1], 'vs', [p.name for p in team_2]])
 
     if not len(team_2):
         for e in team_1:
