@@ -342,7 +342,6 @@ class Group(PlayingEntity):
             player.forage()
 
     def dine(self):
-        Map().test = True
         self.take_a_break()
         food_owner: Dict[Food, Player] = {}
         for player in self.acting_players:

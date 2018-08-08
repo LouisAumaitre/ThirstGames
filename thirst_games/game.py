@@ -105,11 +105,12 @@ class Game(AbstractGame, metaclass=Singleton):
 
     def launch(self):
         Context().new_day()
-        # self.alive_players.sort(key=lambda x: random())
         self.play()
 
     def play(self):
         Narrator().cut()
+        for player in self.alive_players:
+            player.consider_betrayal()
         players: List[PlayingEntity] = []
         for area in self.map.areas:
             players.extend(self.playing_entities_at(area))
@@ -165,12 +166,8 @@ class Game(AbstractGame, metaclass=Singleton):
     def check_for_event(self):
         if self.time == STARTER:
             return False
-        # Narrator().new([
-        #     'event gauge:', self._event_gauge, '+', len(self.alive_players), '-', self._players_at_last_event, '+',
-        #     self._time_since_last_event])
         self._event_gauge += len(self.alive_players) - self._players_at_last_event + self._time_since_last_event
         self._time_since_last_event += 2
-        # Narrator().add(['=', self._event_gauge])
         return self._event_gauge > 0
 
     def trigger_event(self):
@@ -185,19 +182,12 @@ class Game(AbstractGame, metaclass=Singleton):
         event.trigger()
         Narrator().new(' ')
         Narrator().cut()
-        # Map().test += f' {event.name}-{self.day}'
         self._players_at_last_event = len(self.alive_players)
         self._time_since_last_event = 0
 
     def death(self, dead_player):
         try:
             self.map.remove_player(dead_player)
-            if len(self.alive_players) == 2 and self.alive_players[0].relationship(self.alive_players[1]).allied:
-                self.alive_players[0].relationship(self.alive_players[1]).allied = False
-                self.alive_players[1].relationship(self.alive_players[0]).allied = False
-                Narrator().stock([
-                    self.alive_players[0].name, 'and', self.alive_players[1].name, 'are no longer allies'
-                ])
         except ValueError as e:
             Narrator().tell()
             raise ValueError(

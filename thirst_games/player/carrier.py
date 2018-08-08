@@ -310,7 +310,7 @@ class Carrier(Body, CarryingEntity):
             b.fill -= _amount
         return amount
 
-    def forage(self):
+    def forage(self) -> Optional[Food]:
         food: Food = Map().get_forage(self)
         self.fill_bottles()
         if food is None:

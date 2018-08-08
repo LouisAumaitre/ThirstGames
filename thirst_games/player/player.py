@@ -30,11 +30,14 @@ class Player(Carrier, PlayingEntity):
             self.relationships[other_player.name] = Relationship()
         return self.relationships[other_player.name]
 
+    def is_allied_to(self, player):
+        return self.relationship(player).allied
+
     def allies(self) -> List[PlayingEntity]:
-        return [p for p in Context().alive_players if self.relationship(p).allied]
+        return [p for p in Context().alive_players if self.is_allied_to(p)]
 
     def present_allies(self) -> List[PlayingEntity]:
-        return [p for p in Map().players(self) if self.relationship(p).allied and p != self]
+        return [p for p in Map().players(self) if self.is_allied_to(p) and p != self]
 
     def current_group(self) -> List[PlayingEntity]:
         return [*self.present_allies(), self]
@@ -44,6 +47,21 @@ class Player(Carrier, PlayingEntity):
 
     def enemies(self, area: Area) -> List[FightingEntity]:
         return [p for p in Context().playing_entities_at(area) if self not in p.players]
+
+    def betray(self, player: PlayingEntity):
+        self.relationship(player).allied = False
+        player.relationship(self).allied = False
+        Narrator().new([self.name, 'betrays', player.name, '!'])
+        Map().test = f'{self.name} betrays'
+
+    def consider_betrayal(self):
+        if len([p for p in Context().alive_players if p != self and not self.is_allied_to(p)]) == 0:
+            allies = self.allies()
+            if len(allies):
+                allies.sort(key=lambda x: x.dangerosity)
+                self.betray(allies[-1])  # betray the most dangerous one
+                return True
+        return False
 
     def think(self):
         if self.strategy is not None or self.acted:
