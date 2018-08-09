@@ -4,12 +4,13 @@ from copy import copy
 from random import choice, random
 
 from thirst_games.abstract.entity import CarryingEntity
-from thirst_games.abstract.items import Bag, Item, Weapon, Bottle, Food, HANDS
+from thirst_games.abstract.items import Bag, Item, Weapon, Bottle, HANDS
 from thirst_games.constants import KNIFE, HATCHET, BLEEDING, STARTER, SWORD, AXE
 from thirst_games.context import Context
 from thirst_games.map import START_AREA, Map
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.body import Body
+from thirst_games.poison import Food
 
 
 class Carrier(Body, CarryingEntity):

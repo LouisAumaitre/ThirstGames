@@ -1,14 +1,13 @@
 from typing import List, Union, Optional
 
-from copy import copy
 from random import random, choice, randint
 
 from thirst_games.abstract.entity import Entity, AbstractTrap, CarryingEntity
-from thirst_games.abstract.items import Weapon, Item, Food, Bag, Bottle, PoisonVial
+from thirst_games.abstract.items import Weapon, Item, Bag, Bottle, PoisonVial
 from thirst_games.abstract.area import Area, _nature
 from thirst_games.abstract.playing_entity import PlayingEntity
 from thirst_games.constants import KNIFE, HATCHET, TRIDENT, AXE, SWORD, MACE, START_AREA, MACHETE
-from thirst_games.poison import Poison
+from thirst_games.poison import Poison, Food
 from thirst_games.singleton import Singleton
 
 food_values = {

@@ -37,7 +37,7 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     def loot_start(self):
         raise NotImplementedError
 
-    def relationship(self, other_player) -> Relationship:
+    def relationship(self, other_player):
         raise NotImplementedError
 
     def should_ask_to_ally(self, player) -> float:

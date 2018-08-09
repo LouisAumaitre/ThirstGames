@@ -122,6 +122,7 @@ class Player(Carrier, PlayingEntity):
         if new_strat is not None:
             self.apply_strat(new_strat)
         self.acted = True
+        self.strategy = None
 
     def new_strat(self) -> Optional[Strategy]:
         if self.acted or self.busy:
@@ -337,10 +338,9 @@ class Player(Carrier, PlayingEntity):
         else:
             self.pursue()
 
-    def fight(self, other_player: FightingEntity):
-        if isinstance(other_player, Player):
-            self.relationship(other_player).allied = False
-            other_player.relationship(self).allied = False
+    def fight(self, other_player: PlayingEntity):
+        if self.is_allied_to(other_player):
+            self.betray(other_player)
         do_a_fight(self.players, other_player.players)
 
     def hit(self, target: LivingEntity, mult=1) -> bool:
@@ -443,8 +443,28 @@ class FleeStrat(Strategy):
         player.flee(self.area)
 
 
+class AllianceStrat(Strategy):
+    def __init__(self, player):
+        Strategy.__init__(self, f'ally with {player.name}', None, None)
+        self.player = player
+
+        def _pref(x):
+            if x.current_area == self.player.current_area:
+                return x.want_to_ally(self.player)
+            return -100
+
+        self.pref = _pref
+
+    def apply(self, player: PlayingEntity):
+        player.ask_to_ally(self.player)
+
+
 def flee_strats():
     return [FleeStrat(area) for area in Map().areas if area not in Context().forbidden_areas]
+
+
+def alliance_strats():
+    return [AllianceStrat(player) for player in Context().alive_players]
 
 
 def get_drop_strats():
@@ -516,7 +536,7 @@ free_trap_strat = Strategy(
 
 def start_strategies():
     return [
-        *flee_strats(), fight_strat, loot_start_strat,
+        *flee_strats(), fight_strat, loot_start_strat, *alliance_strats(),
     ]
 
 
@@ -524,11 +544,12 @@ def morning_strategies():
     return [
         hide_strat, *flee_strats(), attack_strat, loot_strat, craft_strat_1, forage_strat, dine_strat, loot_bag_strat,
         hunt_player_strat, ambush_strat, *get_drop_strats(), trap_strat, free_trap_strat, duel_strat,
+        *alliance_strats(),
     ]
 
 
 def night_strategies():
     return [
         hide_strat, *flee_strats(), loot_strat, craft_strat_2, forage_strat, dine_strat, hunt_player_strat,
-        ambush_strat, *get_drop_strats(), trap_strat, free_trap_strat,
+        ambush_strat, *get_drop_strats(), trap_strat, free_trap_strat, *alliance_strats(),
     ]

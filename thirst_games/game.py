@@ -30,8 +30,8 @@ class Game(AbstractGame, metaclass=Singleton):
             self.map.add_player(p)
             for p2 in self.players:
                 if p != p2 and p.district == p2.district:
-                    p.relationship(p2).friendship += 0.5
-                    p.relationship(p2).allied = True
+                    p.relationship(p2).add_friendship(0.5)
+                    p.relationship(p2).add_trust(0.5)
         self.event_classes = [WildFire, DropEvent, Flood, AcidGas, Wasps, Beasts]
         self.day = 0
         self.time = STARTER
@@ -57,6 +57,7 @@ class Game(AbstractGame, metaclass=Singleton):
         Narrator().new(['All players start', self.map.get_area(START_AREA).at])
         self.time = STARTER
         Context().forbidden_areas.append(self.map.get_area(START_AREA))
+        rounds = 0
         while len(self.playing_entities_at(self.map.get_area(START_AREA))) > 1:
             Narrator().tell()
             self.launch()
@@ -78,6 +79,9 @@ class Game(AbstractGame, metaclass=Singleton):
                 Narrator().tell()
                 self.launch()
                 Narrator().tell(filters=[self.map.get_area(START_AREA).at])
+            rounds += 1
+            if rounds > 10:
+                raise Exception
         self._players_at_last_event = len(self.alive_players)
         while len(self.alive_players) > 1 and self.day < 5:
             if self.day != 1:

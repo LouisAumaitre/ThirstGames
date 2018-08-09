@@ -5,13 +5,14 @@ from random import random, choice
 
 from thirst_games.abstract.area import Area
 from thirst_games.abstract.entity import Entity
-from thirst_games.abstract.items import Weapon, Item, Bag, HANDS, Food
+from thirst_games.abstract.items import Weapon, Item, Bag, HANDS
 from thirst_games.abstract.playing_entity import PlayingEntity
 from thirst_games.context import Context
 from thirst_games.map import Map
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.fight import do_a_fight
 from thirst_games.player.player import Player
+from thirst_games.poison import Food
 
 
 def player_names(players: List[Player]) -> str:
@@ -122,12 +123,6 @@ class Group(PlayingEntity):
         Map().add_ambusher(self, self)
         Narrator().add([self.name, 'sets up', 'an ambush', self.current_area.at])
 
-    def estimate_of_power(self, area) -> float:
-        raise NotImplementedError
-
-    def estimate_of_danger(self, area) -> float:
-        raise NotImplementedError
-
     def can_see(self, other):
         for player in self.acting_players:
             if isinstance(other, PlayingEntity):
@@ -137,9 +132,6 @@ class Group(PlayingEntity):
             elif player.can_see(other):
                 return True
         return False
-
-    def pillage(self, stuff):
-        raise NotImplementedError
 
     def attack_at_random(self):
         preys = [
@@ -266,9 +258,6 @@ class Group(PlayingEntity):
     def reveal(self):
         for p in self.acting_players:
             p.reveal()
-
-    def estimate(self, item) -> float:
-        raise NotImplementedError
 
     def go_to(self, area: Union[str, Area, Entity]) -> Optional[Area]:
         area = Map().get_area(area)

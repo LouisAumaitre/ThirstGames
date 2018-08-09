@@ -3,7 +3,7 @@ from typing import List
 from copy import copy
 from random import random, choice, randint
 
-from thirst_games.abstract.items import Weapon, Bottle, Item, Food, Bag
+from thirst_games.abstract.items import Weapon, Bottle, Item, Bag
 from thirst_games.constants import SWORD, MACE, AXE
 from thirst_games.context import Context
 from thirst_games.map import Map, START_AREA, Area
@@ -11,6 +11,7 @@ from thirst_games.narrator import Narrator, format_list
 
 
 # TODO: sometimes events don't seem to affect everyone
+from thirst_games.poison import Food
 
 
 class Event:
