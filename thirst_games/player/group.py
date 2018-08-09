@@ -11,7 +11,7 @@ from thirst_games.context import Context
 from thirst_games.map import Map
 from thirst_games.narrator import format_list, Narrator
 from thirst_games.player.fight import do_a_fight
-from thirst_games.player.player import Player, loot_start_strat, start_strategies
+from thirst_games.player.player import Player
 
 
 def player_names(players: List[Player]) -> str:
@@ -21,6 +21,7 @@ def player_names(players: List[Player]) -> str:
 class Group(PlayingEntity):
     def __init__(self, players: List[Player]) -> None:
         PlayingEntity.__init__(self, 'group', 'it')
+        self.he = 'they'
         if not len(players):
             raise ValueError
         self._players = players
@@ -30,6 +31,9 @@ class Group(PlayingEntity):
     @property
     def players(self):
         return [p for p in self._players if p.is_alive]
+
+    def current_group(self):
+        return self.players
 
     @property
     def name(self) -> str:
@@ -383,3 +387,6 @@ class Group(PlayingEntity):
     def loot_start(self):
         for player in self.acting_players:
             player.loot_start()
+
+    def want_to_ally(self, player: PlayingEntity) -> float:
+        return sum([p.want_to_ally(player) for p in self.players]) / len(self.players)

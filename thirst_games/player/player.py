@@ -5,7 +5,7 @@ from random import random, choice
 
 from thirst_games.abstract.entity import Entity, FightingEntity, LivingEntity
 from thirst_games.abstract.items import Weapon, PoisonVial
-from thirst_games.abstract.playing_entity import Strategy, PlayingEntity, Relationship
+from thirst_games.abstract.playing_entity import Strategy, PlayingEntity, Relationship, GroupedRelationship
 from thirst_games.constants import (NIGHT, STARTER, TRAPPED, START_AREA, SLEEPING, FLEEING, AMBUSH, ARM_WOUND)
 from thirst_games.context import Context
 from thirst_games.map import Map, Area
@@ -26,6 +26,8 @@ class Player(Carrier, PlayingEntity):
         self.relationships: Dict[str, Relationship] = {}
 
     def relationship(self, other_player) -> Relationship:
+        if len(other_player.players) > 1:
+            return GroupedRelationship([self.relationship(p) for p in other_player.players])
         if other_player.name not in self.relationships:
             self.relationships[other_player.name] = Relationship()
         return self.relationships[other_player.name]
@@ -49,8 +51,12 @@ class Player(Carrier, PlayingEntity):
         return [p for p in Context().playing_entities_at(area) if self not in p.players]
 
     def betray(self, player: PlayingEntity):
-        self.relationship(player).allied = False
-        player.relationship(self).allied = False
+        self.relationship(player).set_allied(False)
+        self.relationship(player).add_trust(-1)
+        player.relationship(self).set_allied(False)
+        player.relationship(self).add_trust(-1)
+        player.relationship(self).add_friendship(-1)
+
         Narrator().new([self.name, 'betrays', player.name, '!'])
         Map().test = f'{self.name} betrays'
 
@@ -62,6 +68,14 @@ class Player(Carrier, PlayingEntity):
                 self.betray(allies[-1])  # betray the most dangerous one
                 return True
         return False
+
+    def want_to_ally(self, player: PlayingEntity) -> float:
+        players = player.current_group()
+        potential = sum([self._ally_potential(p) for p in players])
+        return potential
+
+    def _ally_potential(self, player: PlayingEntity) -> float:
+        return player.dangerosity * max(self.relationship(player).friendship, self.relationship(player).trust)
 
     def think(self):
         if self.strategy is not None or self.acted:
@@ -397,7 +411,7 @@ class Player(Carrier, PlayingEntity):
         elif b > 0:
             self.loot_bag(take_a_break=False)
         else:
-            self.hide()
+            self.hide(panic=True)
 
 
 hide_strat = Strategy(
