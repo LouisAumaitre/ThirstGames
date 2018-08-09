@@ -6,7 +6,7 @@ from random import random, choice
 from thirst_games.abstract.area import Area
 from thirst_games.abstract.entity import Entity
 from thirst_games.abstract.items import Weapon, Item, Bag, HANDS
-from thirst_games.abstract.playing_entity import PlayingEntity
+from thirst_games.abstract.playing_entity import PlayingEntity, Relationship, GroupedRelationship
 from thirst_games.context import Context
 from thirst_games.map import Map
 from thirst_games.narrator import format_list, Narrator
@@ -32,6 +32,11 @@ class Group(PlayingEntity):
     @property
     def players(self):
         return [p for p in self._players if p.is_alive]
+
+    def relationship(self, other_player) -> Relationship:
+        if len(other_player.players) > 1:
+            return GroupedRelationship([self.relationship(p) for p in other_player.players])
+        return GroupedRelationship([p.relationship(other_player) for p in self.players])
 
     def current_group(self):
         return self.players

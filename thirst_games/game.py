@@ -154,12 +154,14 @@ class Game(AbstractGame, metaclass=Singleton):
         l_weapon = max([len(str(p.weapon)) for p in self.alive_players])
         l_area = max([len(p.current_area.name) for p in self.alive_players])
         l_status = max([len(p.full_status_desc) for p in self.alive_players])
+        l_allies = max([len(p.describe_allies()) for p in self.alive_players])
         for p in self.alive_players:
             status = f'- {p.name:<{l_name}} {int(p.health * 100):>3}/{int(p.max_health * 100):>3}hp ' \
                      f'{int(p.energy * 100):>3}nrg ' \
                      f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm{int(p.water * 100):>4}wtr ' \
                      f'{str(p.weapon):<{l_weapon}} {p.current_area.name.upper():<{l_area}} ' \
-                     f'{p.full_status_desc:<{l_status}} '
+                     f'{p.full_status_desc:<{l_status}} ' \
+                     f'{p.describe_allies():<{l_allies}} '
             bag = str([str(e) for e in p._equipment]).replace('\'', '')
             max_l = 200 - len(status)
             if len(bag) > max_l:

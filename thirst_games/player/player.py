@@ -24,6 +24,8 @@ class Player(Carrier, PlayingEntity):
         self._waiting = 0
         self.district = district
         self.relationships: Dict[str, Relationship] = {}
+        self.relationship(self).add_friendship(2)
+        self.relationship(self).add_trust(2)
 
     def relationship(self, other_player) -> Relationship:
         if len(other_player.players) > 1:
@@ -32,11 +34,11 @@ class Player(Carrier, PlayingEntity):
             self.relationships[other_player.name] = Relationship()
         return self.relationships[other_player.name]
 
-    def is_allied_to(self, player):
-        return self.relationship(player).allied
-
     def allies(self) -> List[PlayingEntity]:
         return [p for p in Context().alive_players if self.is_allied_to(p)]
+
+    def describe_allies(self):
+        return format_list([p.name for p in Context().alive_players if self.is_allied_to(p)])
 
     def present_allies(self) -> List[PlayingEntity]:
         return [p for p in Map().players(self) if self.is_allied_to(p) and p != self]
@@ -332,7 +334,7 @@ class Player(Carrier, PlayingEntity):
 
     def attack_at_random(self):
         preys = [p for p in self.enemies(self.current_area) if self.can_see(p) and p != self]
-        preys.sort(key=lambda x: x.dangerosity)
+        preys.sort(key=lambda x: x.dangerosity * (self.relationship(x).friendship + 2))
         if len(preys):
             self.fight(preys[0])
         else:
@@ -449,7 +451,7 @@ class AllianceStrat(Strategy):
         self.player = player
 
         def _pref(x):
-            if x.current_area == self.player.current_area:
+            if x.current_area == self.player.current_area and x != self.player and not x.is_allied_to(self.player):
                 return x.want_to_ally(self.player)
             return -100
 

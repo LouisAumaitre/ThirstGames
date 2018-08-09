@@ -41,6 +41,8 @@ class PlayingEntity(FightingEntity, CarryingEntity):
         raise NotImplementedError
 
     def should_ask_to_ally(self, player) -> float:
+        if player == self or self.is_allied_to(player):
+            return -100  # doesnt work for some reason
         want = self.want_to_ally(player)
         reply_likeliness = player.relationship(self).friendship * self.dangerosity
         return want * reply_likeliness
@@ -59,6 +61,9 @@ class PlayingEntity(FightingEntity, CarryingEntity):
 
     def new_ally(self, player):
         self.relationship(player).set_allied(True)
+
+    def is_allied_to(self, player):
+        return self.relationship(player).allied
 
 
 class Strategy:
