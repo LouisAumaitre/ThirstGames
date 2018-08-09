@@ -18,7 +18,7 @@ class Trap(AbstractTrap):
 
     def __init__(self, owner, stealth):
         Entity.__init__(self, self._name, 'it')
-        self.long_name = f'{owner.first_name}\'s {self.name}'
+        self.long_name = f'{owner.name}\'s {self.name}'
         self.owner = owner
         self.knowing = [owner]
         self.stealth = stealth
@@ -81,11 +81,11 @@ class StakeTrap(Trap):
 
     def _apply(self, name, player):
         if player.be_damaged(random(), 'trident'):
-            Narrator().new([player.first_name, 'impales', f'{player.him}self', 'on', f'{name}!'])
+            Narrator().new([player.name, 'impales', f'{player.him}self', 'on', f'{name}!'])
         else:
-            Narrator().new([player.first_name, 'falls', f'into', f'{name}!'])
+            Narrator().new([player.name, 'falls', f'into', f'{name}!'])
             if not Narrator().has_stock:
-                Narrator().add([player.first_name, 'is', 'lightly wounded'])
+                Narrator().add([player.name, 'is', 'lightly wounded'])
             Narrator().apply_stock()
 
 
@@ -98,11 +98,11 @@ class ExplosiveTrap(Trap):
 
     def _apply(self, name, player):
         if player.be_damaged(random() * 5, 'fire'):
-            Narrator().new([player.first_name, 'blows up', 'on', f'{name}!'])
+            Narrator().new([player.name, 'blows up', 'on', f'{name}!'])
         else:
-            Narrator().new([player.first_name, 'steps', 'on', f'{name}!'])
+            Narrator().new([player.name, 'steps', 'on', f'{name}!'])
             if not Narrator().has_stock:
-                Narrator().add([player.first_name, 'is', 'wounded'])
+                Narrator().add([player.name, 'is', 'wounded'])
             Narrator().apply_stock()
 
 
@@ -113,7 +113,7 @@ class NetTrap(Trap):
     _name = 'net trap'
 
     def _apply(self, name, player):
-        Narrator().new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
+        Narrator().new([player.name, 'gets', 'ensnared into', f'{name}!'])
         player.status.append(TRAPPED)
         take_advantage_of_trap(self, player)
 
@@ -128,7 +128,7 @@ class WireTrap(Trap):
         Narrator().new([player.first_name, 'gets', 'ensnared into', f'{name}!'])
         if random() > 0.5:
             player.status.append('leg wound')
-            Narrator().add([player.first_name, 'wounds', player.his, 'leg'])
+            Narrator().add([player.name, 'wounds', player.his, 'leg'])
         else:
             player.status.append(TRAPPED)
             take_advantage_of_trap(self, player)
@@ -150,7 +150,7 @@ def build_trap(player, trap_class: Type[Trap]):
         item = [i for i in player.equipment if i.name == ingredient][0]
         player.remove_item(item)
     trap = trap_class(player, random() / 2 + 0.5)
-    Narrator().add([player.first_name, 'builds', 'a', trap.name, f'at {player.current_area}'])
+    Narrator().add([player.name, 'builds', 'a', trap.name, f'at {player.current_area}'])
 
 
 def can_build_any_trap(player) -> bool:
