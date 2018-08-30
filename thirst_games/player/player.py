@@ -96,11 +96,11 @@ class Player(Carrier, PlayingEntity):
         p_a = self._ally_potential(player_a)
         p_b = self._ally_potential(player_b)
         if p_a > p_b and p_a > 0:
-            Narrator().add([self.name, 'picks', player_a.name, 'over', player_b.name])
+            Narrator().add([self.name, 'sides with', player_a.name])
             player_a.relationship(self).add_trust(0.25)
             self.new_ally(player_a)
         elif p_b > 0:
-            Narrator().add([self.name, 'picks', player_b.name, 'over', player_a.name])
+            Narrator().add([self.name, 'sides with', player_b.name])
             player_b.relationship(self).add_trust(0.25)
             self.new_ally(player_b)
         else:

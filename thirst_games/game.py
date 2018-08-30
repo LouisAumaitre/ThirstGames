@@ -171,7 +171,7 @@ class Game(AbstractGame, metaclass=Singleton):
             status = f'- {p.name:<{l_name}} {int(p.health * 100):>3}/{int(p.max_health * 100):>3}hp ' \
                      f'{int(p.energy * 100):>3}nrg ' \
                      f'{int(p.sleep * 100):>3}slp {int(p.stomach * 100):>3}stm{int(p.water * 100):>4}wtr ' \
-                     f'{str(p.weapon):<{l_weapon}} {p.current_area.name.upper():<{l_area}} ' \
+                     f'{str(p.weapon):<{l_weapon}} {p.current_area.full_name.upper():<{l_area}} ' \
                      f'{p.full_status_desc:<{l_status}} ' \
                      f'{p.describe_allies():<{l_allies}} '
             bag = str([str(e) for e in p._equipment]).replace('\'', '')
@@ -193,8 +193,9 @@ class Game(AbstractGame, metaclass=Singleton):
             return
         self._event_gauge = 0
         event = choice(possible_events)()
-        areas = format_list([f'the {area.name}' for area in event.areas])
+        areas = format_list(list(set([f'the {area.name}' for area in event.areas])))
         Narrator().new(['EVENT:', event.name.upper(), f'at {areas}'])
+        Narrator().new(['EVENT:', event.name.upper(), f'at {event.areas}'])
         Narrator().cut()
         event.trigger()
         Narrator().new(' ')

@@ -36,10 +36,16 @@ class DamageEvent(Event):
     ):
         areas = self.available_areas()
         areas.sort(key=lambda x: -len(x.players))
-        picked_areas = [areas.pop(0)]
-        while len(areas) > Context().player_count // 4:
-            picked_areas.append(areas.pop(0))
-            if len(areas) < 2:
+        picked_area = areas[0]
+        picked_areas = [area for area in areas if area.name == picked_area.name]
+        areas = [area for area in areas if area.name != picked_area.name]
+        while sum([len(area.players) for area in picked_areas]) < 3 * Context().player_count // 4:
+            picked_area = areas[0]
+            new_areas = [area for area in areas if area.name == picked_area.name]
+            areas = [area for area in areas if area.name != picked_area.name]
+            if sum([len(area.players) for area in new_areas]):
+                picked_areas.extend(new_areas)
+            if not areas:
                 break
         Event.__init__(self, name, picked_areas)
         self.stealth = stealth

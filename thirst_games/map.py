@@ -80,7 +80,11 @@ class Map(metaclass=Singleton):
         possible_parts_names.remove(START_AREA)
         possible_parts_names.sort(key=lambda x: random())
         size = player_amount // 4 + 1
-        self.areas: List[Area] = [Area(area_name) for area_name in possible_parts_names[0:size-1]]
+        possible_parts_names = possible_parts_names[:size-1]
+        self.areas: List[Area] = []
+        for area_name in possible_parts_names:
+            for i in range(randint(1, 4)):
+                self.areas.append(Area(area_name))
         start_area = Area(START_AREA)
         self.areas.append(start_area)
 

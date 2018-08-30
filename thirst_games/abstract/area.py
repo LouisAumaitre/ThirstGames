@@ -22,9 +22,17 @@ _nature = {
     }
 }
 
+_ids = {}
+
 
 class Area:
-    def __init__(self, name: str, ):
+    def __init__(self, name: str):
+        if name in _ids:
+            _ids[name] += 1
+            self.id = _ids[name]
+        else:
+            _ids[name] = 0
+            self.id = 0
         self.name = name
         self.at = f'at the {name}'
         self.to = f'to the {name}'
@@ -36,16 +44,19 @@ class Area:
 
     @property
     def has_water(self) -> bool:
-        if self.name == 'river':
-            return True
-        return False
+        return self.name in ['river', 'lake']
 
     @property
     def is_start(self) -> bool:
         return self.name == START_AREA
 
+    @property
+    def full_name(self):
+        return f'{self.name}[{self.id}]'
+
     def __str__(self):
-        return self.name
+        # return self.name
+        return f'{self.name}[{self.id}]'
 
     def __repr__(self):
-        return f'{self.name}: {[p.name for p in self.players]}'
+        return f'{self.name}[{self.id}]: {[p.name for p in self.players]}'
