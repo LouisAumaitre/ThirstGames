@@ -54,22 +54,42 @@ class Player(Carrier, PlayingEntity):
         return [p for p in Context().playing_entities_at(area) if self not in p.players]
 
     def betray(self, player: PlayingEntity):
-        Narrator().new([self.name, 'betrays', player.name, '!'])
-        for ally in self.present_allies():
-            ally.relationship(self).add_trust(-1)
-        self.break_alliance(player)
-        do_a_fight(self.current_group(), player.current_group())
+        if player.current_area == self.current_area:
+            Narrator().new([self.name, 'betrays', player.name, '!'])
+            for ally in self.present_allies():
+                ally.relationship(self).add_trust(-1)
+            self.relationship(player).add_trust(-1)
+            player.relationship(self).add_friendship(-1)
+            self.break_alliance(player)
+            do_a_fight(self.current_group(), player.current_group())
+        else:
+            if self.present_allies():
+                Narrator().new([self.name, 'and', self.his, 'group', 'decide', 'they do not need', player.name, '!'])
+            else:
+                Narrator().new([self.name, 'decides', self.he, 'does not need', player.name])
+            for other in player.current_group():
+                for ally in self.current_group():
+                    ally.relationship(other).set_allied(False)
+                    other.relationship(ally).set_allied(False)
 
     def break_alliance(self, player):
-        self.relationship(player).set_allied(False)
-        self.relationship(player).add_trust(-1)
-        player.relationship(self).set_allied(False)
-        player.relationship(self).add_friendship(-1)
-        remaining_allies = self.present_allies()
-        for ally in remaining_allies:
-            ally.relationship(self).set_allied(False)
-            ally.relationship(player).set_allied(False)
-        for ally in remaining_allies:
+        full_team = copy(self.current_group())
+        for ally1 in full_team:
+            if len(full_team) > 2:
+                ally1.wake_up()
+                ally1.reveal()
+            for ally2 in full_team:
+                if ally1 != ally2:
+                    ally1.relationship(ally2).set_allied(False)
+
+        try:
+            full_team.remove(self)
+            full_team.remove(player)
+        except Exception as e:
+            Narrator().new(['current group:', [(p.name, p.current_area) for p in full_team]])
+            Narrator().tell()
+            raise e
+        for ally in full_team:
             ally.choose_between(self, player)
 
     def choose_between(self, player_a, player_b):
@@ -85,6 +105,8 @@ class Player(Carrier, PlayingEntity):
             self.new_ally(player_b)
         else:
             Narrator().add([self.name, 'chooses to go on', self.his, 'own'])
+            if self.can_flee():
+                self.flee()
 
     def consider_betrayal(self):
         allies = self.allies()
@@ -112,6 +134,7 @@ class Player(Carrier, PlayingEntity):
 
     def new_ally(self, player):
         self.relationship(player).set_allied(True)
+        player.relationship(self).set_allied(True)
         for ally in Context().alive_players:
             if ally.is_allied_to(player) and not self.is_allied_to(ally):
                 self.new_ally(ally)
@@ -259,9 +282,11 @@ class Player(Carrier, PlayingEntity):
 
             available_areas = [area for area in Map().areas if area not in filtered_areas]
             available_areas.sort(key=lambda x: self._flee_value(x))
-            area = available_areas[-1]
-
-        out = self.go_to(area)
+            if available_areas:
+                area = available_areas[-1]
+        out = None
+        if area is not None:
+            out = self.go_to(area)
         if out is None:
             self.hide(panic=panic, stock=stock)
         else:

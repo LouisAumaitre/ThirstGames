@@ -196,6 +196,10 @@ class Body(LivingEntity):
         Narrator().add([self.name, verb, self.current_area.at], stock=stock)
         self.status.append(SLEEPING)
 
+    def wake_up(self):
+        if SLEEPING in self.status:
+            self.status.remove(SLEEPING)
+
     def stop_running(self):
         if FLEEING in self.status:
             self.status.remove(FLEEING)
