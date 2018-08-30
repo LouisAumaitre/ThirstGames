@@ -26,6 +26,7 @@ class Player(Carrier, PlayingEntity):
         self.relationships: Dict[str, Relationship] = {}
         self.relationship(self).add_friendship(2)
         self.relationship(self).add_trust(2)
+        self.relationship(self).set_allied(True)
 
     def relationship(self, other_player) -> Relationship:
         if len(other_player.players) > 1:
@@ -35,10 +36,10 @@ class Player(Carrier, PlayingEntity):
         return self.relationships[other_player.name]
 
     def allies(self) -> List[PlayingEntity]:
-        return [p for p in Context().alive_players if self.is_allied_to(p)]
+        return [p for p in Context().alive_players if self.is_allied_to(p) and self != p]
 
     def describe_allies(self):
-        return format_list([p.name for p in Context().alive_players if self.is_allied_to(p)])
+        return format_list([p.name for p in self.allies()])
 
     def present_allies(self) -> List[PlayingEntity]:
         return [p for p in Map().players(self) if self.is_allied_to(p) and p != self]
@@ -53,22 +54,52 @@ class Player(Carrier, PlayingEntity):
         return [p for p in Context().playing_entities_at(area) if self not in p.players]
 
     def betray(self, player: PlayingEntity):
+        Narrator().new([self.name, 'betrays', player.name, '!'])
+        for ally in self.present_allies():
+            ally.relationship(self).add_trust(-1)
+        self.break_alliance(player)
+        do_a_fight(self.current_group(), player.current_group())
+
+    def break_alliance(self, player):
         self.relationship(player).set_allied(False)
         self.relationship(player).add_trust(-1)
         player.relationship(self).set_allied(False)
-        player.relationship(self).add_trust(-1)
         player.relationship(self).add_friendship(-1)
+        remaining_allies = self.present_allies()
+        for ally in remaining_allies:
+            ally.relationship(self).set_allied(False)
+            ally.relationship(player).set_allied(False)
+        for ally in remaining_allies:
+            ally.choose_between(self, player)
 
-        Narrator().new([self.name, 'betrays', player.name, '!'])
-        Map().test = f'{self.name} betrays'
+    def choose_between(self, player_a, player_b):
+        p_a = self._ally_potential(player_a)
+        p_b = self._ally_potential(player_b)
+        if p_a > p_b and p_a > 0:
+            Narrator().add([self.name, 'picks', player_a.name, 'over', player_b.name])
+            player_a.relationship(self).add_trust(0.25)
+            self.new_ally(player_a)
+        elif p_b > 0:
+            Narrator().add([self.name, 'picks', player_b.name, 'over', player_a.name])
+            player_b.relationship(self).add_trust(0.25)
+            self.new_ally(player_b)
+        else:
+            Narrator().add([self.name, 'chooses to go on', self.his, 'own'])
 
     def consider_betrayal(self):
+        allies = self.allies()
+        # when there are no enemies left
         if len([p for p in Context().alive_players if p != self and not self.is_allied_to(p)]) == 0:
-            allies = self.allies()
             if len(allies):
                 allies.sort(key=lambda x: x.dangerosity)
                 self.betray(allies[-1])  # betray the most dangerous one
                 return True
+        allies_by_value = {
+            x.dangerosity + self.relationship(x).trust + self.relationship(x).friendship: x for x in allies
+        }
+        if allies and min(allies_by_value) < 0:
+            Map().test = f'{self.name} betrays'
+            self.betray(allies_by_value[min(allies_by_value)])  # get rid of useless/untrustworthy
         return False
 
     def want_to_ally(self, player: PlayingEntity) -> float:
@@ -78,6 +109,14 @@ class Player(Carrier, PlayingEntity):
 
     def _ally_potential(self, player: PlayingEntity) -> float:
         return player.dangerosity * max(self.relationship(player).friendship, self.relationship(player).trust)
+
+    def new_ally(self, player):
+        self.relationship(player).set_allied(True)
+        for ally in Context().alive_players:
+            if ally.is_allied_to(player) and not self.is_allied_to(ally):
+                self.new_ally(ally)
+            if not ally.is_allied_to(player) and self.is_allied_to(ally):
+                ally.new_ally(player)
 
     def think(self):
         if self.strategy is not None or self.acted:
@@ -451,7 +490,9 @@ class AllianceStrat(Strategy):
         self.player = player
 
         def _pref(x):
-            if x.current_area == self.player.current_area and x != self.player and not x.is_allied_to(self.player):
+            if x.current_area == self.player.current_area \
+                    and self.player not in x.players \
+                    and not x.is_allied_to(self.player):
                 return x.want_to_ally(self.player)
             return -100
 

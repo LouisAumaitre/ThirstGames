@@ -48,6 +48,7 @@ class PlayingEntity(FightingEntity, CarryingEntity):
         return want * reply_likeliness
 
     def ask_to_ally(self, player):
+        self.reveal()
         if random() < player.want_to_ally(self):
             Narrator().new([self.name, 'proposes', 'an alliance to', player.name, 'and', player.he, 'accepts!'])
             self.new_ally(player)
@@ -55,12 +56,14 @@ class PlayingEntity(FightingEntity, CarryingEntity):
         else:
             Narrator().new([self.name, 'proposes', 'an alliance to', player.name, 'but', player.he, 'refuses'])
             self.relationship(player).add_friendship(-0.5)
+            self.relationship(player).add_trust(-2)
+            self.relationship(player).add_trust(1)  # trust = 0
 
     def want_to_ally(self, player) -> float:
         raise NotImplementedError
 
     def new_ally(self, player):
-        self.relationship(player).set_allied(True)
+        raise NotImplementedError
 
     def is_allied_to(self, player):
         return self.relationship(player).allied

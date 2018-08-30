@@ -9,6 +9,13 @@ from thirst_games.narrator import Narrator
 
 
 def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
+    for player in set(team_1).intersection(set(team_2)):
+        Narrator().new(['ERROR', player.name, 'is in both groups'])
+        Narrator().cut()
+        if len(team_1) > 1:
+            team_1.remove(player)
+        if len(team_2) > 1:
+            team_2.remove(player)
     initiative: Dict[PlayingEntity, float] = {}
     weapon_name: Dict[PlayingEntity, str] = {}
     drops = []

@@ -29,9 +29,13 @@ class Game(AbstractGame, metaclass=Singleton):
         for p in self.players:
             self.map.add_player(p)
             for p2 in self.players:
-                if p != p2 and p.district == p2.district:
-                    p.relationship(p2).add_friendship(0.5)
-                    p.relationship(p2).add_trust(0.5)
+                if p != p2:
+                    if p.district == p2.district:
+                        p.relationship(p2).add_friendship(random() * 0.5 + 0.5)
+                        p.relationship(p2).add_trust(random() * 0.5)
+                    else:
+                        p.relationship(p2).add_friendship(random())
+                        p.relationship(p2).add_trust(random() * 0.25)
         self.event_classes = [WildFire, DropEvent, Flood, AcidGas, Wasps, Beasts]
         self.day = 0
         self.time = STARTER
@@ -83,7 +87,8 @@ class Game(AbstractGame, metaclass=Singleton):
             if rounds > 10:
                 raise Exception
         self._players_at_last_event = len(self.alive_players)
-        while len(self.alive_players) > 1 and self.day < 5:
+
+        while len(self.alive_players) > 1 and self.day < 10:
             if self.day != 1:
                 self.time = MORNING
                 self.launch()
@@ -146,7 +151,14 @@ class Game(AbstractGame, metaclass=Singleton):
             else:
                 players.append(group[0])
             for player in group:
-                area_players.remove(player)
+                try:
+                    area_players.remove(player)
+                except ValueError as e:
+                    # print(f'all={[p.name for p in area.players]}')
+                    # print(f'taken={[[a.name for a in p.players] for p in players]} '
+                    #       f'remain={[p.name for p in area_players]}')
+                    # print(f'remove={[p.name for p in players[-1].players]} fail={player.name}')
+                    pass
         return players
 
     def status(self):

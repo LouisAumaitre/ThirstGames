@@ -384,3 +384,11 @@ class Group(PlayingEntity):
 
     def want_to_ally(self, player: PlayingEntity) -> float:
         return sum([p.want_to_ally(player) for p in self.players]) / len(self.players)
+
+    def new_ally(self, player):
+        self.relationship(player).set_allied(True)
+        for ally in Context().alive_players:
+            if ally.is_allied_to(player) and not self.is_allied_to(ally):
+                self.new_ally(ally)
+            if not ally.is_allied_to(player) and self.is_allied_to(ally):
+                ally.new_ally(player)
