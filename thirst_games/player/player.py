@@ -216,6 +216,8 @@ class Player(Carrier, PlayingEntity):
         return area_value * min([random(), 3 / Context().player_count])
 
     def go_get_drop(self, area: Area):
+        if AMBUSH in self.status:
+            self.status.remove(AMBUSH)
         out = self.go_to(area)
         if out is not None:
             Narrator().add([self.name, f'goes {out.to} to get loot'])
@@ -285,6 +287,7 @@ class Player(Carrier, PlayingEntity):
             if available_areas:
                 area = available_areas[-1]
         out = None
+        self.reveal()
         if area is not None:
             out = self.go_to(area)
         if out is None:
@@ -301,6 +304,8 @@ class Player(Carrier, PlayingEntity):
             self.hide()
             Narrator().replace('hides and rests', 'rests')
         else:
+            if AMBUSH in self.status:
+                self.status.remove(AMBUSH)
             targets = [p.name for p in Context().alive_players if p != self and not self.relationship(p).allied]
             if len(targets) == 0:
                 Narrator().add([self.name, 'doesn\'t know', 'who to look for', out.at])
