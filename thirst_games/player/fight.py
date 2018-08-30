@@ -80,6 +80,7 @@ def do_a_fight(team_1: List[PlayingEntity], team_2: List[PlayingEntity]):
             initiative[player_2] = 1
 
         for player in team_2:
+            initiative[player] = 1
             if not len(team_1):
                 break
             do_attack(player, choice(team_1), team_1)

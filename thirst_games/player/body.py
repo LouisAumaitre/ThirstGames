@@ -179,6 +179,9 @@ class Body(LivingEntity):
 
     def reveal(self):
         Entity.reveal(self)
+        self.end_ambush()
+
+    def end_ambush(self):
         if AMBUSH in self.status:
             self.status.remove(AMBUSH)
             Map().remove_ambusher(self, self)
