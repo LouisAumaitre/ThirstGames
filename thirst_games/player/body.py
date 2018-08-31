@@ -184,7 +184,7 @@ class Body(LivingEntity):
     def end_ambush(self):
         if AMBUSH in self.status:
             self.status.remove(AMBUSH)
-            Map().remove_ambusher(self, self)
+            Map().remove_ambusher(self)
 
     def patch(self, wound: str, stock=False):
         raise NotImplementedError

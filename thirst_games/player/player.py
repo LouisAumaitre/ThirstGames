@@ -182,6 +182,7 @@ class Player(Carrier, PlayingEntity):
                + 30 * len([a for a in self.allies() if a in area.players])
 
     def act(self):
+        self.end_ambush()
         new_strat = self.new_strat()
         if new_strat is not None:
             self.apply_strat(new_strat)
@@ -333,8 +334,7 @@ class Player(Carrier, PlayingEntity):
                 Narrator().add([self.name, 'keeps', 'hiding', self.current_area.at])
             else:
                 Narrator().add([self.name, 'gets', 'tired of hiding', self.current_area.at])
-                self.status.remove(AMBUSH)
-                Map().remove_ambusher(self, self)
+                self.end_ambush()
                 self.pursue()
 
     def take_a_break(self):
@@ -545,6 +545,10 @@ def get_drop_strats():
     ) for area in Map().areas if area not in Context().forbidden_areas]
 
 
+def has_no_enemies(player):
+    return len([p for p in Map().players(player) if not player.relationship(p).allied]) == 0
+
+
 attack_strat = Strategy(
     'attack',
     lambda x: x.health * min(x.energy, x.stomach, x.sleep) *
@@ -552,7 +556,7 @@ attack_strat = Strategy(
     lambda x: x.attack_at_random())
 ambush_strat = Strategy(
     'ambush',
-    lambda x: x.health * min(x.energy, x.stomach, x.sleep) * x.weapon.damage_mult * (Map().players_count(x) == 1),
+    lambda x: x.health * min(x.energy, x.stomach, x.sleep) * x.weapon.damage_mult * has_no_enemies(x),
     lambda x: x.set_up_ambush())
 hunt_player_strat = Strategy(
     'hunt player',
@@ -580,23 +584,23 @@ loot_start_strat = Strategy(
     lambda x: x.loot_start())
 forage_strat = Strategy(
     'forage',
-    lambda x: x.hunger * Map().forage_potential(x) / Map().players_count(x),
+    lambda x: x.hunger * Map().forage_potential(x) * has_no_enemies(x),
     lambda x: x.forage())
 dine_strat = Strategy(
     'dine',
-    lambda x: x.hunger * x.has_food / Map().players_count(x),
+    lambda x: x.hunger * x.has_food * has_no_enemies(x),
     lambda x: x.dine())
 craft_strat_1 = Strategy(
     'craft',
-    lambda x: (2 - x.weapon.damage_mult) * (1 / Map().players_count(x)),
+    lambda x: (2 - x.weapon.damage_mult) * has_no_enemies(x),
     lambda x: x.craft())
 craft_strat_2 = Strategy(
     'craft',
-    lambda x: (x.energy - 0.2) * (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) / Map().players_count(x),
+    lambda x: (x.energy - 0.2) * (x.weapon.damage_mult < 2) * (2 - x.weapon.damage_mult) * has_no_enemies(x),
     lambda x: x.craft())
 trap_strat = Strategy(
     'build trap',
-    lambda x: (x.energy - 0.2) * (Map().players_count(x) < 2) * (can_build_any_trap(x)),
+    lambda x: (x.energy - 0.2) * has_no_enemies(x) * (can_build_any_trap(x)),
     lambda x: build_any_trap(x))
 free_trap_strat = Strategy(
     'free from trap',

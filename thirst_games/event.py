@@ -45,6 +45,7 @@ class DamageEvent(Event):
             areas = [area for area in areas if area.name != picked_area.name]
             if sum([len(area.players) for area in new_areas]):
                 picked_areas.extend(new_areas)
+                # TODO: can cover the whole map, thats a problem
         Event.__init__(self, name, picked_areas)
         self.stealth = stealth
         self.it = it

@@ -235,6 +235,7 @@ class Map(metaclass=Singleton):
         return self.get_area(area).ambushers
 
     def add_ambusher(self, ambusher: PlayingEntity, area: Union[str, Area, Entity]):
+        print(f'add ambucher: {ambusher.name}')
         area_ambushers = self.get_area(area).ambushers
         if ambusher not in area_ambushers:
             for p in ambusher.players:
@@ -244,5 +245,7 @@ class Map(metaclass=Singleton):
                         break
             area_ambushers.append(ambusher)
 
-    def remove_ambusher(self, ambusher, area: Union[str, Area, Entity]):
-        self.get_area(area).ambushers.remove(ambusher)
+    def remove_ambusher(self, ambusher):
+        for area in self.areas:
+            if ambusher in area.ambushers:
+                area.ambushers.remove(ambusher)

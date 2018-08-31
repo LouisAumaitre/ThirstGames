@@ -28,6 +28,7 @@ class Group(PlayingEntity):
         self._players = players
         self._acting_players = copy(players)
         self.move_to(players[0].current_area)
+        self._ambush = False
 
     @property
     def players(self):
@@ -68,6 +69,7 @@ class Group(PlayingEntity):
 
     def act(self):
         Narrator().cut()
+        self.end_ambush()
         self._acting_players = []
         for p in self.players:
             player_strat = p.new_strat()
@@ -103,6 +105,10 @@ class Group(PlayingEntity):
     def dangerosity(self) -> float:
         return sum(p.courage for p in self.players)
 
+    @property
+    def has_crafting_tool(self) -> bool:
+        return any([p for p in self.players if p.has_crafting_tool])
+
     def flee(self, panic=False, drop_verb='drops', stock=False, filtered_areas=None):
         for player in self.acting_players:
             player.flee(panic=panic, drop_verb=drop_verb, stock=stock, filtered_areas=filtered_areas)
@@ -110,7 +116,9 @@ class Group(PlayingEntity):
     def pursue(self):
         available_areas = [a for a in Map().areas if a not in Context().forbidden_areas]
         available_areas.sort(key=lambda x: sum(p._pursue_value(x) for p in self.acting_players))
-        out = self.go_to(available_areas[-1])
+        out = None
+        if not available_areas:
+            out = self.go_to(available_areas[-1])
         if out is None:
             self.hide()
             Narrator().replace('hides and rests', 'rests')
@@ -125,7 +133,9 @@ class Group(PlayingEntity):
 
     def set_up_ambush(self):
         self.stealth += (random() / 2 + 0.5) * (1 - self.stealth)
+        self.end_ambush()
         Map().add_ambusher(self, self)
+        self._ambush = True
         Narrator().add([self.name, 'sets up', 'an ambush', self.current_area.at])
 
     def can_see(self, other):
@@ -261,12 +271,14 @@ class Group(PlayingEntity):
             player.craft()
 
     def reveal(self):
+        self.end_ambush()
         for p in self.acting_players:
             p.reveal()
 
     def go_to(self, area: Union[str, Area, Entity]) -> Optional[Area]:
         area = Map().get_area(area)
         if area != self.current_area:
+            self.end_ambush()
             for p in self.acting_players:
                 p.go_to(area)
             return Map().move_player(self, area)
@@ -327,8 +339,8 @@ class Group(PlayingEntity):
         return True
 
     def trigger_ambush(self, prey):
-        Map().remove_ambusher(self, self)
-        Narrator().new([prey.first_name, 'falls', 'into', f'{self.name}\'s ambush!'])
+        self.end_ambush()
+        Narrator().new([prey.name, 'falls', 'into', f'{self.name}\'s ambush!'])
         self.fight(prey)
 
     def take_a_break(self):
@@ -392,3 +404,8 @@ class Group(PlayingEntity):
                 self.new_ally(ally)
             if not ally.is_allied_to(player) and self.is_allied_to(ally):
                 ally.new_ally(player)
+
+    def end_ambush(self):
+        if self._ambush:
+            self._ambush = False
+            Map().remove_ambusher(self)
