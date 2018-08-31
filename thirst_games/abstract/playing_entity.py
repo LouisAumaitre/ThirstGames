@@ -68,6 +68,9 @@ class PlayingEntity(FightingEntity, CarryingEntity):
     def is_allied_to(self, player):
         return self.relationship(player).allied
 
+    def remove_item(self, item):
+        raise NotImplementedError
+
 
 class Strategy:
     def __init__(self, name, pref, action):

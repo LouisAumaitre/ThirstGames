@@ -109,6 +109,30 @@ class Group(PlayingEntity):
     def has_crafting_tool(self) -> bool:
         return any([p for p in self.players if p.has_crafting_tool])
 
+    def has_item(self, item_name):
+        return any([p for p in self.players if p.has_item(item_name)])
+
+    @property
+    def equipment(self):
+        equip = []
+        for p in self.players:
+            equip.extend(p.equipment)
+        return equip
+
+    def remove_item(self, item):
+        players = copy(self.players)
+        players.sort(key=lambda x: random())
+        removed = False
+        for p in players:
+            try:
+                p.remove_item(item)
+                removed = True
+                break
+            except KeyError:
+                continue
+        if not removed:
+            raise KeyError(f'no {item.name} in {self.name}\'s stash')
+
     def flee(self, panic=False, drop_verb='drops', stock=False, filtered_areas=None):
         for player in self.acting_players:
             player.flee(panic=panic, drop_verb=drop_verb, stock=stock, filtered_areas=filtered_areas)

@@ -50,7 +50,9 @@ class DamageEvent(Event):
         area_names = [area_name for area_name in area_names if players_by_area_names[area_name]]
 
         picked_areas = []
-        while sum([len(area.players) for area in picked_areas]) < 3 * Context().player_count / 4 and areas:
+        while sum([len(area.players) for area in picked_areas]) < 3 * Context().player_count / 4 \
+                and areas \
+                and area_names:
             picked_area_name = area_names.pop(0)
 
             new_areas = [area for area in areas if area.name == picked_area_name]

@@ -20,7 +20,7 @@ class Trap(AbstractTrap):
         Entity.__init__(self, self._name, 'it')
         self.long_name = f'{owner.name}\'s {self.name}'
         self.owner = owner
-        self.knowing = [owner]
+        self.knowing = owner.players
         self.stealth = stealth
         Map().add_trap(self, owner)
 
