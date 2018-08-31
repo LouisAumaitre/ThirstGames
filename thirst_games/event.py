@@ -35,17 +35,29 @@ class DamageEvent(Event):
             base_damage: float=0, extra_damage: float=0, dies='dies', trapped_means_dead=False,
     ):
         areas = self.available_areas()
-        areas.sort(key=lambda x: -len(x.players))
-        picked_area = areas[0]
-        picked_areas = [area for area in areas if area.name == picked_area.name]
-        areas = [area for area in areas if area.name != picked_area.name]
-        while sum([len(area.players) for area in picked_areas]) < 3 * Context().player_count // 4 and areas:
-            picked_area = areas[0]
-            new_areas = [area for area in areas if area.name == picked_area.name]
-            areas = [area for area in areas if area.name != picked_area.name]
+        area_names = list(set(area.name for area in areas))
+        players_by_area_names = {
+            area_name: sum([len(area.players) for area in areas if area.name == area_name]) for area_name in area_names
+        }
+        # from most players to least
+        area_names.sort(key=lambda x: -players_by_area_names[x])
+
+        # save at least a region
+        areas = [area for area in areas if area.name != area_names[-1][0]]
+        area_names = area_names[:-1]
+
+        # regions with players only
+        area_names = [area_name for area_name in area_names if players_by_area_names[area_name]]
+
+        picked_areas = []
+        while sum([len(area.players) for area in picked_areas]) < 3 * Context().player_count / 4 and areas:
+            picked_area_name = area_names.pop(0)
+
+            new_areas = [area for area in areas if area.name == picked_area_name]
+            areas = [area for area in areas if area.name != picked_area_name]
+
             if sum([len(area.players) for area in new_areas]):
                 picked_areas.extend(new_areas)
-                # TODO: can cover the whole map, thats a problem
         Event.__init__(self, name, picked_areas)
         self.stealth = stealth
         self.it = it
